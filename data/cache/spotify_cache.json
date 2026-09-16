@@ -1,0 +1,28 @@
+{
+  "cached_at": "2025-03-25T00:00:00Z",
+  "time_range": "medium_term",
+  "top_artists": [
+    {"rank": 1, "name": "The Weeknd", "genres": ["canadian contemporary r&b", "canadian pop", "pop"]},
+    {"rank": 2, "name": "Drake", "genres": ["canadian hip hop", "canadian pop", "hip hop", "rap"]},
+    {"rank": 3, "name": "Eminem", "genres": ["detroit hip hop", "hip hop", "rap"]},
+    {"rank": 4, "name": "Kanye West", "genres": ["chicago rap", "hip hop", "rap"]},
+    {"rank": 5, "name": "Chris Brown", "genres": ["pop", "r&b", "urban contemporary"]},
+    {"rank": 6, "name": "50 Cent", "genres": ["east coast hip hop", "gangster rap", "hip hop", "rap"]},
+    {"rank": 7, "name": "Future", "genres": ["atl hip hop", "hip hop", "rap", "trap"]},
+    {"rank": 8, "name": "Kendrick Lamar", "genres": ["conscious hip hop", "hip hop", "rap", "west coast rap"]},
+    {"rank": 9, "name": "Travis Scott", "genres": ["hip hop", "rap", "slap house"]},
+    {"rank": 10, "name": "Meek Mill", "genres": ["east coast hip hop", "hip hop", "philly rap", "rap"]}
+  ],
+  "top_tracks": [
+    {"rank": 1, "title": "Digital Dash", "artists": "Drake, Future"},
+    {"rank": 2, "title": "Know Yourself", "artists": "Drake"},
+    {"rank": 3, "title": "Thinkin Bout You", "artists": "Frank Ocean"},
+    {"rank": 4, "title": "Crew", "artists": "GoldLink, Brent Faiyaz, Shy Glizzy"},
+    {"rank": 5, "title": "Hotline Bling", "artists": "Drake"},
+    {"rank": 6, "title": "Way Too Cold", "artists": "Kanye West"},
+    {"rank": 7, "title": "Starboy", "artists": "The Weeknd, Daft Punk"},
+    {"rank": 8, "title": "Lucid Dreams", "artists": "Juice WRLD"},
+    {"rank": 9, "title": "God's Plan", "artists": "Drake"},
+    {"rank": 10, "title": "SICKO MODE", "artists": "Travis Scott, Drake"}
+  ]
+}

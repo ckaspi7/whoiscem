@@ -1,0 +1,47 @@
+{
+  "cached_at": "2025-03-25T00:00:00Z",
+  "headline": "AI/ML Engineer at TELUS",
+  "about": "Passionate about Generative AI, LLMs, and building intelligent systems that solve real-world problems. Currently working at TELUS as an AI/ML Engineer, developing GenAI-powered chatbots, automations, and data pipelines. I enjoy bridging the gap between cutting-edge AI research and production-ready engineering.",
+  "positions": [
+    {
+      "title": "AI/ML Engineer",
+      "company": "TELUS Communications Inc.",
+      "startDate": "2022-01",
+      "endDate": "Present",
+      "description": "Building GenAI-powered products and automations for TELUS, including internal chatbots, LLM pipelines, and data-driven solutions.",
+      "promotions": [
+        {
+          "title": "AI/ML Engineer",
+          "startDate": "2024-09",
+          "endDate": "Present"
+        },
+        {
+          "title": "Software Developer (GenAI & Chatbot Development)",
+          "startDate": "2024-04",
+          "endDate": "2024-09"
+        },
+        {
+          "title": "Engineer-in-Training (GenAI and Automations)",
+          "startDate": "2022-01",
+          "endDate": "2024-04"
+        }
+      ]
+    },
+    {
+      "title": "Co-Founder",
+      "company": "NeoWise",
+      "startDate": "2019-01",
+      "endDate": "2022-01",
+      "description": "Co-founded a wearable heating/cooling startup. Responsible for product R&D, hardware design, 3D modeling and rendering.",
+      "promotions": []
+    },
+    {
+      "title": "Manufacturing Engineering Intern",
+      "company": "Mercedes-Benz Canada",
+      "startDate": "2018-05",
+      "endDate": "2019-01",
+      "description": "Performed statistical process analysis on bipolar plate welding operations. Supported manufacturing quality improvement initiatives.",
+      "promotions": []
+    }
+  ]
+}
