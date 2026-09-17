@@ -33,6 +33,11 @@ known-first-party = [
 quote-style = "double"
 
 [tool.pytest.ini_options]
+# Put the repo root on sys.path. Without it, `pytest` fails at collection on
+# every first-party import, while `python -m pytest` succeeds because that form
+# adds the working directory itself. CI runs the bare form, so the test job was
+# red from the first commit while the suite passed on every developer machine.
+pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
 markers = ["integration: marks tests that require external services (Qdrant, Redis)"]
