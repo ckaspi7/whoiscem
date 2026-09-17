@@ -27,7 +27,7 @@ DEFAULT_QDRANT_MODE = "embedded"
 DEFAULT_QDRANT_PATH = ".qdrant"
 DEFAULT_QDRANT_HOST = "localhost"
 DEFAULT_QDRANT_PORT = 6333
-DEFAULT_RESUME_PATH = os.path.join("data", "resume.pdf")
+DEFAULT_RESUME_PATH = os.path.join("data", "resume.md")
 
 
 class ConfigError(ValueError):
@@ -45,7 +45,7 @@ class Settings:
             a time may hold it — the client takes an exclusive lock.
         redis_url: Empty means "no Redis server"; session memory falls back to
             an in-process store rather than turning itself off.
-        resume_path: PDF indexed on first run.
+        resume_path: Resume indexed on first run — Markdown or PDF.
     """
 
     qdrant_mode: QdrantMode = DEFAULT_QDRANT_MODE

@@ -22,12 +22,10 @@ def _init_retrieval() -> tuple[QdrantVectorStore, BM25Index, CrossEncoderReranke
         settings = load_settings()
         _store = QdrantVectorStore(settings=settings)
         if not _store.collection_exists():
-            pdf_path = settings.resume_path
-            if not os.path.exists(pdf_path):
-                raise FileNotFoundError(
-                    f"Resume PDF not found at {pdf_path}. Set RESUME_PATH to point at it."
-                )
-            _store.build_from_pdf(pdf_path)
+            resume_path = settings.resume_path
+            if not os.path.exists(resume_path):
+                raise FileNotFoundError(f"Resume not found at {resume_path}. Set RESUME_PATH to point at it.")
+            _store.build_from_file(resume_path)
 
     if _bm25 is None:
         all_chunks = _store.get_all_chunks()

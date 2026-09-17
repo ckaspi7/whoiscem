@@ -94,6 +94,38 @@ fails the build if personal data becomes tracked by git, including inside a PDF.
 
 ---
 
+## Resume Source
+
+`data/resume.md` is a redacted copy: the phone number and email address are
+removed. `RESUME_PATH` overrides it, so a local unredacted file can be indexed
+without touching the repository.
+
+---
+
+## Chunking — Currently Degenerate
+
+**Status: measured, unfixed, and the reason the evaluation work comes first.**
+
+`SemanticChunker` with percentile thresholding splits the resume into **three
+chunks** of roughly 2,200 / 1,000 / 4,100 characters. The pipeline then takes
+the top 20 dense results, the top 20 BM25 results, fuses them, and reranks to
+the top 3 — of a corpus of 3. Every query returns the entire document.
+
+So the hybrid retrieval this project is built around is, on this corpus, not
+retrieving anything: RRF has nothing to fuse and the cross-encoder has nothing
+to discriminate between. BM25 is worse than inert — a term appearing in all
+three chunks scores zero IDF, so sparse search regularly returns nothing at all.
+
+Switching the source from PDF to Markdown was expected to help and did not: it
+moved the count from two chunks to three. The cause is the chunker's
+configuration on a short document, not the extraction format.
+
+This is left in place on purpose. It is the baseline the evaluation harness will
+measure, so that section-aware chunking can be reported as a before-and-after
+rather than asserted.
+
+---
+
 ## Cross-Encoder Reranker
 
 The cross-encoder (`cross-encoder/ms-marco-MiniLM-L-6-v2`) downloads ~90 MB on first run

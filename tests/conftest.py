@@ -16,9 +16,9 @@ load_dotenv()
 
 SAMPLE_CHUNKS = [
     "Cem Kaspi is an AI/ML Engineer at TELUS Communications Inc. based in Vancouver.",
-    "He graduated from the University of British Columbia with a degree in Mechanical Engineering.",
-    "Cem co-founded NeoWise, a wearable heating and cooling startup, from 2019 to 2022.",
-    "He completed a manufacturing engineering internship at Mercedes-Benz Canada in 2018.",
+    "He holds a BASc in Electrical Engineering from the University of British Columbia, 2015 to 2021.",
+    "Cem co-founded NeoWise, a wearable thermal-device startup, from September 2019 to May 2021.",
+    "He was a manufacturing engineering co-op at Mercedes-Benz Canada from 2018 to 2019.",
     "Cem speaks Turkish and English fluently, and beginner-level Spanish.",
 ]
 

@@ -134,3 +134,41 @@ def test_vectorstore_accepts_an_injected_client():
 
     client_cls.assert_not_called()
     injected.collection_exists.assert_called_once_with("resume_chunks")
+
+
+# ---------------------------------------------------------------------------
+# Resume source
+# ---------------------------------------------------------------------------
+
+
+def test_markdown_resume_is_read_without_pdfplumber(tmp_path):
+    from retrieval.vectorstore import QdrantVectorStore
+
+    resume = tmp_path / "resume.md"
+    resume.write_text("# Cem Kaspi\n\n## Experience\n\nAI/ML Engineer at TELUS.\n", encoding="utf-8")
+
+    with patch("retrieval.vectorstore.OpenAIEmbeddings"), patch("retrieval.vectorstore.pdfplumber") as pdf:
+        store = QdrantVectorStore(client=MagicMock(), settings=Settings())
+        text = store._extract_text(str(resume))
+
+    pdf.open.assert_not_called()
+    assert "## Experience" in text, "markdown structure must survive ingestion"
+
+
+def test_pdf_resume_still_goes_through_pdfplumber(tmp_path):
+    from retrieval.vectorstore import QdrantVectorStore
+
+    with patch("retrieval.vectorstore.OpenAIEmbeddings"), patch("retrieval.vectorstore.pdfplumber") as pdf:
+        pdf.open.return_value.__enter__.return_value.pages = []
+        store = QdrantVectorStore(client=MagicMock(), settings=Settings())
+        store._extract_text("somewhere/resume.pdf")
+
+    pdf.open.assert_called_once_with("somewhere/resume.pdf")
+
+
+def test_default_resume_path_is_the_committed_file():
+    """A fresh clone must be able to index something without extra setup."""
+    from pathlib import Path
+
+    default = load_settings(env={}).resume_path
+    assert Path(default).exists(), f"{default} is the documented default but is not in the repo"

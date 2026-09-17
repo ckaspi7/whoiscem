@@ -109,8 +109,9 @@ copy .env.example .env              # fill in OPENAI_API_KEY
 streamlit run chatbot.py            # http://localhost:8501
 ```
 
-The resume index is built on first query and cached on disk; the cross-encoder
-downloads ~90 MB the first time it runs.
+The resume index is built on first query from `data/resume.md` and cached on
+disk; the cross-encoder downloads ~90 MB the first time it runs. Point
+`RESUME_PATH` at any Markdown or PDF file to index your own.
 
 Optionally, seed the personal-info database that backs the `personal` route
 (the file it reads from is git-ignored):

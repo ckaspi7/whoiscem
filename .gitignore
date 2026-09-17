@@ -182,6 +182,10 @@ data/.spotify_cache
 eval/results/*.json
 *.db
 data/Cem_Kaspi_Resume.pdf
+# Unredacted resume sources — only data/resume.md and data/resume.pdf are committed
+data/resume-full.*
+data/resume_full.*
+data/*unredacted*
 
 # Embedded Qdrant storage (QDRANT_MODE=embedded)
 .qdrant/

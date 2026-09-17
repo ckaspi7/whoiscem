@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pdfplumber
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_openai import OpenAIEmbeddings
@@ -40,8 +42,9 @@ class QdrantVectorStore:
     def collection_exists(self) -> bool:
         return self._client.collection_exists(self._collection)
 
-    def build_from_pdf(self, pdf_path: str) -> None:
-        text = self._extract_text(pdf_path)
+    def build_from_file(self, path: str) -> None:
+        """Index the resume. Accepts Markdown or PDF."""
+        text = self._extract_text(path)
         chunks = self._semantic_chunk(text)
         self._upsert(chunks)
 
@@ -83,8 +86,16 @@ class QdrantVectorStore:
         """Release the client. Embedded mode holds an exclusive lock on its directory."""
         self._client.close()
 
-    def _extract_text(self, pdf_path: str) -> str:
-        with pdfplumber.open(pdf_path) as pdf:
+    def _extract_text(self, path: str) -> str:
+        """Read the resume as text.
+
+        Markdown is read as-is; a PDF goes through pdfplumber, which flattens
+        layout and loses the heading structure. Chunking is identical either
+        way for now, so the source format is the only thing that differs.
+        """
+        if path.lower().endswith((".md", ".markdown", ".txt")):
+            return Path(path).read_text(encoding="utf-8")
+        with pdfplumber.open(path) as pdf:
             return "".join(page.extract_text() or "" for page in pdf.pages)
 
     def _semantic_chunk(self, text: str) -> list[str]:
