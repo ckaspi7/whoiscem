@@ -29,6 +29,57 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
+      - name: Run integration tests
+        # Embedded Qdrant — no service containers needed.
+        run: pytest tests/integration/ -v --tb=short
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          QDRANT_MODE: embedded
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t whoiscem:ci .
+
+      - name: Assert no secrets or personal data baked into the image
+        run: |
+          set -euo pipefail
+          for path in /app/.env /app/data/user_data.db /app/data/seed_data.json /app/.git; do
+            if docker run --rm --entrypoint sh whoiscem:ci -c "[ -e $path ]"; then
+              echo "::error::$path is present in the image"
+              exit 1
+            fi
+          done
+          echo "image is clean"
+
+      - name: Verify compose healthchecks
+        # The Qdrant and Redis healthchecks cannot be exercised on the dev
+        # machine, which has no container runtime. This is where they are real.
+        run: |
+          set -euo pipefail
+          # compose parses env_file for every service, so the file must exist.
+          # Only qdrant and redis start here, so the value is never used.
+          echo "OPENAI_API_KEY=unused-by-this-job" > .env
+          docker compose up -d qdrant redis
+          for i in $(seq 1 30); do
+            qdrant=$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q qdrant)")
+            redis=$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q redis)")
+            echo "attempt $i: qdrant=$qdrant redis=$redis"
+            if [ "$qdrant" = healthy ] && [ "$redis" = healthy ]; then exit 0; fi
+            if [ "$qdrant" = unhealthy ] || [ "$redis" = unhealthy ]; then break; fi
+            sleep 5
+          done
+          echo "::error::services did not become healthy"
+          docker compose logs --tail=50
+          exit 1
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -41,10 +92,15 @@ jobs:
           cache: pip
 
       - name: Install ruff
-        run: pip install ruff
+        # Pinned like every other dependency: ruff's default rule set widens
+        # between releases, and an unpinned linter turns green commits red.
+        run: pip install ruff==0.16.8
 
       - name: Lint
         run: ruff check .
+
+      - name: Format check
+        run: ruff format --check .
 
   eval:
     runs-on: ubuntu-latest

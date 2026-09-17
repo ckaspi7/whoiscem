@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List
-
 import pdfplumber
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_openai import OpenAIEmbeddings
@@ -47,7 +45,7 @@ class QdrantVectorStore:
         chunks = self._semantic_chunk(text)
         self._upsert(chunks)
 
-    def dense_search(self, query: str, top_k: int = 20) -> List[ScoredChunk]:
+    def dense_search(self, query: str, top_k: int = 20) -> list[ScoredChunk]:
         query_vec = self._embeddings.embed_query(query)
         results = self._client.search(
             collection_name=self._collection,
@@ -65,7 +63,7 @@ class QdrantVectorStore:
             for r in results
         ]
 
-    def get_all_chunks(self) -> List[ScoredChunk]:
+    def get_all_chunks(self) -> list[ScoredChunk]:
         records, _ = self._client.scroll(
             collection_name=self._collection,
             limit=500,
@@ -89,14 +87,14 @@ class QdrantVectorStore:
         with pdfplumber.open(pdf_path) as pdf:
             return "".join(page.extract_text() or "" for page in pdf.pages)
 
-    def _semantic_chunk(self, text: str) -> List[str]:
+    def _semantic_chunk(self, text: str) -> list[str]:
         splitter = SemanticChunker(
             OpenAIEmbeddings(model="text-embedding-3-small"),
             breakpoint_threshold_type="percentile",
         )
         return splitter.split_text(text)
 
-    def _upsert(self, chunks: List[str]) -> None:
+    def _upsert(self, chunks: list[str]) -> None:
         if not self._client.collection_exists(self._collection):
             self._client.create_collection(
                 collection_name=self._collection,
@@ -110,6 +108,6 @@ class QdrantVectorStore:
                 vector=vec,
                 payload={"text": chunk, "chunk_index": i, "section": ""},
             )
-            for i, (chunk, vec) in enumerate(zip(chunks, vectors))
+            for i, (chunk, vec) in enumerate(zip(chunks, vectors, strict=True))
         ]
         self._client.upsert(collection_name=self._collection, points=points)

@@ -4,7 +4,7 @@ import logging
 import os
 import time
 import uuid
-from typing import Any, Dict, List, TypedDict
+from typing import Any, TypedDict
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -69,11 +69,11 @@ GPT_4O_MINI_OUTPUT_COST_PER_1K = 0.000600  # $ per 1k output tokens
 # Graph state
 # ---------------------------------------------------------------------------
 class GraphState(TypedDict):
-    messages: List[Dict[str, str]]
+    messages: list[dict[str, str]]
     next_step: str
     tool_result: str
     context_used: str
-    node_latencies: Dict[str, float]
+    node_latencies: dict[str, float]
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +99,7 @@ Key facts about Cem:
 - AI/ML Engineer at TELUS Communications Inc. in Vancouver, Canada
 - Originally from Istanbul, Turkey
 - Speaks Turkish, English, and beginner Spanish
-- Born March 12, 1997
+- Born in 1997
 
 {prior_block}"""
 
@@ -188,7 +188,8 @@ Key facts about Cem:
             "conversation": "handle_conversation",
         },
     )
-    for node in ("handle_resume", "handle_personal", "handle_spotify", "handle_linkedin", "handle_conversation"):
+    for node in ("handle_resume", "handle_personal", "handle_spotify",
+                 "handle_linkedin", "handle_conversation"):
         workflow.add_edge(node, "generate_response")
 
     workflow.set_entry_point("route_query")
@@ -239,13 +240,15 @@ def main() -> None:
 
     st.markdown("""
         <style>
-        .app-title { font-size: 2.5rem; font-weight: bold; color: #1c1c1c; text-align: center; margin-bottom: 10px; }
+        .app-title { font-size: 2.5rem; font-weight: bold; color: #1c1c1c;
+                     text-align: center; margin-bottom: 10px; }
         .app-subtitle { font-size: 1rem; color: #555; text-align: center; margin-bottom: 20px; }
         </style>
     """, unsafe_allow_html=True)
     st.markdown('<div class="app-title">HowToCem</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="app-subtitle">👋 Ask me anything about Cem — resume, career, music taste, or personal background.</div>',
+        '<div class="app-subtitle">👋 Ask me anything about Cem — resume, career, '
+        'music taste, or personal background.</div>',
         unsafe_allow_html=True,
     )
 

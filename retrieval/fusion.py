@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from typing import List
-
 from retrieval.types import ScoredChunk
 
 
 def reciprocal_rank_fusion(
-    dense_results: List[ScoredChunk],
-    sparse_results: List[ScoredChunk],
+    dense_results: list[ScoredChunk],
+    sparse_results: list[ScoredChunk],
     k: int = 60,
-) -> List[ScoredChunk]:
+) -> list[ScoredChunk]:
     """Combine dense and sparse ranked lists using Reciprocal Rank Fusion.
 
     RRF score = Σ 1 / (k + rank_i), summed over each list the chunk appears in.

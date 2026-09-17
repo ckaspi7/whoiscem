@@ -1,5 +1,10 @@
 # .streamlit/config.toml
 
+[client]
+# Public deployment: visitors get a generic error, not a stack trace that names
+# file paths, environment variables and library versions.
+showErrorDetails = false
+
 [theme]
 primaryColor = "#7b8472"
 backgroundColor = "#fff4e9"

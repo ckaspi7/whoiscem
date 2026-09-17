@@ -1,11 +1,39 @@
 """
 Sets up the SQLite user database from data/seed_data.json.
-PII lives only in seed_data.json which is git-ignored.
-Copy data/seed_data.example.json → data/seed_data.json and fill in your values.
+
+The schema deliberately holds no contact details, no date of birth and no family
+information: this database is read straight into model context, so anything it
+stores is something a language model may repeat. Copy
+data/seed_data.example.json to data/seed_data.json (git-ignored) and fill it in.
 """
 import json
 import os
 import sqlite3
+
+# Mirrors tools/personal_tool._SAFE_FIELDS. Adding a column here means agreeing
+# that a model may say it out loud.
+COLUMNS = (
+    "full_name",
+    "gender",
+    "birth_year",
+    "place_of_birth",
+    "hometown",
+    "city",
+    "marital_status",
+    "languages_spoken",
+    "favorite_cuisines",
+    "hobbies",
+    "eye_color",
+    "hair_color",
+)
+
+# Columns from the previous schema that must never come back.
+RETIRED_COLUMNS = (
+    "age", "date_of_birth", "email", "phone_number",
+    "mother_name", "mother_birth_year", "father_name", "father_birth_year",
+    "sibling_count", "sibling_name", "sibling_birth_year", "sibling_gender",
+    "shoe_size", "height", "weight",
+)
 
 
 def setup_database(seed_path: str = "data/seed_data.json", db_path: str = "data/user_data.db") -> None:
@@ -15,49 +43,39 @@ def setup_database(seed_path: str = "data/seed_data.json", db_path: str = "data/
             "Copy data/seed_data.example.json to data/seed_data.json and fill in your values."
         )
 
-    with open(seed_path, "r", encoding="utf-8") as f:
+    with open(seed_path, encoding="utf-8") as f:
         data = json.load(f)
+
+    ignored = sorted(set(data) & set(RETIRED_COLUMNS))
+    if ignored:
+        print(f"Ignoring sensitive fields present in {seed_path}: {', '.join(ignored)}")
 
     conn = sqlite3.connect(db_path, check_same_thread=False)
     cursor = conn.cursor()
     cursor.execute("PRAGMA journal_mode=WAL;")
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY,
-            full_name TEXT, age INTEGER, gender TEXT, date_of_birth TEXT,
-            place_of_birth TEXT, mother_name TEXT, mother_birth_year INTEGER,
-            father_name TEXT, father_birth_year INTEGER, sibling_count INTEGER,
-            sibling_name TEXT, sibling_birth_year INTEGER, sibling_gender TEXT,
-            marital_status TEXT, email TEXT, phone_number TEXT, city TEXT,
-            hometown TEXT, languages_spoken TEXT, favorite_cuisines TEXT,
-            shoe_size INTEGER, height REAL, weight REAL, eye_color TEXT,
-            hair_color TEXT, hobbies TEXT
-        )
-    """)
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, "
+        + ", ".join(f"{c} {'INTEGER' if c == 'birth_year' else 'TEXT'}" for c in COLUMNS)
+        + ")"
+    )
 
+    existing = {row[1] for row in cursor.execute("PRAGMA table_info(users)")}
+    stale = sorted(existing & set(RETIRED_COLUMNS))
+    if stale:
+        print(
+            f"WARNING: {db_path} predates the slimmed schema and still stores: {', '.join(stale)}.\n"
+            "         The tool will not read them, but delete the file and re-run to drop them."
+        )
+
+    writable = [c for c in COLUMNS if c in existing]
     cursor.execute("SELECT COUNT(*) FROM users WHERE full_name = ?", (data["full_name"],))
     if cursor.fetchone()[0] == 0:
-        cursor.execute("""
-            INSERT INTO users (
-                full_name, age, gender, date_of_birth, place_of_birth,
-                mother_name, mother_birth_year, father_name, father_birth_year,
-                sibling_count, sibling_name, sibling_birth_year, sibling_gender,
-                marital_status, email, phone_number, city, hometown,
-                languages_spoken, favorite_cuisines, shoe_size, height, weight,
-                eye_color, hair_color, hobbies
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            data["full_name"], data["age"], data["gender"], data["date_of_birth"],
-            data["place_of_birth"], data["mother_name"], data["mother_birth_year"],
-            data["father_name"], data["father_birth_year"], data["sibling_count"],
-            data.get("sibling_name", ""), data.get("sibling_birth_year"),
-            data.get("sibling_gender", ""), data["marital_status"],
-            data["email"], data["phone_number"], data["city"], data["hometown"],
-            data["languages_spoken"], data["favorite_cuisines"], data["shoe_size"],
-            data["height"], data["weight"], data["eye_color"], data["hair_color"],
-            data["hobbies"],
-        ))
+        placeholders = ", ".join("?" for _ in writable)
+        cursor.execute(
+            f"INSERT INTO users ({', '.join(writable)}) VALUES ({placeholders})",
+            tuple(data.get(c) for c in writable),
+        )
         conn.commit()
         print(f"Inserted record for {data['full_name']}.")
     else:

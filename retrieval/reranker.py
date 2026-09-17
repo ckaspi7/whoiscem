@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List
-
 from retrieval.types import ScoredChunk
 
 # Module-level import so tests can patch `retrieval.reranker._CrossEncoder`
@@ -25,14 +23,14 @@ class CrossEncoderReranker:
             raise ImportError("sentence-transformers is required: pip install sentence-transformers")
         self._model = _CrossEncoder(self.MODEL_NAME)
 
-    def rerank(self, query: str, candidates: List[ScoredChunk], top_n: int = 3) -> List[ScoredChunk]:
+    def rerank(self, query: str, candidates: list[ScoredChunk], top_n: int = 3) -> list[ScoredChunk]:
         if not candidates:
             return []
 
         pairs = [(query, chunk.text) for chunk in candidates]
         scores = self._model.predict(pairs)
 
-        ranked = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
+        ranked = sorted(zip(candidates, scores, strict=True), key=lambda x: x[1], reverse=True)
         return [
             ScoredChunk(
                 chunk_id=chunk.chunk_id,

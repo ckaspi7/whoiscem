@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from memory.session_memory import SessionMemory, _SESSION_TTL
+from memory.session_memory import _SESSION_TTL, SessionMemory
 
 
 @pytest.fixture

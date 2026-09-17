@@ -58,6 +58,42 @@ backend is live so the deployed behaviour is never a guess.
 
 ---
 
+## Tracing
+
+**Status: not active.** `LANGCHAIN_TRACING_V2` is honoured, but no working
+LangSmith key is configured, so nothing is currently being traced. Rather than
+leave a claim standing on an unset variable, the README no longer lists tracing
+as a live capability. Instrumentation is being moved to OpenTelemetry via
+OpenInference so the backend is a configuration choice rather than a hard
+dependency, matching how the vector store and session memory already work.
+
+---
+
+## Cost Accounting
+
+**Status: the number in the sidebar is wrong, and knowingly so.**
+
+`_accumulate_cost` estimates tokens as `len(text) // 4` and applies the *output*
+price to all of them. Four of the five model calls per turn — the router, the
+faithfulness judge, the summariser and the embeddings — are not counted at all.
+`tiktoken` is a dependency and unused; the API already returns exact usage.
+
+It is displayed to five decimal places, which implies a precision it does not
+have. Replacing the estimate with reported usage is scheduled; until then, read
+the figure as a lower bound of the wrong quantity.
+
+---
+
+## Personal Information
+
+The database behind the `personal` route stores no contact details, no date of
+birth and no family information. The tool reads an explicit column allowlist
+rather than `SELECT *`, so a database that still carries older columns cannot
+leak them into a prompt, a log or a trace. `tests/unit/test_no_pii_committed.py`
+fails the build if personal data becomes tracked by git, including inside a PDF.
+
+---
+
 ## Cross-Encoder Reranker
 
 The cross-encoder (`cross-encoder/ms-marco-MiniLM-L-6-v2`) downloads ~90 MB on first run

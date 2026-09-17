@@ -8,7 +8,7 @@ LinkedIn data must be updated manually in data/cache/linkedin_cache.json
 """
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from dotenv import load_dotenv
 
@@ -53,7 +53,7 @@ def refresh_spotify() -> None:
     ]
 
     cache = {
-        "cached_at": datetime.now(timezone.utc).isoformat(),
+        "cached_at": datetime.now(UTC).isoformat(),
         "time_range": "medium_term",
         "top_artists": artists,
         "top_tracks": tracks,
@@ -70,9 +70,9 @@ def bump_linkedin_timestamp() -> None:
     if not os.path.exists(path):
         print("LinkedIn cache not found — edit data/cache/linkedin_cache.json manually.")
         return
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
-    data["cached_at"] = datetime.now(timezone.utc).isoformat()
+    data["cached_at"] = datetime.now(UTC).isoformat()
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
     print(f"LinkedIn cache timestamp bumped → {path}")

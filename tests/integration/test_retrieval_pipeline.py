@@ -71,7 +71,7 @@ def indexed_collection(qdrant, sample_chunks):
     vectors = embeddings.embed_documents(sample_chunks)
     points = [
         PointStruct(id=i, vector=v, payload={"text": t, "chunk_index": i, "section": ""})
-        for i, (t, v) in enumerate(zip(sample_chunks, vectors))
+        for i, (t, v) in enumerate(zip(sample_chunks, vectors, strict=True))
     ]
     qdrant.upsert(collection_name=TEST_COLLECTION, points=points)
 

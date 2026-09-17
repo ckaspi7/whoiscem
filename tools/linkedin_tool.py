@@ -11,7 +11,7 @@ _CACHE_PATH = os.path.join("data", "cache", "linkedin_cache.json")
 
 
 def _load_cache() -> dict[str, Any]:
-    with open(_CACHE_PATH, "r", encoding="utf-8") as f:
+    with open(_CACHE_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 

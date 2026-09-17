@@ -2,7 +2,11 @@
 
 A personal AI chatbot built to answer questions about Cem Kaspi — and to demonstrate production-grade AI engineering skills in RAG, agents, observability, and evaluation.
 
-**[Live Demo →](https://howtocem.streamlit.app)** | [Limitations](LIMITATIONS.md)
+[Limitations](LIMITATIONS.md) — what is cached, what is estimated, and what is not measured yet.
+
+> **Live demo:** offline. It deployed from a repository that has been deleted, and
+> redeployment is pending the move to hosted Qdrant. Run it locally in the meantime —
+> setup below is three commands and needs no infrastructure.
 
 ---
 
@@ -49,20 +53,21 @@ User Query
 
 ---
 
-## Retrieval Quality (RAGAS Evaluation)
+## Retrieval Quality
 
-Evaluation runs against a hand-curated set of 40 questions with ground-truth answers.
+**No measured numbers yet — deliberately, rather than by omission.**
 
-| Metric | Baseline (FAISS, fixed chunks) | v2 (Hybrid + Rerank) | Threshold |
-|---|---|---|---|
-| Faithfulness | — | run eval to populate | ≥ 0.80 |
-| Answer Relevancy | — | run eval to populate | ≥ 0.75 |
-| Context Recall | — | run eval to populate | ≥ 0.80 |
-| Context Precision | — | run eval to populate | ≥ 0.70 |
+This section previously carried a metrics table whose every cell read "run eval to
+populate." It was removed: the evaluation harness could not complete a run, so there
+was nothing behind it.
+
+The harness is the next piece of work. When it lands, this section carries real
+figures across the 40-question golden set, every run is committed under
+`eval/results/`, and each later change to retrieval is reported as a before/after
+against that baseline rather than as an assertion.
 
 ```bash
-# Populate this table:
-python eval/run_eval.py --output eval/results/v2_hybrid.json
+python eval/run_eval.py --output eval/results/$(git rev-parse --short HEAD).json
 ```
 
 ---
@@ -73,18 +78,18 @@ python eval/run_eval.py --output eval/results/v2_hybrid.json
 |---|---|
 | LLM | GPT-4o-mini |
 | Agent framework | LangGraph |
-| Vector store | Qdrant |
+| Vector store | Qdrant — embedded, self-hosted or cloud, selected by config |
 | Dense retrieval | OpenAI text-embedding-3-small |
 | Sparse retrieval | BM25 (rank-bm25) |
 | Score fusion | Reciprocal Rank Fusion (RRF) |
 | Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2 (local, free) |
 | Chunking | Semantic chunker (LangChain Experimental) |
-| Observability | LangSmith tracing + in-app cost/latency panel |
-| Session memory | Redis (cross-session rolling summaries) |
+| Observability | In-app latency panel; distributed tracing not currently active (see [Limitations](LIMITATIONS.md)) |
+| Session memory | Redis when configured, in-process fallback otherwise |
 | Hallucination guard | GPT-4o-mini faithfulness judge (post-generation) |
 | UI | Streamlit |
 | Personal DB | SQLite |
-| CI | GitHub Actions (lint + unit tests + weekly eval) |
+| CI | GitHub Actions (lint, format, unit + integration tests, image build, compose healthchecks) |
 
 ---
 

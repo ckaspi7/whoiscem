@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import List
 
 from config import load_settings
 
@@ -76,7 +75,7 @@ class SessionMemory:
         except Exception as exc:
             logger.warning("Failed to save session memory: %s", exc)
 
-    def build_summary(self, messages: List[dict], openai_client) -> str:
+    def build_summary(self, messages: list[dict], openai_client) -> str:
         """Summarise the conversation to 3 sentences for future context injection."""
         if not messages:
             return ""
@@ -89,7 +88,10 @@ class SessionMemory:
                 messages=[
                     {
                         "role": "system",
-                        "content": "Summarise this conversation in exactly 3 sentences for future context injection.",
+                        "content": (
+                            "Summarise this conversation in exactly 3 sentences "
+                            "for future context injection."
+                        ),
                     },
                     {"role": "user", "content": transcript},
                 ],

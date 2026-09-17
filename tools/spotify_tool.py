@@ -11,7 +11,7 @@ _CACHE_PATH = os.path.join("data", "cache", "spotify_cache.json")
 
 
 def _load_cache() -> dict[str, Any]:
-    with open(_CACHE_PATH, "r", encoding="utf-8") as f:
+    with open(_CACHE_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -31,7 +31,8 @@ def get_music_taste() -> str:
         tracks = data.get("top_tracks", [])
 
         artists_str = "\n".join(
-            f"{a['rank']}. {a['name']} — {', '.join(a['genres']) if isinstance(a['genres'], list) else a['genres']}"
+            f"{a['rank']}. {a['name']} — "
+            f"{', '.join(a['genres']) if isinstance(a['genres'], list) else a['genres']}"
             for a in artists
         )
         tracks_str = "\n".join(

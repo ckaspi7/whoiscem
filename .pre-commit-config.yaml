@@ -1,0 +1,28 @@
+# Local parity with the lint job in .github/workflows/ci.yml.
+#   pip install pre-commit && pre-commit install
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.8          # keep in step with the pinned ruff in ci.yml
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+      - id: detect-private-key
+
+  - repo: local
+    hooks:
+      - id: no-pii-committed
+        name: no personal data tracked by git
+        entry: python -m pytest tests/unit/test_no_pii_committed.py -q
+        language: system
+        pass_filenames: false

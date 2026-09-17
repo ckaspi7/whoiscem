@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Ensure project root is on sys.path
@@ -35,12 +34,13 @@ RESULTS_DIR = Path(__file__).parent / "results"
 
 def run_query(question: str, required_tool: str) -> tuple[str, str]:
     """Run a single query through the full retrieval + generation pipeline."""
-    from tools.resume_tool import get_resume_info
-    from tools.personal_tool import get_personal_info
-    from tools.spotify_tool import get_music_taste
-    from tools.linkedin_tool import get_linkedin_info
-    from langchain_openai import ChatOpenAI
     from langchain_core.messages import HumanMessage, SystemMessage
+    from langchain_openai import ChatOpenAI
+
+    from tools.linkedin_tool import get_linkedin_info
+    from tools.personal_tool import get_personal_info
+    from tools.resume_tool import get_resume_info
+    from tools.spotify_tool import get_music_taste
 
     tool_map = {
         "get_resume_info": get_resume_info,
@@ -53,7 +53,9 @@ def run_query(question: str, required_tool: str) -> tuple[str, str]:
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     messages = [
-        SystemMessage(content="Answer the following question about Cem Kaspi using only the provided context."),
+        SystemMessage(
+            content="Answer the following question about Cem Kaspi using only the provided context."
+        ),
         SystemMessage(content=f"Context:\n{context}"),
         HumanMessage(content=question),
     ]
@@ -64,9 +66,9 @@ def run_query(question: str, required_tool: str) -> tuple[str, str]:
 def evaluate(output_path: str | None = None) -> dict:
     from datasets import Dataset
     from ragas import evaluate as ragas_evaluate
-    from ragas.metrics import faithfulness, answer_relevancy, context_recall, context_precision
+    from ragas.metrics import answer_relevancy, context_precision, context_recall, faithfulness
 
-    with open(GOLDEN_SET_PATH, "r", encoding="utf-8") as f:
+    with open(GOLDEN_SET_PATH, encoding="utf-8") as f:
         golden = json.load(f)
 
     print(f"Running evaluation on {len(golden)} questions...")
@@ -95,7 +97,7 @@ def evaluate(output_path: str | None = None) -> dict:
     }
 
     summary = {
-        "run_at": datetime.now(timezone.utc).isoformat(),
+        "run_at": datetime.now(UTC).isoformat(),
         "num_questions": len(golden),
         "scores": scores,
         "thresholds_met": {k: scores[k] >= v for k, v in THRESHOLDS.items()},

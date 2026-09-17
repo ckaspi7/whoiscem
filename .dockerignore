@@ -1,0 +1,32 @@
+# Secrets and personal data — COPY . . would otherwise bake these into a layer
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+data/seed_data.json
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/Cem_Kaspi_Resume.pdf
+
+# Version control history
+.git
+.gitignore
+.github
+
+# Local environments and caches
+.venv
+venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.qdrant
+
+# Not needed at runtime
+tests
+eval/results
+docs
+*.md
+!README.md

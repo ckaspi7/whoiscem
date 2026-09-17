@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 def _mock_openai_response(score: int, reason: str = "test") -> MagicMock:
     client = MagicMock()
