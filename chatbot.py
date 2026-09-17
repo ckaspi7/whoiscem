@@ -20,7 +20,7 @@ from observability import setup_tracing, tracing_status
 from router import classify_query
 from tools.linkedin_tool import get_linkedin_info
 from tools.personal_tool import get_personal_info
-from tools.resume_tool import get_resume_info
+from tools.resume_tool import format_chunks, search_resume
 from tools.spotify_tool import get_music_taste
 
 logger = logging.getLogger(__name__)
@@ -78,8 +78,15 @@ GPT_4O_MINI_OUTPUT_COST_PER_1K = 0.000600  # $ per 1k output tokens
 class GraphState(TypedDict):
     messages: list[dict[str, str]]
     next_step: str
+    # The routing decision, kept apart from next_step, which is control flow and
+    # is overwritten by each node. Without it the chosen route is unrecoverable
+    # after a run — and routing accuracy is measured on exactly that.
+    route: str
     tool_result: str
     context_used: str
+    # Retrieved chunks as a list. Ranking metrics over one joined blob are
+    # degenerate: precision@k has to see the chunks separately.
+    context_chunks: list[str]
     node_latencies: dict[str, float]
 
 
@@ -123,41 +130,76 @@ Key facts about Cem:
         def _run(state):
             query = state["messages"][-1]["content"]
             qtype = classify_query(query, llm_fast)
-            return {**state, "next_step": qtype}
+            return {**state, "next_step": qtype, "route": qtype}
 
         return timed("route_query", _run, state)
 
     def handle_resume(state: GraphState) -> GraphState:
         def _run(state):
-            result = get_resume_info.invoke(state["messages"][-1]["content"])
-            return {**state, "tool_result": result, "context_used": result, "next_step": "generate_response"}
+            try:
+                chunks = search_resume(state["messages"][-1]["content"])
+                texts = [c.text for c in chunks]
+                result = format_chunks(chunks)
+            except Exception as e:
+                texts, result = [], f"Error searching resume: {e}"
+            return {
+                **state,
+                "tool_result": result,
+                "context_used": result,
+                "context_chunks": texts,
+                "next_step": "generate_response",
+            }
 
         return timed("handle_resume", _run, state)
 
     def handle_personal(state: GraphState) -> GraphState:
         def _run(state):
             result = get_personal_info.invoke("")
-            return {**state, "tool_result": result, "context_used": result, "next_step": "generate_response"}
+            return {
+                **state,
+                "tool_result": result,
+                "context_used": result,
+                "context_chunks": [result],
+                "next_step": "generate_response",
+            }
 
         return timed("handle_personal", _run, state)
 
     def handle_spotify(state: GraphState) -> GraphState:
         def _run(state):
             result = get_music_taste.invoke({})
-            return {**state, "tool_result": result, "context_used": result, "next_step": "generate_response"}
+            return {
+                **state,
+                "tool_result": result,
+                "context_used": result,
+                "context_chunks": [result],
+                "next_step": "generate_response",
+            }
 
         return timed("handle_spotify", _run, state)
 
     def handle_linkedin(state: GraphState) -> GraphState:
         def _run(state):
             result = get_linkedin_info.invoke({})
-            return {**state, "tool_result": result, "context_used": result, "next_step": "generate_response"}
+            return {
+                **state,
+                "tool_result": result,
+                "context_used": result,
+                "context_chunks": [result],
+                "next_step": "generate_response",
+            }
 
         return timed("handle_linkedin", _run, state)
 
     def handle_conversation(state: GraphState) -> GraphState:
         def _run(state):
-            return {**state, "tool_result": "", "context_used": "", "next_step": "generate_response"}
+            return {
+                **state,
+                "tool_result": "",
+                "context_used": "",
+                "context_chunks": [],
+                "next_step": "generate_response",
+            }
 
         return timed("handle_conversation", _run, state)
 
@@ -350,8 +392,10 @@ def main() -> None:
                 state: GraphState = {
                     "messages": list(st.session_state.messages),
                     "next_step": "",
+                    "route": "",
                     "tool_result": "",
                     "context_used": "",
+                    "context_chunks": [],
                     "node_latencies": {},
                 }
                 result_state = graph.invoke(state)
