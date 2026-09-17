@@ -7,8 +7,13 @@ only bites on Python 3.11 survived in the module for a full release.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import pytest
+
+# Streamlit resolves a relative AppTest path against the calling file, not the
+# working directory, so point at the app explicitly.
+APP = str(Path(__file__).resolve().parents[2] / "chatbot.py")
 
 needs_openai = pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 
@@ -29,7 +34,7 @@ def test_app_boots_with_no_services_running():
     """
     from streamlit.testing.v1 import AppTest
 
-    app = AppTest.from_file("chatbot.py", default_timeout=120).run()
+    app = AppTest.from_file(APP, default_timeout=120).run()
 
     assert not app.exception, [e.message for e in app.exception]
     assert len(app.chat_input) == 1

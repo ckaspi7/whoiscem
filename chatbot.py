@@ -16,6 +16,7 @@ from openai import OpenAI
 from config import load_settings
 from guardrails.faithfulness_check import check_faithfulness
 from memory.session_memory import SessionMemory
+from observability import setup_tracing, tracing_status
 from router import classify_query
 from tools.linkedin_tool import get_linkedin_info
 from tools.personal_tool import get_personal_info
@@ -255,6 +256,10 @@ def main() -> None:
         initial_sidebar_state="expanded",
     )
     _apply_streamlit_secrets()
+    # After secrets (which may carry the Phoenix credentials) and before
+    # create_assistant: the instrumentor patches LangChain's callback manager,
+    # so objects built earlier would never be traced.
+    setup_tracing()
 
     st.markdown(
         """
@@ -309,6 +314,7 @@ def main() -> None:
         st.markdown("### Backends")
         st.caption(f"Vector store: Qdrant ({load_settings().qdrant_mode})")
         st.caption(f"Session memory: {memory.backend}")
+        st.caption(f"Tracing: {tracing_status()}")
 
         st.divider()
         if st.button("🗑️ Clear Chat"):

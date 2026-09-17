@@ -28,6 +28,8 @@ DEFAULT_QDRANT_PATH = ".qdrant"
 DEFAULT_QDRANT_HOST = "localhost"
 DEFAULT_QDRANT_PORT = 6333
 DEFAULT_RESUME_PATH = os.path.join("data", "resume.md")
+DEFAULT_PHOENIX_ENDPOINT = "http://localhost:6006"
+DEFAULT_PHOENIX_PROJECT = "whoiscem"
 
 
 class ConfigError(ValueError):
@@ -46,6 +48,8 @@ class Settings:
         redis_url: Empty means "no Redis server"; session memory falls back to
             an in-process store rather than turning itself off.
         resume_path: Resume indexed on first run — Markdown or PDF.
+        phoenix_endpoint: Trace collector. Defaults to a local Phoenix, which
+            needs no account; point it at Phoenix Cloud to export there instead.
     """
 
     qdrant_mode: QdrantMode = DEFAULT_QDRANT_MODE
@@ -56,6 +60,9 @@ class Settings:
     qdrant_api_key: str = ""
     redis_url: str = ""
     resume_path: str = DEFAULT_RESUME_PATH
+    phoenix_endpoint: str = DEFAULT_PHOENIX_ENDPOINT
+    phoenix_api_key: str = ""
+    phoenix_project: str = DEFAULT_PHOENIX_PROJECT
 
     def __post_init__(self) -> None:
         if self.qdrant_mode not in QDRANT_MODES:
@@ -88,4 +95,7 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         qdrant_api_key=get("QDRANT_API_KEY"),
         redis_url=get("REDIS_URL"),
         resume_path=get("RESUME_PATH", DEFAULT_RESUME_PATH),
+        phoenix_endpoint=get("PHOENIX_COLLECTOR_ENDPOINT", DEFAULT_PHOENIX_ENDPOINT),
+        phoenix_api_key=get("PHOENIX_API_KEY"),
+        phoenix_project=get("PHOENIX_PROJECT_NAME", DEFAULT_PHOENIX_PROJECT),
     )

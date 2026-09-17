@@ -172,3 +172,38 @@ def test_default_resume_path_is_the_committed_file():
 
     default = load_settings(env={}).resume_path
     assert Path(default).exists(), f"{default} is the documented default but is not in the repo"
+
+
+# ---------------------------------------------------------------------------
+# Tracing
+# ---------------------------------------------------------------------------
+
+
+def test_phoenix_settings_default_to_a_local_collector():
+    cfg = load_settings(env={})
+    assert cfg.phoenix_endpoint == "http://localhost:6006"
+    assert cfg.phoenix_project == "whoiscem"
+    assert cfg.phoenix_api_key == ""
+
+
+def test_phoenix_cloud_settings_are_read_from_the_environment():
+    cfg = load_settings(
+        env={
+            "PHOENIX_COLLECTOR_ENDPOINT": "https://app.phoenix.arize.com/s/space",
+            "PHOENIX_API_KEY": "secret",
+            "PHOENIX_PROJECT_NAME": "proj",
+        }
+    )
+    assert cfg.phoenix_endpoint == "https://app.phoenix.arize.com/s/space"
+    assert cfg.phoenix_project == "proj"
+
+
+def test_tracing_failure_never_breaks_the_app():
+    """An unreachable collector must degrade, not raise."""
+    import observability
+
+    observability._configured = False
+    with patch("phoenix.otel.register", side_effect=ConnectionError("collector down")):
+        assert observability.setup_tracing(Settings()) is False
+    assert "disabled" in observability.tracing_status()
+    observability._configured = False
