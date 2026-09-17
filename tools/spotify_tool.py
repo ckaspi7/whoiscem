@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
 from typing import Any
 
 from langchain.tools import tool
+
+from tools.freshness import describe_age
 
 _CACHE_PATH = os.path.join("data", "cache", "spotify_cache.json")
 
@@ -17,15 +18,13 @@ def _load_cache() -> dict[str, Any]:
 
 @tool
 def get_music_taste() -> str:
-    """Get Cem's music taste from a cached Spotify snapshot (refreshed monthly)."""
+    """Get Cem's music taste from a cached Spotify snapshot.
+
+    The snapshot is refreshed manually, and the answer states how old it is.
+    """
     try:
         data = _load_cache()
-        cached_at = data.get("cached_at", "unknown")
-        try:
-            dt = datetime.fromisoformat(cached_at.replace("Z", "+00:00"))
-            date_str = dt.strftime("%B %Y")
-        except ValueError:
-            date_str = cached_at
+        date_str = describe_age(data.get("cached_at", "unknown"))
 
         artists = data.get("top_artists", [])
         tracks = data.get("top_tracks", [])
@@ -38,7 +37,8 @@ def get_music_taste() -> str:
         tracks_str = "\n".join(f"{t['rank']}. {t['title']} — {t['artists']}" for t in tracks)
 
         return (
-            f"Music taste as of {date_str} (refreshed monthly from Spotify):\n\n"
+            f"Spotify snapshot exported {date_str}. Manual export, not live data, "
+            f"so it reflects listening at that time:\n\n"
             f"Top Artists:\n{artists_str}\n\n"
             f"Top Tracks:\n{tracks_str}"
         )

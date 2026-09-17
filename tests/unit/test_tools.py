@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import UTC
 from unittest.mock import patch
 
 import pytest
@@ -214,3 +215,40 @@ def test_personal_tool_allowlist_excludes_every_retired_column():
     from tools.personal_tool import _SAFE_FIELDS
 
     assert not set(_SAFE_FIELDS) & set(RETIRED_COLUMNS)
+
+
+# ---------------------------------------------------------------------------
+# Cache freshness
+# ---------------------------------------------------------------------------
+
+
+def test_describe_age_reports_real_age():
+    from datetime import datetime
+
+    from tools.freshness import describe_age
+
+    now = datetime(2026, 9, 17, tzinfo=UTC)
+    assert describe_age("2025-03-25T00:00:00Z", now) == "March 2025 (17 months ago)"
+    assert describe_age("2026-09-01T00:00:00Z", now) == "September 2026 (this month)"
+    assert describe_age("2026-08-01T00:00:00Z", now) == "August 2026 (1 month ago)"
+
+
+def test_describe_age_survives_a_malformed_timestamp():
+    from tools.freshness import describe_age
+
+    assert "age unknown" in describe_age("not-a-date")
+    assert "age unknown" in describe_age("")
+
+
+def test_cache_tools_do_not_claim_a_refresh_cadence(tmp_path, sample_spotify_cache):
+    """The tools told the model the data was refreshed monthly. It was 18 months old."""
+    cache_file = tmp_path / "spotify_cache.json"
+    cache_file.write_text(json.dumps(sample_spotify_cache))
+
+    with patch("tools.spotify_tool._CACHE_PATH", str(cache_file)):
+        from tools.spotify_tool import get_music_taste
+
+        result = get_music_taste.invoke({})
+
+    assert "refreshed monthly" not in result.lower()
+    assert "months ago" in result or "this month" in result

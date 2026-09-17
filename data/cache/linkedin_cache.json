@@ -1,5 +1,5 @@
 {
-  "cached_at": "2025-03-25T00:00:00Z",
+  "cached_at": "2026-09-17T00:00:00Z",
   "headline": "AI/ML Engineer at TELUS",
   "about": "Passionate about Generative AI, LLMs, and building intelligent systems that solve real-world problems. Currently working at TELUS as an AI/ML Engineer, developing GenAI-powered chatbots, automations, and data pipelines. I enjoy bridging the gap between cutting-edge AI research and production-ready engineering.",
   "positions": [
@@ -30,17 +30,17 @@
     {
       "title": "Co-Founder",
       "company": "NeoWise",
-      "startDate": "2019-01",
-      "endDate": "2022-01",
-      "description": "Co-founded a wearable heating/cooling startup. Responsible for product R&D, hardware design, 3D modeling and rendering.",
+      "startDate": "2019-09",
+      "endDate": "2021-05",
+      "description": "Co-founded a wearable thermal-device startup. Led the prototype from concept to MVP across product R&D, hardware design, and supplier negotiation (±5 °C skin-temperature regulation).",
       "promotions": []
     },
     {
-      "title": "Manufacturing Engineering Intern",
+      "title": "Manufacturing Engineer, Co-op",
       "company": "Mercedes-Benz Canada",
-      "startDate": "2018-05",
-      "endDate": "2019-01",
-      "description": "Performed statistical process analysis on bipolar plate welding operations. Supported manufacturing quality improvement initiatives.",
+      "startDate": "2018-01",
+      "endDate": "2019-08",
+      "description": "Two co-op terms with a study term between them. Led data-driven initiatives that cut material scrap loss by over $100K/year and raised production yield 3%; improved station efficiency 25% through Lean Six Sigma value-stream mapping.",
       "promotions": []
     }
   ]

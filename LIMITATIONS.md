@@ -2,7 +2,9 @@
 
 ## Spotify Data
 
-**Status:** Cached snapshot, refreshed manually (target: monthly).
+**Status:** Cached snapshot, refreshed manually. The tool reports the snapshot's
+real age in the text it hands the model — it previously said "refreshed monthly"
+regardless of how old the data actually was.
 
 **Why not live?** Spotify's OAuth flow requires a redirect URI that resolves to a real server.
 Stateless Streamlit Cloud deployments cannot receive OAuth callbacks, so the live token flow
@@ -20,7 +22,16 @@ that is displayed in the UI so users always know how fresh the data is.
 
 ## LinkedIn Data
 
-**Status:** Manually curated snapshot, refreshed when career information changes.
+**Status:** Manually curated snapshot, refreshed when career information changes,
+with its real age reported to the model.
+
+It is reconciled against `data/resume.md`, because the two disagreed: the cache
+had the Mercedes-Benz co-op as an 8-month internship rather than two co-op terms
+spanning January 2018 to August 2019, and NeoWise running to January 2022 rather
+than May 2021. The same question routed to different tools returned different
+answers, which no amount of retrieval tuning can fix. The cache carries one fact
+the resume does not — the three internal TELUS titles — which is the reason this
+route exists.
 
 **Why not live?** LinkedIn's official API removed personal profile access for most developers
 in 2023. Unofficial scraping libraries violate LinkedIn's ToS and are fragile.

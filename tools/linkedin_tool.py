@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
 from typing import Any
 
 from langchain.tools import tool
+
+from tools.freshness import describe_age
 
 _CACHE_PATH = os.path.join("data", "cache", "linkedin_cache.json")
 
@@ -17,18 +18,16 @@ def _load_cache() -> dict[str, Any]:
 
 @tool
 def get_linkedin_info() -> str:
-    """Get Cem's career information from a cached LinkedIn snapshot (refreshed monthly)."""
+    """Get Cem's career information from a curated LinkedIn snapshot.
+
+    Maintained by hand, and the answer states how old it is.
+    """
     try:
         data = _load_cache()
-        cached_at = data.get("cached_at", "unknown")
-        try:
-            dt = datetime.fromisoformat(cached_at.replace("Z", "+00:00"))
-            date_str = dt.strftime("%B %Y")
-        except ValueError:
-            date_str = cached_at
+        date_str = describe_age(data.get("cached_at", "unknown"))
 
         lines = [
-            f"LinkedIn profile as of {date_str} (refreshed monthly):\n",
+            f"LinkedIn profile, last updated {date_str}:\n",
             f"Headline: {data['headline']}",
             f"About: {data['about']}\n",
             "Career History:",
