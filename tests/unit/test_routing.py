@@ -13,18 +13,21 @@ def _mock_llm(reply: str) -> MagicMock:
     return llm
 
 
-@pytest.mark.parametrize("query,llm_reply,expected", [
-    ("What is your work experience?", "resume", "resume"),
-    ("Where did you go to school?", "resume", "resume"),
-    ("How old are you?", "personal", "personal"),
-    ("What are your hobbies?", "personal", "personal"),
-    ("What music do you listen to?", "spotify", "spotify"),
-    ("Who is your favourite artist?", "spotify", "spotify"),
-    ("Where do you work now?", "linkedin", "linkedin"),
-    ("Tell me about your promotions.", "linkedin", "linkedin"),
-    ("Hello!", "conversation", "conversation"),
-    ("What can you do?", "conversation", "conversation"),
-])
+@pytest.mark.parametrize(
+    "query,llm_reply,expected",
+    [
+        ("What is your work experience?", "resume", "resume"),
+        ("Where did you go to school?", "resume", "resume"),
+        ("How old are you?", "personal", "personal"),
+        ("What are your hobbies?", "personal", "personal"),
+        ("What music do you listen to?", "spotify", "spotify"),
+        ("Who is your favourite artist?", "spotify", "spotify"),
+        ("Where do you work now?", "linkedin", "linkedin"),
+        ("Tell me about your promotions.", "linkedin", "linkedin"),
+        ("Hello!", "conversation", "conversation"),
+        ("What can you do?", "conversation", "conversation"),
+    ],
+)
 def test_routing_parametrized(query, llm_reply, expected):
     llm = _mock_llm(llm_reply)
     assert classify_query(query, llm) == expected

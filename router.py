@@ -4,17 +4,22 @@ from langchain_core.prompts import ChatPromptTemplate
 
 _VALID_TYPES = frozenset({"resume", "personal", "spotify", "linkedin", "conversation"})
 
-_ROUTE_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """Classify the user query into exactly one of these categories:
+_ROUTE_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """Classify the user query into exactly one of these categories:
 - resume: education, work experience, skills, projects
 - personal: background, family, hobbies, languages, physical attributes
 - spotify: music taste, favourite artists or songs
 - linkedin: career development, promotions, job titles
 - conversation: greetings, general chat, capabilities question
 
-Reply with only the single category word."""),
-    ("human", "{query}"),
-])
+Reply with only the single category word.""",
+        ),
+        ("human", "{query}"),
+    ]
+)
 
 
 def classify_query(query: str, llm) -> str:

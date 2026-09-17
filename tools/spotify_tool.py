@@ -35,9 +35,7 @@ def get_music_taste() -> str:
             f"{', '.join(a['genres']) if isinstance(a['genres'], list) else a['genres']}"
             for a in artists
         )
-        tracks_str = "\n".join(
-            f"{t['rank']}. {t['title']} — {t['artists']}" for t in tracks
-        )
+        tracks_str = "\n".join(f"{t['rank']}. {t['title']} — {t['artists']}" for t in tracks)
 
         return (
             f"Music taste as of {date_str} (refreshed monthly from Spotify):\n\n"

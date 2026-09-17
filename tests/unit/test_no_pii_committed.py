@@ -8,6 +8,7 @@ actually tracks, not what the ignore file intends.
 Lives under tests/unit/ rather than tests/ so that CI's `pytest tests/unit/`
 runs it.
 """
+
 from __future__ import annotations
 
 import re
@@ -27,8 +28,20 @@ FORBIDDEN_PATHS = (
 )
 
 TEXT_SUFFIXES = {
-    ".py", ".md", ".json", ".toml", ".yml", ".yaml", ".txt", ".cfg", ".ini",
-    ".example", ".sh", ".ps1", ".html", ".csv",
+    ".py",
+    ".md",
+    ".json",
+    ".toml",
+    ".yml",
+    ".yaml",
+    ".txt",
+    ".cfg",
+    ".ini",
+    ".example",
+    ".sh",
+    ".ps1",
+    ".html",
+    ".csv",
 }
 
 EMAIL = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
@@ -45,9 +58,7 @@ SELF = "tests/unit/test_no_pii_committed.py"
 
 def _tracked_files() -> list[str]:
     try:
-        out = subprocess.run(
-            ["git", "ls-files"], cwd=REPO_ROOT, capture_output=True, text=True, timeout=30
-        )
+        out = subprocess.run(["git", "ls-files"], cwd=REPO_ROOT, capture_output=True, text=True, timeout=30)
     except (OSError, subprocess.SubprocessError) as exc:
         pytest.skip(f"git unavailable: {exc}")
     if out.returncode != 0:
@@ -90,9 +101,7 @@ def _scan(text: str) -> list[str]:
 
 
 def test_no_personal_data_files_are_tracked():
-    offenders = [
-        f for f in _tracked_files() if any(pattern.search(f) for pattern in FORBIDDEN_PATHS)
-    ]
+    offenders = [f for f in _tracked_files() if any(pattern.search(f) for pattern in FORBIDDEN_PATHS)]
     assert not offenders, f"personal data files are tracked by git: {offenders}"
 
 
@@ -121,22 +130,28 @@ def test_no_contact_details_in_tracked_pdfs():
 
 
 # A guard nobody has seen fail is a guard nobody should trust.
-@pytest.mark.parametrize("sample", [
-    "reach me at firstname.lastname@gmail.com",
-    "CEM KASPI (778) 839-0000 Vancouver, BC",
-    "call 604-555-0000 x2",
-    "direct line 236.555.9876",
-])
+@pytest.mark.parametrize(
+    "sample",
+    [
+        "reach me at firstname.lastname@gmail.com",
+        "CEM KASPI (778) 839-0000 Vancouver, BC",
+        "call 604-555-0000 x2",
+        "direct line 236.555.9876",
+    ],
+)
 def test_scanner_catches_realistic_contact_details(sample):
     assert _scan(sample), f"scanner missed {sample!r}"
 
 
-@pytest.mark.parametrize("sample", [
-    "OPENAI_API_KEY=sk-...",
-    "you@example.com",
-    "+1 (000) 000-0000",
-    "+1 236 555 0100",  # the range reserved for fiction
-    "see docs at https://arize.com/docs/phoenix",
-])
+@pytest.mark.parametrize(
+    "sample",
+    [
+        "OPENAI_API_KEY=sk-...",
+        "you@example.com",
+        "+1 (000) 000-0000",
+        "+1 236 555 0100",  # the range reserved for fiction
+        "see docs at https://arize.com/docs/phoenix",
+    ],
+)
 def test_scanner_ignores_placeholders_and_docs(sample):
     assert not _scan(sample), f"scanner false-positived on {sample!r}"

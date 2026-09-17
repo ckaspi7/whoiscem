@@ -6,6 +6,7 @@ Requires .env with SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REDIRECT_UR
 LinkedIn data must be updated manually in data/cache/linkedin_cache.json
 (LinkedIn's API access is heavily restricted for personal use).
 """
+
 import json
 import os
 from datetime import UTC, datetime
@@ -40,8 +41,7 @@ def refresh_spotify() -> None:
     raw_tracks = sp.current_user_top_tracks(limit=10, time_range="medium_term")["items"]
 
     artists = [
-        {"rank": i + 1, "name": a["name"], "genres": a.get("genres", [])}
-        for i, a in enumerate(raw_artists)
+        {"rank": i + 1, "name": a["name"], "genres": a.get("genres", [])} for i, a in enumerate(raw_artists)
     ]
     tracks = [
         {

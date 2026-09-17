@@ -4,6 +4,7 @@
 infrastructure at all; ``server`` and ``cloud`` talk to a real Qdrant. The
 three are interchangeable behind :class:`~retrieval.vectorstore.QdrantVectorStore`.
 """
+
 from __future__ import annotations
 
 import logging

@@ -73,6 +73,7 @@ def sample_linkedin_cache() -> dict:
 # Mock OpenAI fixture
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_openai(monkeypatch):
     """Patches openai.OpenAI so no real API calls are made."""
@@ -85,7 +86,9 @@ def mock_openai(monkeypatch):
 # Fake Redis fixture (no real server needed)
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def fake_redis():
     import fakeredis
+
     return fakeredis.FakeRedis(decode_responses=True)

@@ -6,6 +6,7 @@ information: this database is read straight into model context, so anything it
 stores is something a language model may repeat. Copy
 data/seed_data.example.json to data/seed_data.json (git-ignored) and fill it in.
 """
+
 import json
 import os
 import sqlite3
@@ -29,10 +30,21 @@ COLUMNS = (
 
 # Columns from the previous schema that must never come back.
 RETIRED_COLUMNS = (
-    "age", "date_of_birth", "email", "phone_number",
-    "mother_name", "mother_birth_year", "father_name", "father_birth_year",
-    "sibling_count", "sibling_name", "sibling_birth_year", "sibling_gender",
-    "shoe_size", "height", "weight",
+    "age",
+    "date_of_birth",
+    "email",
+    "phone_number",
+    "mother_name",
+    "mother_birth_year",
+    "father_name",
+    "father_birth_year",
+    "sibling_count",
+    "sibling_name",
+    "sibling_birth_year",
+    "sibling_gender",
+    "shoe_size",
+    "height",
+    "weight",
 )
 
 

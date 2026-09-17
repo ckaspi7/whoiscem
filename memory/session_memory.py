@@ -89,8 +89,7 @@ class SessionMemory:
                     {
                         "role": "system",
                         "content": (
-                            "Summarise this conversation in exactly 3 sentences "
-                            "for future context injection."
+                            "Summarise this conversation in exactly 3 sentences for future context injection."
                         ),
                     },
                     {"role": "user", "content": transcript},

@@ -10,12 +10,14 @@ import pytest
 # Spotify tool tests
 # ---------------------------------------------------------------------------
 
+
 def test_spotify_tool_returns_cache_data(tmp_path, sample_spotify_cache):
     cache_file = tmp_path / "spotify_cache.json"
     cache_file.write_text(json.dumps(sample_spotify_cache))
 
     with patch("tools.spotify_tool._CACHE_PATH", str(cache_file)):
         from tools.spotify_tool import get_music_taste
+
         result = get_music_taste.invoke({})
 
     assert "The Weeknd" in result
@@ -28,6 +30,7 @@ def test_spotify_cache_includes_timestamp(tmp_path, sample_spotify_cache):
 
     with patch("tools.spotify_tool._CACHE_PATH", str(cache_file)):
         from tools.spotify_tool import get_music_taste
+
         result = get_music_taste.invoke({})
 
     assert "March 2025" in result
@@ -37,6 +40,7 @@ def test_spotify_tool_missing_cache_returns_message(tmp_path):
     nonexistent = str(tmp_path / "no_file.json")
     with patch("tools.spotify_tool._CACHE_PATH", nonexistent):
         from tools.spotify_tool import get_music_taste
+
         result = get_music_taste.invoke({})
 
     assert "not found" in result.lower() or "run scripts" in result.lower()
@@ -46,12 +50,14 @@ def test_spotify_tool_missing_cache_returns_message(tmp_path):
 # LinkedIn tool tests
 # ---------------------------------------------------------------------------
 
+
 def test_linkedin_tool_returns_cache_data(tmp_path, sample_linkedin_cache):
     cache_file = tmp_path / "linkedin_cache.json"
     cache_file.write_text(json.dumps(sample_linkedin_cache))
 
     with patch("tools.linkedin_tool._CACHE_PATH", str(cache_file)):
         from tools.linkedin_tool import get_linkedin_info
+
         result = get_linkedin_info.invoke({})
 
     assert "TELUS" in result
@@ -64,6 +70,7 @@ def test_linkedin_tool_positions_non_empty(tmp_path, sample_linkedin_cache):
 
     with patch("tools.linkedin_tool._CACHE_PATH", str(cache_file)):
         from tools.linkedin_tool import get_linkedin_info
+
         result = get_linkedin_info.invoke({})
 
     assert "2022-01" in result
@@ -73,6 +80,7 @@ def test_linkedin_tool_missing_cache_returns_message(tmp_path):
     nonexistent = str(tmp_path / "no_file.json")
     with patch("tools.linkedin_tool._CACHE_PATH", nonexistent):
         from tools.linkedin_tool import get_linkedin_info
+
         result = get_linkedin_info.invoke({})
 
     assert "not found" in result.lower()
@@ -81,6 +89,7 @@ def test_linkedin_tool_missing_cache_returns_message(tmp_path):
 # ---------------------------------------------------------------------------
 # Personal tool tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def in_memory_db(tmp_path):
@@ -110,6 +119,7 @@ def in_memory_db(tmp_path):
 def test_personal_tool_returns_valid_data(in_memory_db):
     with patch("tools.personal_tool._DB_PATH", in_memory_db):
         from tools.personal_tool import get_personal_info
+
         result = get_personal_info.invoke("")
 
     assert "Cem Kaspi" in result
@@ -136,6 +146,7 @@ def test_personal_tool_handles_missing_user(tmp_path):
 
     with patch("tools.personal_tool._DB_PATH", db_path):
         from tools.personal_tool import get_personal_info
+
         result = get_personal_info.invoke("")
 
     assert "no personal information" in result.lower() or "not found" in result.lower()
@@ -161,14 +172,24 @@ def test_personal_tool_never_returns_contact_details(tmp_path):
         "INSERT INTO users (full_name, city, hobbies, email, phone_number, "
         "date_of_birth, mother_name, father_name, weight) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        ("Cem Kaspi", "Vancouver", "guitar", "leak@example.com", "+1 (604) 555-0142",
-         "1997-03-12", "Mother Name", "Father Name", 70.0),
+        (
+            "Cem Kaspi",
+            "Vancouver",
+            "guitar",
+            "leak@example.com",
+            "+1 (604) 555-0142",
+            "1997-03-12",
+            "Mother Name",
+            "Father Name",
+            70.0,
+        ),
     )
     conn.commit()
     conn.close()
 
     with patch("tools.personal_tool._DB_PATH", db_path):
         from tools.personal_tool import get_personal_info
+
         result = get_personal_info.invoke("")
 
     assert "Vancouver" in result

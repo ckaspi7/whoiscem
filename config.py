@@ -5,6 +5,7 @@ same code path runs against an on-disk store on a laptop, a container under
 docker-compose, and a managed service in production. Call sites depend on
 ``Settings``; the concrete client is built by ``retrieval.backends``.
 """
+
 from __future__ import annotations
 
 import os

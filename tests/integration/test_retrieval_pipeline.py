@@ -6,6 +6,7 @@ needs no services, so these are runnable locally and in CI; set
 QDRANT_MODE=server to point them at docker-compose instead. Tests that embed
 text need OPENAI_API_KEY and are skipped without one.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -23,9 +24,7 @@ pytestmark = pytest.mark.integration
 
 TEST_COLLECTION = "test_integration_chunks"
 
-needs_openai = pytest.mark.skipif(
-    not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set"
-)
+needs_openai = pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 
 
 @pytest.fixture(scope="module")

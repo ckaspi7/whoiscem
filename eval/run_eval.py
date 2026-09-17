@@ -5,6 +5,7 @@ Run against baseline (before hybrid search) and v2 (after) to measure improvemen
 Usage:
     python eval/run_eval.py --output eval/results/v2_hybrid.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -74,14 +75,16 @@ def evaluate(output_path: str | None = None) -> dict:
     print(f"Running evaluation on {len(golden)} questions...")
     rows = []
     for i, item in enumerate(golden):
-        print(f"  [{i+1}/{len(golden)}] {item['id']}: {item['question'][:60]}...")
+        print(f"  [{i + 1}/{len(golden)}] {item['id']}: {item['question'][:60]}...")
         answer, context = run_query(item["question"], item["required_tool"])
-        rows.append({
-            "question": item["question"],
-            "answer": answer,
-            "contexts": [context],
-            "ground_truth": item["ground_truth"],
-        })
+        rows.append(
+            {
+                "question": item["question"],
+                "answer": answer,
+                "contexts": [context],
+                "ground_truth": item["ground_truth"],
+            }
+        )
 
     dataset = Dataset.from_list(rows)
     result = ragas_evaluate(

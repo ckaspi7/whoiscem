@@ -57,9 +57,7 @@ def _fetch_user(fields: tuple[str, ...]) -> dict:
         # Interpolation is safe here: every name originates in _SAFE_FIELDS and
         # was matched against the live schema. No caller input reaches this string.
         columns = ", ".join(selected)
-        row = conn.execute(
-            f"SELECT {columns} FROM users WHERE full_name = ?", ("Cem Kaspi",)
-        ).fetchone()
+        row = conn.execute(f"SELECT {columns} FROM users WHERE full_name = ?", ("Cem Kaspi",)).fetchone()
         return dict(row) if row else {}
     finally:
         conn.close()
@@ -77,9 +75,7 @@ def get_personal_info(info_type: str = "") -> str:
         data = _fetch_user(fields_for(info_type))
         if not data:
             return "No personal information found."
-        return "\n".join(
-            f"{k.replace('_', ' ').capitalize()}: {v}" for k, v in data.items() if v is not None
-        )
+        return "\n".join(f"{k.replace('_', ' ').capitalize()}: {v}" for k, v in data.items() if v is not None)
     except sqlite3.OperationalError as e:
         return f"Database error: {e}"
     except Exception as e:

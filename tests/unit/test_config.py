@@ -16,6 +16,7 @@ from config import (
 # Settings resolution
 # ---------------------------------------------------------------------------
 
+
 def test_defaults_to_embedded_with_empty_environment():
     settings = load_settings(env={})
     assert settings.qdrant_mode == "embedded"
@@ -32,11 +33,13 @@ def test_server_mode_reads_host_and_port():
 
 
 def test_cloud_mode_reads_url_and_key():
-    settings = load_settings(env={
-        "QDRANT_MODE": "cloud",
-        "QDRANT_URL": "https://example.cloud.qdrant.io:6333",
-        "QDRANT_API_KEY": "secret",
-    })
+    settings = load_settings(
+        env={
+            "QDRANT_MODE": "cloud",
+            "QDRANT_URL": "https://example.cloud.qdrant.io:6333",
+            "QDRANT_API_KEY": "secret",
+        }
+    )
     assert settings.qdrant_mode == "cloud"
     assert settings.qdrant_url == "https://example.cloud.qdrant.io:6333"
     assert settings.qdrant_api_key == "secret"
@@ -71,6 +74,7 @@ def test_reads_process_environment_by_default(monkeypatch):
 # Client construction — one adapter, three modes
 # ---------------------------------------------------------------------------
 
+
 def test_embedded_mode_builds_on_disk_client():
     with patch("retrieval.backends.QdrantClient") as client_cls:
         from retrieval.backends import create_qdrant_client
@@ -95,11 +99,13 @@ def test_cloud_mode_passes_url_and_api_key():
     with patch("retrieval.backends.QdrantClient") as client_cls:
         from retrieval.backends import create_qdrant_client
 
-        create_qdrant_client(Settings(
-            qdrant_mode="cloud",
-            qdrant_url="https://example.cloud.qdrant.io:6333",
-            qdrant_api_key="secret",
-        ))
+        create_qdrant_client(
+            Settings(
+                qdrant_mode="cloud",
+                qdrant_url="https://example.cloud.qdrant.io:6333",
+                qdrant_api_key="secret",
+            )
+        )
 
     kwargs = client_cls.call_args.kwargs
     assert kwargs["url"] == "https://example.cloud.qdrant.io:6333"
@@ -117,8 +123,10 @@ def test_cloud_mode_without_key_sends_none():
 
 def test_vectorstore_accepts_an_injected_client():
     injected = MagicMock()
-    with patch("retrieval.vectorstore.OpenAIEmbeddings"), \
-         patch("retrieval.backends.QdrantClient") as client_cls:
+    with (
+        patch("retrieval.vectorstore.OpenAIEmbeddings"),
+        patch("retrieval.backends.QdrantClient") as client_cls,
+    ):
         from retrieval.vectorstore import QdrantVectorStore
 
         store = QdrantVectorStore(client=injected, settings=Settings())

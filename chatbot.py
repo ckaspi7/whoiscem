@@ -32,9 +32,17 @@ load_dotenv()
 os.environ.setdefault("LANGCHAIN_PROJECT", "howtocem")
 
 _SECRET_KEYS = (
-    "OPENAI_API_KEY", "LANGCHAIN_API_KEY", "LANGCHAIN_TRACING_V2",
-    "LANGCHAIN_PROJECT", "REDIS_URL", "QDRANT_MODE", "QDRANT_PATH",
-    "QDRANT_HOST", "QDRANT_PORT", "QDRANT_URL", "QDRANT_API_KEY",
+    "OPENAI_API_KEY",
+    "LANGCHAIN_API_KEY",
+    "LANGCHAIN_TRACING_V2",
+    "LANGCHAIN_PROJECT",
+    "REDIS_URL",
+    "QDRANT_MODE",
+    "QDRANT_PATH",
+    "QDRANT_HOST",
+    "QDRANT_PORT",
+    "QDRANT_URL",
+    "QDRANT_API_KEY",
     "RESUME_PATH",
 )
 
@@ -61,7 +69,7 @@ def _apply_streamlit_secrets() -> None:
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-GPT_4O_MINI_INPUT_COST_PER_1K = 0.000150   # $ per 1k input tokens
+GPT_4O_MINI_INPUT_COST_PER_1K = 0.000150  # $ per 1k input tokens
 GPT_4O_MINI_OUTPUT_COST_PER_1K = 0.000600  # $ per 1k output tokens
 
 
@@ -117,35 +125,41 @@ Key facts about Cem:
             query = state["messages"][-1]["content"]
             qtype = classify_query(query, llm_fast)
             return {**state, "next_step": qtype}
+
         return timed("route_query", _run, state)
 
     def handle_resume(state: GraphState) -> GraphState:
         def _run(state):
             result = get_resume_info.invoke(state["messages"][-1]["content"])
             return {**state, "tool_result": result, "context_used": result, "next_step": "generate_response"}
+
         return timed("handle_resume", _run, state)
 
     def handle_personal(state: GraphState) -> GraphState:
         def _run(state):
             result = get_personal_info.invoke("")
             return {**state, "tool_result": result, "context_used": result, "next_step": "generate_response"}
+
         return timed("handle_personal", _run, state)
 
     def handle_spotify(state: GraphState) -> GraphState:
         def _run(state):
             result = get_music_taste.invoke({})
             return {**state, "tool_result": result, "context_used": result, "next_step": "generate_response"}
+
         return timed("handle_spotify", _run, state)
 
     def handle_linkedin(state: GraphState) -> GraphState:
         def _run(state):
             result = get_linkedin_info.invoke({})
             return {**state, "tool_result": result, "context_used": result, "next_step": "generate_response"}
+
         return timed("handle_linkedin", _run, state)
 
     def handle_conversation(state: GraphState) -> GraphState:
         def _run(state):
             return {**state, "tool_result": "", "context_used": "", "next_step": "generate_response"}
+
         return timed("handle_conversation", _run, state)
 
     def generate_response(state: GraphState) -> GraphState:
@@ -166,6 +180,7 @@ Key facts about Cem:
             response = llm.stream(lc_messages)
             updated = list(messages) + [{"role": "ai", "content": response}]
             return {**state, "messages": updated, "next_step": "end", "context_used": context_used}
+
         return timed("generate_response", _run, state)
 
     workflow = StateGraph(GraphState)
@@ -188,8 +203,13 @@ Key facts about Cem:
             "conversation": "handle_conversation",
         },
     )
-    for node in ("handle_resume", "handle_personal", "handle_spotify",
-                 "handle_linkedin", "handle_conversation"):
+    for node in (
+        "handle_resume",
+        "handle_personal",
+        "handle_spotify",
+        "handle_linkedin",
+        "handle_conversation",
+    ):
         workflow.add_edge(node, "generate_response")
 
     workflow.set_entry_point("route_query")
@@ -238,17 +258,20 @@ def main() -> None:
     )
     _apply_streamlit_secrets()
 
-    st.markdown("""
+    st.markdown(
+        """
         <style>
         .app-title { font-size: 2.5rem; font-weight: bold; color: #1c1c1c;
                      text-align: center; margin-bottom: 10px; }
         .app-subtitle { font-size: 1rem; color: #555; text-align: center; margin-bottom: 20px; }
         </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
     st.markdown('<div class="app-title">HowToCem</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="app-subtitle">👋 Ask me anything about Cem — resume, career, '
-        'music taste, or personal background.</div>',
+        "music taste, or personal background.</div>",
         unsafe_allow_html=True,
     )
 

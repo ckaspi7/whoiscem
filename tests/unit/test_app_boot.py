@@ -3,15 +3,14 @@
 Nothing else in the suite imports chatbot.py, which is how a syntax error that
 only bites on Python 3.11 survived in the module for a full release.
 """
+
 from __future__ import annotations
 
 import os
 
 import pytest
 
-needs_openai = pytest.mark.skipif(
-    not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set"
-)
+needs_openai = pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 
 
 def test_chatbot_module_imports():
