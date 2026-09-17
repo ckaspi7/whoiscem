@@ -179,7 +179,6 @@ data/seed_data.json
 data/user_data.db
 data/.spotify_cache
 .streamlit/secrets.toml
-eval/results/*.json
 *.db
 data/Cem_Kaspi_Resume.pdf
 # Unredacted resume sources — only data/resume.md and data/resume.pdf are committed

@@ -8,12 +8,23 @@ _ROUTE_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            """Classify the user query into exactly one of these categories:
-- resume: education, work experience, skills, projects
-- personal: background, family, hobbies, languages, physical attributes
-- spotify: music taste, favourite artists or songs
-- linkedin: career development, promotions, job titles
-- conversation: greetings, general chat, capabilities question
+            """Classify the user query into exactly one of these categories.
+
+Take the first category that fits; they are listed in priority order.
+
+- resume: ANY factual question about Cem's career, education, employers, job
+  titles, dates, skills, technologies, projects or accomplishments. The resume
+  is the source of record for all work history. "Where does he work", "what is
+  his job title", "when did he join TELUS" and "what did he study" are resume.
+- linkedin: ONLY the progression through internal titles at TELUS, or the text
+  of his LinkedIn headline and About section. Use it when the question is
+  specifically about promotions or moving between internal roles. General
+  career questions are resume, not linkedin.
+- personal: non-work background — hometown, languages spoken, hobbies, food,
+  appearance, marital status.
+- spotify: music taste, artists, tracks, genres.
+- conversation: greetings, small talk, questions about you or your abilities,
+  and anything that falls outside the categories above.
 
 Reply with only the single category word.""",
         ),

@@ -53,21 +53,61 @@ User Query
 
 ---
 
-## Retrieval Quality
+## Measured Results
 
-**No measured numbers yet — deliberately, rather than by omission.**
+First committed baseline: 59 golden questions through the shipping graph —
+router, handler, production prompt and faithfulness guard — not through a
+test harness that calls the tools directly. Every run is committed under
+[`eval/results/`](eval/results/) with the git sha and a hash of the indexed
+resume, because scores only compare across runs over the same corpus.
 
-This section previously carried a metrics table whose every cell read "run eval to
-populate." It was removed: the evaluation harness could not complete a run, so there
-was nothing behind it.
+| | Baseline |
+|---|---|
+| Routing accuracy | **91.5%** (54/59) |
+| Retrieval recall@k | **83.3%** (24 referenced questions) |
+| Retrieval MRR | **0.618** |
+| Correct refusals | **100%** (10 questions that should be declined) |
+| Answer relevancy | **0.834** ✓ (≥0.75) |
+| Faithfulness | 0.660 ✗ (≥0.80) |
+| Context recall | 0.674 ✗ (≥0.80) |
+| Context precision | 0.636 ✗ (≥0.70) |
 
-The harness is the next piece of work. When it lands, this section carries real
-figures across the 40-question golden set, every run is committed under
-`eval/results/`, and each later change to retrieval is reported as a before/after
-against that baseline rather than as an assertion.
+Three of four RAGAS metrics are below threshold, and they are published anyway.
+That is the starting point the next phases move.
+
+**Faithfulness is not one number.** Per route:
+
+| Route | Faithfulness | |
+|---|---|---|
+| linkedin | 0.950 | |
+| resume | 0.867 | the hybrid retrieval path |
+| personal | 0.678 | |
+| spotify | 0.417 | context is a numbered list |
+| conversation | 0.000 | no context exists on this path |
+
+The aggregate is dragged down by two measurement artifacts rather than by
+hallucination. A probe isolating it: with prose context, the judge scores a
+correct answer 1.0 and a wrong one 0.0; with the same fact in a numbered list
+(`1. The Weeknd`), it scores the correct answer 0.0, because inferring "top
+artist" from list position is not entailment. And the `conversation` route has
+no retrieved context at all, so nothing on it can be grounded — which is also
+why a misroute onto it is the worst failure the system has.
+
+### Known-broken, on purpose
+
+Measured first so the fix can be reported as a delta rather than asserted:
+
+- **Chunking is degenerate.** The resume splits into three chunks, and top-3
+  reranking therefore returns the entire document on every query. RRF has
+  nothing to fuse and the cross-encoder nothing to discriminate.
+- **Follow-up questions route at 33%.** Retrieval runs on the bare last
+  message, so "and before that?" retrieves on three words.
+- **Multi-intent questions are structurally unanswerable** — one label, one
+  tool, one branch.
 
 ```bash
 python eval/run_eval.py --output eval/results/$(git rev-parse --short HEAD).json
+python eval/run_eval.py --no-ragas      # routing only, no judge calls
 ```
 
 ---

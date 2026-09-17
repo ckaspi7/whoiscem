@@ -22,6 +22,11 @@ select = [
     "C4",   # comprehensions
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Effectively a data file: ground-truth answers are prose, and wrapping them
+# mid-sentence makes the golden set harder to read and review than it is to lint.
+"eval/build_golden_set.py" = ["E501"]
+
 [tool.ruff.lint.isort]
 # Without this, ruff sorts `config` as a third-party package.
 known-first-party = [

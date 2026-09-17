@@ -144,6 +144,48 @@ rather than asserted.
 
 ---
 
+## LLM-Judge Calibration
+
+RAGAS faithfulness is not comparable across routes, and the aggregate should
+not be read as a hallucination rate.
+
+A three-case probe isolates why. Given prose context, the judge scores a correct
+answer 1.0 and a deliberately wrong one 0.0 — it works. Given the same fact as a
+numbered list (`Top Artists:
+1. The Weeknd`), it scores the correct answer 0.0,
+because deriving "top artist" from list position is not textual entailment. The
+spotify tool emits ranked lists, so its faithfulness (0.42) measures output
+format rather than truthfulness.
+
+The `conversation` route scores 0.000 for a different reason: it retrieves
+nothing, so no answer on it can be grounded in anything. That is a real property
+worth surfacing, not an artifact — it is why a question misrouted onto that path
+is the worst failure mode available, and why routing accuracy is tracked
+separately.
+
+Results therefore report faithfulness per route as well as in aggregate.
+Reformatting tool output as prose would likely raise the number; it is left
+alone until it can be run as a measured experiment rather than a metric-driven
+edit.
+
+---
+
+## Personal Database Schema Drift
+
+A database created before the schema was slimmed does not gain the `birth_year`
+column, since `CREATE TABLE IF NOT EXISTS` does not migrate. The setup script
+warns when it detects this. The symptom in evaluation is a question like "what
+year was Cem born" answered correctly from a hardcoded fact in the system prompt
+while scoring 0.0 faithfulness — correctly, because the answer is not grounded
+in anything retrieved. Delete `data/user_data.db` and re-run
+`scripts/setup_user_data_db.py` to fix.
+
+This also exposes a design issue worth naming: facts hardcoded in the system
+prompt are invisible to the faithfulness judge, which only sees retrieved
+context. Any answer drawn from them scores as unsupported.
+
+---
+
 ## Cross-Encoder Reranker
 
 The cross-encoder (`cross-encoder/ms-marco-MiniLM-L-6-v2`) downloads ~90 MB on first run
