@@ -1,10 +1,14 @@
 """
 Integration tests for the retrieval pipeline.
-Requires Qdrant running: docker-compose up qdrant
-Tests are skipped automatically when Qdrant is unavailable.
+
+Runs against whatever backend QDRANT_MODE selects. The default — embedded —
+needs no services, so these are runnable locally and in CI; set
+QDRANT_MODE=server to point them at docker-compose instead. Tests that embed
+text need OPENAI_API_KEY and are skipped without one.
 """
 from __future__ import annotations
 
+import dataclasses
 import os
 import sys
 from pathlib import Path
@@ -13,38 +17,53 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-
-def _qdrant_reachable() -> bool:
-    try:
-        from qdrant_client import QdrantClient
-        QdrantClient(host="localhost", port=6333, timeout=2).get_collections()
-        return True
-    except Exception:
-        return False
-
+from config import load_settings
 
 pytestmark = pytest.mark.integration
 
+TEST_COLLECTION = "test_integration_chunks"
 
-@pytest.fixture(scope="module")
-def live_qdrant():
-    if not _qdrant_reachable():
-        pytest.skip("Qdrant not running")
-    from qdrant_client import QdrantClient
-    return QdrantClient(host="localhost", port=6333)
+needs_openai = pytest.mark.skipif(
+    not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set"
+)
 
 
 @pytest.fixture(scope="module")
-def indexed_collection(live_qdrant, sample_chunks):
+def settings(tmp_path_factory):
+    """Env-derived settings, with embedded storage redirected to a temp dir."""
+    cfg = load_settings()
+    if cfg.qdrant_mode == "embedded":
+        cfg = dataclasses.replace(cfg, qdrant_path=str(tmp_path_factory.mktemp("qdrant")))
+    return cfg
+
+
+@pytest.fixture(scope="module")
+def qdrant(settings):
+    from retrieval.backends import create_qdrant_client
+
+    try:
+        client = create_qdrant_client(settings)
+        client.get_collections()
+    except Exception as exc:
+        pytest.skip(f"Qdrant ({settings.qdrant_mode}) unavailable: {exc}")
+
+    yield client
+    client.close()
+
+
+@pytest.fixture  # function-scoped: sample_chunks is, and scopes must match
+def indexed_collection(qdrant, sample_chunks):
     from langchain_openai import OpenAIEmbeddings
     from qdrant_client.models import Distance, PointStruct, VectorParams
 
-    collection = "test_integration_chunks"
-    if live_qdrant.collection_exists(collection):
-        live_qdrant.delete_collection(collection)
+    if not os.getenv("OPENAI_API_KEY"):
+        pytest.skip("OPENAI_API_KEY not set")
 
-    live_qdrant.create_collection(
-        collection_name=collection,
+    if qdrant.collection_exists(TEST_COLLECTION):
+        qdrant.delete_collection(TEST_COLLECTION)
+
+    qdrant.create_collection(
+        collection_name=TEST_COLLECTION,
         vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
     )
 
@@ -54,13 +73,14 @@ def indexed_collection(live_qdrant, sample_chunks):
         PointStruct(id=i, vector=v, payload={"text": t, "chunk_index": i, "section": ""})
         for i, (t, v) in enumerate(zip(sample_chunks, vectors))
     ]
-    live_qdrant.upsert(collection_name=collection, points=points)
+    qdrant.upsert(collection_name=TEST_COLLECTION, points=points)
 
-    yield live_qdrant, collection
+    yield qdrant, TEST_COLLECTION
 
-    live_qdrant.delete_collection(collection)
+    qdrant.delete_collection(TEST_COLLECTION)
 
 
+@needs_openai
 def test_dense_search_returns_results(indexed_collection):
     client, collection = indexed_collection
     results = client.search(
@@ -84,7 +104,6 @@ def test_bm25_finds_telus_chunk(sample_chunks):
 
 def test_bm25_outperforms_dense_on_keyword_query(sample_chunks):
     from retrieval.bm25 import BM25Index
-    from retrieval.vectorstore import ScoredChunk
 
     index = BM25Index()
     index.build(sample_chunks)
@@ -96,7 +115,7 @@ def test_bm25_outperforms_dense_on_keyword_query(sample_chunks):
 
 def test_rrf_preserves_all_chunk_ids(sample_chunks):
     from retrieval.fusion import reciprocal_rank_fusion
-    from retrieval.vectorstore import ScoredChunk
+    from retrieval.types import ScoredChunk
 
     dense = [ScoredChunk(chunk_id=str(i), text=c, score=1.0) for i, c in enumerate(sample_chunks)]
     sparse = [ScoredChunk(chunk_id=str(i), text=c, score=1.0) for i, c in enumerate(sample_chunks[:3])]
@@ -107,9 +126,9 @@ def test_rrf_preserves_all_chunk_ids(sample_chunks):
     assert fused_ids == all_ids
 
 
-def test_qdrant_store_collection_exists_check(live_qdrant):
+@needs_openai
+def test_vector_store_runs_against_the_configured_backend(qdrant, settings):
     from retrieval.vectorstore import QdrantVectorStore
 
-    store = QdrantVectorStore(host="localhost", port=6333)
-    result = store.collection_exists()
-    assert isinstance(result, bool)
+    store = QdrantVectorStore(client=qdrant, settings=settings, collection_name=TEST_COLLECTION)
+    assert isinstance(store.collection_exists(), bool)

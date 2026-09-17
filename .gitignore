@@ -182,3 +182,6 @@ data/.spotify_cache
 eval/results/*.json
 *.db
 data/Cem_Kaspi_Resume.pdf
+
+# Embedded Qdrant storage (QDRANT_MODE=embedded)
+.qdrant/

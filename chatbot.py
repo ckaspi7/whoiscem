@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import time
 import uuid
@@ -12,6 +13,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph
 from openai import OpenAI
 
+from config import load_settings
 from guardrails.faithfulness_check import check_faithfulness
 from memory.session_memory import SessionMemory
 from router import classify_query
@@ -20,22 +22,41 @@ from tools.personal_tool import get_personal_info
 from tools.resume_tool import get_resume_info
 from tools.spotify_tool import get_music_taste
 
+logger = logging.getLogger(__name__)
+
 # ---------------------------------------------------------------------------
 # Environment & observability setup
 # ---------------------------------------------------------------------------
 load_dotenv()
 
-# Streamlit secrets override env vars when deployed to Streamlit Cloud
-for key in ("OPENAI_API_KEY", "LANGCHAIN_API_KEY", "LANGCHAIN_TRACING_V2",
-            "LANGCHAIN_PROJECT", "REDIS_URL", "QDRANT_HOST", "QDRANT_PORT"):
-    try:
-        val = st.secrets.get(key)
-        if val:
-            os.environ[key] = val
-    except Exception:
-        pass
-
 os.environ.setdefault("LANGCHAIN_PROJECT", "howtocem")
+
+_SECRET_KEYS = (
+    "OPENAI_API_KEY", "LANGCHAIN_API_KEY", "LANGCHAIN_TRACING_V2",
+    "LANGCHAIN_PROJECT", "REDIS_URL", "QDRANT_MODE", "QDRANT_PATH",
+    "QDRANT_HOST", "QDRANT_PORT", "QDRANT_URL", "QDRANT_API_KEY",
+    "RESUME_PATH",
+)
+
+
+def _apply_streamlit_secrets() -> None:
+    """Let Streamlit Cloud secrets override .env values.
+
+    Called from inside main(), after set_page_config: reading st.secrets counts
+    as a Streamlit command, and set_page_config must be the first one. Missing
+    secrets are normal outside Streamlit Cloud, so absence is not an error.
+    """
+    try:
+        secrets = dict(st.secrets)
+    except Exception as exc:  # no secrets.toml — the local and CI case
+        logger.debug("No Streamlit secrets available: %s", exc)
+        return
+
+    for key in _SECRET_KEYS:
+        val = secrets.get(key)
+        if val:
+            os.environ[key] = str(val)
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -62,6 +83,12 @@ def create_assistant(prior_context: str = "") -> Any:
     llm = ChatOpenAI(temperature=0.7, model="gpt-4o-mini", streaming=True)
     llm_fast = ChatOpenAI(temperature=0, model="gpt-4o-mini", streaming=False)
 
+    # Built outside the f-string: a backslash in an f-string expression is a
+    # syntax error before Python 3.12, and this project targets 3.11.
+    prior_block = ""
+    if prior_context:
+        prior_block = "Prior conversation context (returning visitor):\n" + prior_context
+
     system_prompt = f"""You are a helpful personal assistant chatbot for Cem Kaspi.
 You have access to Cem's resume, personal information, Spotify listening history, and LinkedIn profile.
 Use the available tools to retrieve the most relevant information to answer queries about Cem.
@@ -74,7 +101,7 @@ Key facts about Cem:
 - Speaks Turkish, English, and beginner Spanish
 - Born March 12, 1997
 
-{("Prior conversation context (returning visitor):\n" + prior_context) if prior_context else ""}"""
+{prior_block}"""
 
     def timed(name: str, fn, state: GraphState) -> GraphState:
         start = time.perf_counter()
@@ -208,6 +235,7 @@ def main() -> None:
         layout="centered",
         initial_sidebar_state="expanded",
     )
+    _apply_streamlit_secrets()
 
     st.markdown("""
         <style>
@@ -252,6 +280,11 @@ def main() -> None:
         if prior_context:
             with st.expander("🧠 Prior session context"):
                 st.caption(prior_context)
+
+        st.divider()
+        st.markdown("### Backends")
+        st.caption(f"Vector store: Qdrant ({load_settings().qdrant_mode})")
+        st.caption(f"Session memory: {memory.backend}")
 
         st.divider()
         if st.button("🗑️ Clear Chat"):

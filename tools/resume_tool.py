@@ -4,12 +4,11 @@ import os
 
 from langchain.tools import tool
 
+from config import load_settings
 from retrieval.bm25 import BM25Index
 from retrieval.fusion import reciprocal_rank_fusion
 from retrieval.reranker import CrossEncoderReranker
 from retrieval.vectorstore import QdrantVectorStore
-
-_PDF_PATH = os.path.join("data", "Cem_Kaspi_Resume.pdf")
 
 _store: QdrantVectorStore | None = None
 _bm25: BM25Index | None = None
@@ -20,12 +19,15 @@ def _init_retrieval() -> tuple[QdrantVectorStore, BM25Index, CrossEncoderReranke
     global _store, _bm25, _reranker
 
     if _store is None:
-        _store = QdrantVectorStore(
-            host=os.getenv("QDRANT_HOST", "localhost"),
-            port=int(os.getenv("QDRANT_PORT", "6333")),
-        )
+        settings = load_settings()
+        _store = QdrantVectorStore(settings=settings)
         if not _store.collection_exists():
-            _store.build_from_pdf(_PDF_PATH)
+            pdf_path = settings.resume_path
+            if not os.path.exists(pdf_path):
+                raise FileNotFoundError(
+                    f"Resume PDF not found at {pdf_path}. Set RESUME_PATH to point at it."
+                )
+            _store.build_from_pdf(pdf_path)
 
     if _bm25 is None:
         all_chunks = _store.get_all_chunks()

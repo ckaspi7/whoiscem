@@ -35,10 +35,26 @@ Cem's current career history, with a `cached_at` timestamp displayed in the UI.
 
 ## Vector Store Persistence
 
-The Qdrant vector store is populated from `data/Cem_Kaspi_Resume.pdf` on first startup.
-If Qdrant is restarted with a fresh volume, the index is rebuilt automatically.
-On Streamlit Cloud (no Docker), a persistent Qdrant Cloud instance or a managed vector
-DB would be required for production deployment.
+The Qdrant vector store is populated from the resume PDF (`RESUME_PATH`) the first
+time a query needs it, and rebuilt automatically whenever the collection is missing.
+
+Which Qdrant it talks to is configuration, not code: `QDRANT_MODE` selects an
+embedded on-disk store (the default — no server), a Qdrant reached over HTTP, or
+Qdrant Cloud. Embedded mode takes an exclusive lock on its directory, so exactly
+one process may use a given `QDRANT_PATH` at a time.
+
+**Not yet done:** the deployed Streamlit Cloud app has no persistent volume, so
+embedded storage there is rebuilt on every cold start. Pointing it at Qdrant Cloud
+(`QDRANT_MODE=cloud`) is the fix and is not yet in place.
+
+---
+
+## Session Memory Persistence
+
+With `REDIS_URL` set, rolling summaries live in Redis with a 30-day TTL. Without
+it, they fall back to an in-process store: the feature still works, but summaries
+are lost on restart and are not shared between processes. The sidebar shows which
+backend is live so the deployed behaviour is never a guess.
 
 ---
 

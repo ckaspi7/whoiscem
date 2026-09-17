@@ -5,6 +5,12 @@ import os
 from unittest.mock import MagicMock
 
 import pytest
+from dotenv import load_dotenv
+
+# Load .env before collection so skipif guards on OPENAI_API_KEY see the same
+# environment the app would. Real environment variables still take precedence,
+# so CI secrets win.
+load_dotenv()
 
 # ---------------------------------------------------------------------------
 # Sample data fixtures

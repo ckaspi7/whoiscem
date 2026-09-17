@@ -4,17 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-```bash
-# Start all services (Qdrant + Redis + Streamlit app) — primary dev workflow
-docker-compose up
+All commands assume the Python 3.11 venv is active
+(`.venv\Scripts\Activate.ps1` in PowerShell).
 
-# Run the Streamlit app directly (requires Qdrant and Redis already running)
+```bash
+# Primary dev workflow — embedded Qdrant + in-process memory, no services needed
 streamlit run chatbot.py
+
+# Containers instead (sets QDRANT_MODE=server): Qdrant + Redis + the app
+docker-compose up
 
 # Unit tests — no external services required
 pytest tests/unit/ -v
 
-# Integration tests — requires docker-compose up
+# Integration tests — embedded Qdrant by default; QDRANT_MODE=server to use containers
 pytest tests/integration/ -v
 
 # Run a single test file
@@ -63,9 +66,14 @@ LangSmith tracing is active when `LANGCHAIN_TRACING_V2=true`. Per-node latencies
 
 ## Environment variables
 
+All of these are resolved in one place, `config.py` (`load_settings()`), which also
+loads `.env`. Real environment variables always win over `.env`.
+
 Required: `OPENAI_API_KEY`  
 Optional but recommended: `LANGCHAIN_API_KEY`, `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_PROJECT`  
-Services: `REDIS_URL` (defaults to `redis://localhost:6379`), `QDRANT_HOST`/`QDRANT_PORT` (defaults to `localhost:6333`)  
+Vector store: `QDRANT_MODE` = `embedded` (default; on-disk at `QDRANT_PATH`, no server) | `server` (`QDRANT_HOST`/`QDRANT_PORT`) | `cloud` (`QDRANT_URL`/`QDRANT_API_KEY`)  
+Session memory: `REDIS_URL` — unset means an in-process fallback, not a disabled feature  
+Resume source: `RESUME_PATH` (defaults to `data/resume.pdf`)  
 Spotify cache refresh only: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`
 
 See `.env.example` for the full template.
@@ -73,6 +81,9 @@ See `.env.example` for the full template.
 ## Key design constraints
 
 - The `_store`, `_bm25`, and `_reranker` singletons in `resume_tool.py` are module-level globals. They initialise lazily on first query. Qdrant index is rebuilt automatically if the collection doesn't exist.
+- The Qdrant client is built by `retrieval/backends.py:create_qdrant_client()` from `Settings`, never from hardcoded coordinates. `QdrantVectorStore` takes an injected client, which is how the integration tests run without a server.
+- Embedded Qdrant takes an exclusive lock on `QDRANT_PATH`: the app and the test suite cannot share one path at the same time.
+- `chatbot.py` targets Python 3.11 — no f-string expression may contain a backslash (legal only from 3.12). `tests/unit/test_app_boot.py` guards this.
 - Redis failure is non-fatal: `SessionMemory` catches all exceptions and degrades to no-op (app runs without session memory).
 - The Streamlit app uses `st.query_params["sid"]` for session identity, making sessions shareable via URL.
 - Streamlit Cloud secrets override `.env` values — the loop at the top of `chatbot.py` merges them into `os.environ`.

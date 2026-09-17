@@ -90,36 +90,59 @@ python eval/run_eval.py --output eval/results/v2_hybrid.json
 
 ## Setup
 
-**Prerequisites:** Docker, Python 3.11+, OpenAI API key.
+**Prerequisites:** Python 3.11 and an OpenAI API key. No containers, no services.
+
+```powershell
+git clone https://github.com/ckaspi7/whoiscem.git
+cd whoiscem
+
+py -3.11 -m venv .venv
+.venv\Scripts\Activate.ps1          # macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+
+copy .env.example .env              # fill in OPENAI_API_KEY
+streamlit run chatbot.py            # http://localhost:8501
+```
+
+The resume index is built on first query and cached on disk; the cross-encoder
+downloads ~90 MB the first time it runs.
+
+Optionally, seed the personal-info database that backs the `personal` route
+(the file it reads from is git-ignored):
+
+```powershell
+copy data\seed_data.example.json data\seed_data.json   # fill in your data
+python scripts/setup_user_data_db.py
+```
+
+### Backend modes
+
+The vector store and session memory are selected by configuration, not wired in.
+The same code runs against a local directory, a container, or a managed service.
+
+| `QDRANT_MODE` | Backing store | Used for |
+|---|---|---|
+| `embedded` *(default)* | On-disk Qdrant at `QDRANT_PATH` | Local dev, CI, tests — no server |
+| `server` | Qdrant over HTTP (`QDRANT_HOST`/`QDRANT_PORT`) | docker-compose / Podman |
+| `cloud` | Qdrant Cloud (`QDRANT_URL` + `QDRANT_API_KEY`) | Deployed app |
+
+Session memory follows the same pattern: Redis when `REDIS_URL` is set, an
+in-process store otherwise. The active backend for both is shown in the sidebar.
+
+Embedded mode takes an exclusive lock on its storage directory, so one process
+at a time — stop the app before running the test suite against the same path.
+
+### Run with containers instead
 
 ```bash
-git clone https://github.com/ckaspi7/howtocem.git
-cd howtocem
-
-# 1. Configure secrets
-cp .env.example .env
-# → fill in OPENAI_API_KEY at minimum
-
-# 2. Seed personal data (file is git-ignored)
-cp data/seed_data.example.json data/seed_data.json
-# → fill in your data, then:
-python scripts/setup_user_data_db.py
-
-# 3. Start all services (Qdrant + Redis + Streamlit app)
-docker-compose up
-# App available at http://localhost:8501
+docker-compose up      # Qdrant + Redis + the app, with QDRANT_MODE=server
 ```
 
 ### Run tests
 
-```bash
-# Unit tests — no external services required
-pytest tests/unit/ -v
-
-# Integration tests — requires docker-compose up
-pytest tests/integration/ -v
-
-# Retrieval quality evaluation
+```powershell
+pytest tests/unit/ -v          # fully mocked, no services, no API calls
+pytest tests/integration/ -v   # embedded Qdrant; set QDRANT_MODE=server to use a container
 python eval/run_eval.py --output eval/results/v2_hybrid.json
 ```
 

@@ -71,6 +71,7 @@ jobs:
         run: python eval/run_eval.py --output eval/results/ci_run.json
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          QDRANT_MODE: server
           QDRANT_HOST: localhost
           QDRANT_PORT: 6333
 
