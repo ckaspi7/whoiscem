@@ -62,7 +62,7 @@ These three feed into `reciprocal_rank_fusion` (`retrieval/fusion.py`) → top-2
 
 ### Observability
 
-LangSmith tracing is active when `LANGCHAIN_TRACING_V2=true`. Per-node latencies are tracked in `GraphState.node_latencies` and shown in the Streamlit sidebar.
+Per-node latencies are tracked in `GraphState.node_latencies` and shown in the Streamlit sidebar. Distributed tracing is not wired yet: the project is standardising on Arize Phoenix via OpenTelemetry/OpenInference, and LangSmith has been removed rather than run two platforms at once.
 
 ## Environment variables
 
@@ -70,7 +70,7 @@ All of these are resolved in one place, `config.py` (`load_settings()`), which a
 loads `.env`. Real environment variables always win over `.env`.
 
 Required: `OPENAI_API_KEY`  
-Optional but recommended: `LANGCHAIN_API_KEY`, `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_PROJECT`  
+Observability: `PHOENIX_COLLECTOR_ENDPOINT` (unset = local collector on :6006), `PHOENIX_API_KEY`, `PHOENIX_PROJECT_NAME`  
 Vector store: `QDRANT_MODE` = `embedded` (default; on-disk at `QDRANT_PATH`, no server) | `server` (`QDRANT_HOST`/`QDRANT_PORT`) | `cloud` (`QDRANT_URL`/`QDRANT_API_KEY`)  
 Session memory: `REDIS_URL` — unset means an in-process fallback, not a disabled feature  
 Resume source: `RESUME_PATH` (defaults to `data/resume.pdf`)  

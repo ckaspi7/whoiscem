@@ -60,12 +60,19 @@ backend is live so the deployed behaviour is never a guess.
 
 ## Tracing
 
-**Status: not active.** `LANGCHAIN_TRACING_V2` is honoured, but no working
-LangSmith key is configured, so nothing is currently being traced. Rather than
-leave a claim standing on an unset variable, the README no longer lists tracing
-as a live capability. Instrumentation is being moved to OpenTelemetry via
-OpenInference so the backend is a configuration choice rather than a hard
-dependency, matching how the vector store and session memory already work.
+**Status: not wired yet.** The README no longer lists tracing as a live
+capability, because it is not one.
+
+The project is standardising on Arize Phoenix, instrumented through
+OpenInference over OpenTelemetry, so the trace backend is a configuration choice
+rather than a hard dependency — the same shape as the vector store and session
+memory. Phoenix runs locally with no account, so tracing will not become another
+thing a reviewer has to sign up for in order to run this.
+
+LangSmith was removed rather than kept as a second target. It was configured
+with a placeholder key and returned 403 on every request, which is worse than
+no tracing: it looks configured. One platform, built properly, beats two
+half-wired.
 
 ---
 

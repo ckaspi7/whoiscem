@@ -29,13 +29,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 load_dotenv()
 
-os.environ.setdefault("LANGCHAIN_PROJECT", "howtocem")
-
 _SECRET_KEYS = (
     "OPENAI_API_KEY",
-    "LANGCHAIN_API_KEY",
-    "LANGCHAIN_TRACING_V2",
-    "LANGCHAIN_PROJECT",
+    "PHOENIX_API_KEY",
+    "PHOENIX_COLLECTOR_ENDPOINT",
+    "PHOENIX_PROJECT_NAME",
     "REDIS_URL",
     "QDRANT_MODE",
     "QDRANT_PATH",

@@ -167,7 +167,7 @@ python scripts/refresh_cache.py
 - **Qdrant Cloud:** Replace the Docker instance with Qdrant Cloud for zero-cold-start Streamlit Cloud deploys
 - **Eval gate on PRs:** Fail the PR if RAGAS scores drop below threshold
 - **Multi-modal resume parsing:** Index embedded tables and charts from the PDF, not just raw text
-- **Feedback loop:** Thumbs up/down → logged to LangSmith → periodic fine-tune of the routing classifier
+- **Feedback loop:** Thumbs up/down → logged as trace annotations → periodic retuning of the routing classifier
 
 ---
 
