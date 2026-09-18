@@ -61,19 +61,25 @@ test harness that calls the tools directly. Every run is committed under
 [`eval/results/`](eval/results/) with the git sha and a hash of the indexed
 resume, because scores only compare across runs over the same corpus.
 
-| | Baseline |
-|---|---|
-| Routing accuracy | **91.5%** (54/59) |
-| Retrieval recall@k | **83.3%** (24 referenced questions) |
-| Retrieval MRR | **0.618** |
-| Correct refusals | **100%** (10 questions that should be declined) |
-| Answer relevancy | **0.834** ✓ (≥0.75) |
-| Faithfulness | 0.660 ✗ (≥0.80) |
-| Context recall | 0.674 ✗ (≥0.80) |
-| Context precision | 0.636 ✗ (≥0.70) |
+| | Baseline | Current | |
+|---|---|---|---|
+| Routing accuracy | 91.5% | **94.9%** | +3.4 |
+| — follow-up questions | 33% | **100%** | +67 |
+| Retrieval recall@k | 83.3% | **91.7%** | +8.4 |
+| Correct refusals | 100% | **100%** | — |
+| Answer relevancy | 0.834 | **0.859** ✓ | +0.025 |
+| Faithfulness | 0.660 | 0.681 ✗ | +0.021 |
+| Context recall | 0.674 | 0.714 ✗ | +0.041 |
+| Context precision | 0.636 | 0.602 ✗ | −0.034 |
 
-Three of four RAGAS metrics are below threshold, and they are published anyway.
-That is the starting point the next phases move.
+Every run is committed, so these are diffs between files in `eval/results/`
+rather than remembered numbers. Context precision is rank-sensitive and fell
+because the corpus went from 3 chunks to 16: the same text now sits at rank 3
+instead of rank 1 while the model reads all of it, so the comparator reports it
+and does not gate on it.
+
+Three of four RAGAS metrics are still below threshold, and they are published
+anyway.
 
 **Faithfulness is not one number.** Per route:
 

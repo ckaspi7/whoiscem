@@ -79,6 +79,24 @@ def compare(current_path: Path, baseline_path: Path) -> int:
     # 2,000 characters put the answer at rank 1 almost by default; sixteen
     # chunks of 500 put the same answer at rank 3 while the model reads exactly
     # the same text. Reported, but not gated, when the chunker changed.
+    # Only meaningful when the baseline recorded them. A baseline predating the
+    # field would otherwise report every source as changed, on every run, which
+    # is how a useful warning becomes one people scroll past.
+    baseline_sources = baseline.get("data_sha") or {}
+    changed_sources = [
+        name
+        for name, digest in (current.get("data_sha") or {}).items()
+        if name in baseline_sources and digest != baseline_sources[name]
+    ]
+    if changed_sources:
+        print(f"\nNOTE: these data sources changed since the baseline: {', '.join(changed_sources)}.")
+        print("      Movement on the routes they serve is explained by the data, not the code.")
+
+    before_cfg = baseline.get("retrieval_config") or {}
+    after_cfg = current.get("retrieval_config") or {}
+    if before_cfg and before_cfg != after_cfg:
+        print(f"\nNOTE: retrieval configuration changed: {before_cfg} -> {after_cfg}.")
+
     rechunked = current.get("chunker") != baseline.get("chunker")
     if rechunked:
         print(f"\nNOTE: chunker changed ({baseline.get('chunker')} -> {current.get('chunker')}).")

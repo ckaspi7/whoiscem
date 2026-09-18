@@ -68,6 +68,26 @@ def _corpus_fingerprint() -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()[:12]
 
 
+def _data_fingerprint() -> dict[str, str]:
+    """Hash every other source a route can answer from.
+
+    The resume is not the only input. Re-seeding the personal database or
+    refreshing a cache changes what the assistant can say, and therefore the
+    scores, with nothing in the record to explain the movement. Hashing them
+    turns "the numbers drifted" into "the personal database changed".
+    """
+    root = Path(__file__).parent.parent
+    sources = {
+        "personal_db": root / "data" / "user_data.db",
+        "linkedin_cache": root / "data" / "cache" / "linkedin_cache.json",
+        "spotify_cache": root / "data" / "cache" / "spotify_cache.json",
+    }
+    return {
+        name: (hashlib.sha256(path.read_bytes()).hexdigest()[:12] if path.exists() else "missing")
+        for name, path in sources.items()
+    }
+
+
 def run_question(graph, item: dict) -> dict:
     """Send one golden question through the real graph."""
     # Follow-up cases carry prior turns: retrieval runs on the last message, so
@@ -77,6 +97,7 @@ def run_question(graph, item: dict) -> dict:
         {
             "messages": messages,
             "next_step": "",
+            "search_query": "",
             "route": "",
             "tool_result": "",
             "context_used": "",
@@ -105,6 +126,7 @@ def run_question(graph, item: dict) -> dict:
         "route_correct": actual_route in acceptable,
         "answerable": item["answerable"],
         "reference_snippet": item.get("reference_snippet"),
+        "search_query": state.get("search_query", ""),
         "retrieval_rank": _snippet_rank(item.get("reference_snippet"), contexts),
         "latencies": state.get("node_latencies", {}),
     }
@@ -341,7 +363,12 @@ def evaluate(output_path: str | None = None, limit: int | None = None, use_ragas
         "run_at": datetime.now(UTC).isoformat(),
         "git_sha": _git_sha(),
         "corpus_sha": _corpus_fingerprint(),
+        "data_sha": _data_fingerprint(),
         "chunker": CHUNKER_VERSION,
+        "retrieval_config": {
+            "strategy": load_settings().retrieval_strategy,
+            "top_n": load_settings().retrieval_top_n,
+        },
         "num_questions": len(golden),
         "routing": routing,
         "retrieval": retrieval,
@@ -361,6 +388,7 @@ def evaluate(output_path: str | None = None, limit: int | None = None, use_ragas
                 "contexts": r["contexts"],
                 "expected_route": r["expected_route"],
                 "actual_route": r["actual_route"],
+                "search_query": r["search_query"],
                 "route_correct": r["route_correct"],
                 "retrieval_rank": r["retrieval_rank"],
                 "latencies": r["latencies"],

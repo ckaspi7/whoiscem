@@ -75,3 +75,32 @@ def test_every_gated_metric_is_present_in_the_committed_baseline(metric):
     for part in metric.split("."):
         assert part in node, f"{metric} missing from the committed baseline"
         node = node[part]
+
+
+def test_a_changed_data_source_is_reported(tmp_path, capsys):
+    """Re-seeding the personal database moves the numbers; say so."""
+    before = dict(BASE, data_sha={"personal_db": "aaa", "spotify_cache": "bbb"})
+    after = dict(BASE, data_sha={"personal_db": "zzz", "spotify_cache": "bbb"})
+    compare(_write(tmp_path, "a.json", after), _write(tmp_path, "b.json", before))
+
+    out = capsys.readouterr().out
+    assert "personal_db" in out
+    assert "spotify_cache" not in out.split("data sources changed")[1].split("\n")[0]
+
+
+def test_a_changed_retrieval_config_is_reported(tmp_path, capsys):
+    before = dict(BASE, retrieval_config={"strategy": "auto", "top_n": 5})
+    after = dict(BASE, retrieval_config={"strategy": "dense", "top_n": 5})
+    compare(_write(tmp_path, "a.json", after), _write(tmp_path, "b.json", before))
+    assert "retrieval configuration changed" in capsys.readouterr().out
+
+
+def test_a_baseline_without_provenance_reports_no_spurious_changes(tmp_path, capsys):
+    """A warning that fires on every run is one nobody reads."""
+    old_style = dict(BASE)  # no data_sha, no retrieval_config
+    new_style = dict(BASE, data_sha={"personal_db": "aaa"}, retrieval_config={"strategy": "auto"})
+    compare(_write(tmp_path, "a.json", new_style), _write(tmp_path, "b.json", old_style))
+
+    out = capsys.readouterr().out
+    assert "data sources changed" not in out
+    assert "retrieval configuration changed" not in out

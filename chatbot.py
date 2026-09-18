@@ -13,6 +13,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph
 from openai import OpenAI
 
+import query_rewrite
 from config import load_settings
 from guardrails.faithfulness_check import check_faithfulness
 from memory.session_memory import SessionMemory
@@ -78,6 +79,9 @@ GPT_4O_MINI_OUTPUT_COST_PER_1K = 0.000600  # $ per 1k output tokens
 class GraphState(TypedDict):
     messages: list[dict[str, str]]
     next_step: str
+    # The last message rewritten to stand alone, which is what routing and
+    # retrieval both act on. Identical to the last message on a first turn.
+    search_query: str
     # The routing decision, kept apart from next_step, which is control flow and
     # is overwritten by each node. Without it the chosen route is unrecoverable
     # after a run — and routing accuracy is measured on exactly that.
@@ -126,9 +130,20 @@ Key facts about Cem:
         result["node_latencies"] = latencies
         return result
 
+    def condense_query(state: GraphState) -> GraphState:
+        def _run(state):
+            messages = state["messages"]
+            query = messages[-1]["content"]
+            # Only pays for a model call when there is history to resolve
+            # against, so a first turn costs nothing.
+            rewritten = query_rewrite.condense_query(query, messages[:-1], llm_fast)
+            return {**state, "search_query": rewritten}
+
+        return timed("condense_query", _run, state)
+
     def route_query(state: GraphState) -> GraphState:
         def _run(state):
-            query = state["messages"][-1]["content"]
+            query = state.get("search_query") or state["messages"][-1]["content"]
             qtype = classify_query(query, llm_fast)
             return {**state, "next_step": qtype, "route": qtype}
 
@@ -137,7 +152,7 @@ Key facts about Cem:
     def handle_resume(state: GraphState) -> GraphState:
         def _run(state):
             try:
-                chunks = search_resume(state["messages"][-1]["content"])
+                chunks = search_resume(state.get("search_query") or state["messages"][-1]["content"])
                 texts = [c.text for c in chunks]
                 result = format_chunks(chunks)
             except Exception as e:
@@ -225,6 +240,7 @@ Key facts about Cem:
         return timed("generate_response", _run, state)
 
     workflow = StateGraph(GraphState)
+    workflow.add_node("condense_query", condense_query)
     workflow.add_node("route_query", route_query)
     workflow.add_node("handle_resume", handle_resume)
     workflow.add_node("handle_personal", handle_personal)
@@ -253,7 +269,8 @@ Key facts about Cem:
     ):
         workflow.add_edge(node, "generate_response")
 
-    workflow.set_entry_point("route_query")
+    workflow.add_edge("condense_query", "route_query")
+    workflow.set_entry_point("condense_query")
     return workflow.compile()
 
 
@@ -392,6 +409,7 @@ def main() -> None:
                 state: GraphState = {
                     "messages": list(st.session_state.messages),
                     "next_step": "",
+                    "search_query": "",
                     "route": "",
                     "tool_result": "",
                     "context_used": "",
