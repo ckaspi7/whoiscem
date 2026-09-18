@@ -126,17 +126,44 @@ jobs:
           path: ~/.cache/huggingface
           key: hf-${{ hashFiles('requirements.txt') }}
 
+      - name: Check for an API key
+        id: key
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -n "$OPENAI_API_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            # Loud rather than silent. A gate that quietly stops running is
+            # worse than no gate: the build stays green and nothing is checked.
+            echo "::warning title=Evaluation gate did not run::OPENAI_API_KEY is not set on this repository, so routing and retrieval were not evaluated. Add the secret in Settings > Secrets and variables > Actions."
+            echo "### Evaluation gate skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`OPENAI_API_KEY\` is not configured, so no routing or retrieval check ran on this commit." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Run routing and retrieval evaluation
+        if: steps.key.outputs.present == 'true'
         run: python eval/run_eval.py --no-ragas --output eval/results/pr-run.json
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           QDRANT_MODE: embedded
 
       - name: Compare against the committed baseline
-        run: python eval/compare.py --current eval/results/pr-run.json
+        if: steps.key.outputs.present == 'true'
+        run: |
+          python eval/compare.py --current eval/results/pr-run.json | tee "$GITHUB_STEP_SUMMARY.tmp"
+          {
+            echo "### Evaluation gate"
+            echo ""
+            echo '```'
+            cat "$GITHUB_STEP_SUMMARY.tmp"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload run
-        if: always()
+        if: always() && steps.key.outputs.present == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: eval-gate-run
@@ -163,7 +190,20 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Check for an API key
+        id: key
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -n "$OPENAI_API_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Scheduled evaluation did not run::OPENAI_API_KEY is not set on this repository."
+          fi
+
       - name: Run full evaluation
+        if: steps.key.outputs.present == 'true'
         run: python eval/run_eval.py --output eval/results/scheduled-run.json
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -172,10 +212,11 @@ jobs:
           QDRANT_PORT: 6333
 
       - name: Compare against the committed baseline
+        if: steps.key.outputs.present == 'true'
         run: python eval/compare.py --current eval/results/scheduled-run.json
 
       - name: Upload eval results
-        if: always()
+        if: always() && steps.key.outputs.present == 'true' 
         uses: actions/upload-artifact@v4
         with:
           name: eval-results

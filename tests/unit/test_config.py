@@ -207,3 +207,27 @@ def test_tracing_failure_never_breaks_the_app():
         assert observability.setup_tracing(Settings()) is False
     assert "disabled" in observability.tracing_status()
     observability._configured = False
+
+
+def test_tracing_stays_quiet_when_no_local_collector_is_running():
+    """Otherwise every clone without Phoenix gets a wall of exporter retries."""
+    import observability
+
+    observability._configured = False
+    with patch("observability._reachable", return_value=False):
+        assert observability.setup_tracing(Settings()) is False
+    assert "no collector" in observability.tracing_status()
+    observability._configured = False
+
+
+def test_a_remote_collector_is_not_probed():
+    """Configuring a cloud endpoint is a statement of intent; do not second-guess it."""
+    import observability
+
+    observability._configured = False
+    cfg = Settings(phoenix_endpoint="https://app.phoenix.arize.com/s/space", phoenix_api_key="k")
+    with patch("observability._reachable") as probe, patch("phoenix.otel.register") as register:
+        register.side_effect = RuntimeError("stop here")
+        observability.setup_tracing(cfg)
+    probe.assert_not_called()
+    observability._configured = False

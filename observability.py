@@ -14,6 +14,8 @@ packages are missing, this degrades to a no-op and says so once.
 from __future__ import annotations
 
 import logging
+import socket
+from urllib.parse import urlparse
 
 from config import Settings, load_settings
 
@@ -26,6 +28,21 @@ _status = "not configured"
 def tracing_status() -> str:
     """Human-readable state, surfaced in the UI so it is never assumed."""
     return _status
+
+
+def _is_local(endpoint: str) -> bool:
+    host = urlparse(endpoint).hostname or ""
+    return host in ("localhost", "127.0.0.1", "::1", "0.0.0.0")
+
+
+def _reachable(endpoint: str, timeout: float = 0.4) -> bool:
+    parsed = urlparse(endpoint)
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    try:
+        with socket.create_connection((parsed.hostname, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
 
 
 def setup_tracing(settings: Settings | None = None) -> bool:
@@ -44,6 +61,15 @@ def setup_tracing(settings: Settings | None = None) -> bool:
     cfg = settings or load_settings()
     endpoint = cfg.phoenix_endpoint
     project = cfg.phoenix_project
+
+    # A local collector that is not running produces an endless retry log from
+    # the exporter, which is what anyone cloning this repo sees by default.
+    # Check the socket first and stay quiet if nothing is listening. Remote
+    # endpoints are not probed: configuring one is a statement of intent.
+    if _is_local(endpoint) and not _reachable(endpoint):
+        _configured, _status = True, f"disabled (no collector at {endpoint})"
+        logger.info("Tracing disabled: nothing listening at %s", endpoint)
+        return False
 
     try:
         from openinference.instrumentation.langchain import LangChainInstrumentor
