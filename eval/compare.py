@@ -31,6 +31,10 @@ TOLERANCE = {
 }
 
 
+# Metrics whose value depends on chunk granularity, not on answer quality.
+RANK_SENSITIVE = {"retrieval.mrr", "scores.context_precision"}
+
+
 def _dig(payload: dict, dotted: str):
     node = payload
     for part in dotted.split("."):
@@ -47,9 +51,14 @@ def latest_baseline(exclude: Path | None = None) -> Path | None:
         if exclude and path.resolve() == exclude.resolve():
             continue
         try:
-            candidates.append((json.loads(path.read_text(encoding="utf-8"))["run_at"], path))
-        except (OSError, ValueError, KeyError):
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
             continue
+        # Only full evaluation runs are baselines. eval/results also holds
+        # ablation studies, which measure one component and have no routing.
+        if "routing" not in payload or "run_at" not in payload:
+            continue
+        candidates.append((payload["run_at"], path))
     if not candidates:
         return None
     return max(candidates)[1]
@@ -66,6 +75,15 @@ def compare(current_path: Path, baseline_path: Path) -> int:
         print("\nNOTE: the indexed corpus differs between these runs. Retrieval numbers")
         print("      are not strictly comparable; treat movement as uninterpreted.")
 
+    # Rank-position metrics depend on how the corpus was cut. Three chunks of
+    # 2,000 characters put the answer at rank 1 almost by default; sixteen
+    # chunks of 500 put the same answer at rank 3 while the model reads exactly
+    # the same text. Reported, but not gated, when the chunker changed.
+    rechunked = current.get("chunker") != baseline.get("chunker")
+    if rechunked:
+        print(f"\nNOTE: chunker changed ({baseline.get('chunker')} -> {current.get('chunker')}).")
+        print("      Rank-sensitive metrics are reported but not gated.")
+
     regressions = []
     print(f"\n{'metric':<32} {'baseline':>9} {'current':>9} {'delta':>9}")
     for metric, tolerance in TOLERANCE.items():
@@ -74,7 +92,9 @@ def compare(current_path: Path, baseline_path: Path) -> int:
             continue
         delta = after - before
         flag = ""
-        if delta < -tolerance:
+        if delta < -tolerance and rechunked and metric in RANK_SENSITIVE:
+            flag = "  down (not gated: rechunked)"
+        elif delta < -tolerance:
             flag = "  REGRESSION"
             regressions.append((metric, before, after))
         elif delta > tolerance:

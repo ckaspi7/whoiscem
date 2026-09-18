@@ -9,3 +9,11 @@ class ScoredChunk:
     text: str
     score: float
     section: str = ""
+
+
+@dataclass
+class TextChunk:
+    """A piece of the source document, before it is embedded or scored."""
+
+    text: str
+    section: str = ""

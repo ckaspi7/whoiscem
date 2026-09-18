@@ -90,11 +90,18 @@ def test_dense_search_returns_results(indexed_collection):
     assert len(results) > 0
 
 
+def _as_chunks(texts):
+    """BM25 indexes the vector store's chunks, identifiers included."""
+    from retrieval.types import ScoredChunk
+
+    return [ScoredChunk(chunk_id=str(i), text=t, score=0.0) for i, t in enumerate(texts)]
+
+
 def test_bm25_finds_telus_chunk(sample_chunks):
     from retrieval.bm25 import BM25Index
 
     index = BM25Index()
-    index.build(sample_chunks)
+    index.build(_as_chunks(sample_chunks))
     results = index.search("TELUS engineer Vancouver", top_k=3)
 
     assert len(results) > 0
@@ -105,7 +112,7 @@ def test_bm25_outperforms_dense_on_keyword_query(sample_chunks):
     from retrieval.bm25 import BM25Index
 
     index = BM25Index()
-    index.build(sample_chunks)
+    index.build(_as_chunks(sample_chunks))
 
     results = index.search("NeoWise startup co-founder", top_k=5)
     top_texts = [r.text for r in results]

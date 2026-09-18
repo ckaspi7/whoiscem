@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import pdfplumber
@@ -10,10 +11,23 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from config import Settings, load_settings
 from retrieval.backends import create_qdrant_client
-from retrieval.types import ScoredChunk
+from retrieval.chunking import chunk_markdown
+from retrieval.types import ScoredChunk, TextChunk
 
 COLLECTION_NAME = "resume_chunks"
 VECTOR_SIZE = 1536  # text-embedding-ada-002 / text-embedding-3-small
+
+# Bumped when the chunking strategy changes, so an index built by an older
+# version is rebuilt rather than silently reused. A stale index is the quietest
+# failure in a RAG system: everything works, the answers are just from the
+# previous corpus.
+CHUNKER_VERSION = "md-sections-v1"
+
+
+def fingerprint(path: str) -> str:
+    """Identifies the indexed inputs: the source bytes plus the chunker used."""
+    digest = hashlib.sha256(Path(path).read_bytes()).hexdigest()[:16]
+    return f"{CHUNKER_VERSION}:{digest}"
 
 
 class QdrantVectorStore:
@@ -43,10 +57,26 @@ class QdrantVectorStore:
         return self._client.collection_exists(self._collection)
 
     def build_from_file(self, path: str) -> None:
-        """Index the resume. Accepts Markdown or PDF."""
+        """Index the resume, replacing whatever is there. Markdown or PDF."""
         text = self._extract_text(path)
-        chunks = self._semantic_chunk(text)
-        self._upsert(chunks)
+        chunks = self._chunk(path, text)
+        self._upsert(chunks, fingerprint(path))
+
+    def needs_rebuild(self, path: str) -> bool:
+        """True when there is no index, or it was built from different inputs."""
+        if not self.collection_exists():
+            return True
+        return self.index_fingerprint() != fingerprint(path)
+
+    def index_fingerprint(self) -> str | None:
+        """The fingerprint recorded on the indexed points, if any."""
+        try:
+            records, _ = self._client.scroll(collection_name=self._collection, limit=1, with_payload=True)
+        except Exception:
+            return None
+        if not records:
+            return None
+        return records[0].payload.get("fingerprint")
 
     def dense_search(self, query: str, top_k: int = 20) -> list[ScoredChunk]:
         query_vec = self._embeddings.embed_query(query)
@@ -67,20 +97,33 @@ class QdrantVectorStore:
         ]
 
     def get_all_chunks(self) -> list[ScoredChunk]:
-        records, _ = self._client.scroll(
-            collection_name=self._collection,
-            limit=500,
-            with_payload=True,
-        )
-        return [
-            ScoredChunk(
-                chunk_id=str(r.id),
-                text=r.payload.get("text", ""),
-                score=0.0,
-                section=r.payload.get("section", ""),
+        """Every chunk in the collection.
+
+        Paginated. The previous hard cap of 500 with no paging meant that past
+        500 chunks the sparse index silently held a subset of what the dense
+        index held, and fusion joined two different corpora.
+        """
+        chunks: list[ScoredChunk] = []
+        offset = None
+        while True:
+            records, offset = self._client.scroll(
+                collection_name=self._collection,
+                limit=256,
+                offset=offset,
+                with_payload=True,
             )
-            for r in records
-        ]
+            chunks.extend(
+                ScoredChunk(
+                    chunk_id=str(r.id),
+                    text=r.payload.get("text", ""),
+                    score=0.0,
+                    section=r.payload.get("section", ""),
+                )
+                for r in records
+            )
+            if offset is None:
+                break
+        return chunks
 
     def close(self) -> None:
         """Release the client. Embedded mode holds an exclusive lock on its directory."""
@@ -98,26 +141,41 @@ class QdrantVectorStore:
         with pdfplumber.open(path) as pdf:
             return "".join(page.extract_text() or "" for page in pdf.pages)
 
-    def _semantic_chunk(self, text: str) -> list[str]:
+    def _chunk(self, path: str, text: str) -> list[TextChunk]:
+        """Structural chunking for Markdown; semantic chunking for PDFs.
+
+        A PDF has no headings left after extraction, so there is nothing
+        structural to use and the embedding-distance splitter is the fallback.
+        """
+        if path.lower().endswith((".md", ".markdown")):
+            return chunk_markdown(text)
         splitter = SemanticChunker(
             OpenAIEmbeddings(model="text-embedding-3-small"),
             breakpoint_threshold_type="percentile",
         )
-        return splitter.split_text(text)
+        return [TextChunk(text=piece) for piece in splitter.split_text(text)]
 
-    def _upsert(self, chunks: list[str]) -> None:
-        if not self._client.collection_exists(self._collection):
-            self._client.create_collection(
-                collection_name=self._collection,
-                vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
-            )
+    def _upsert(self, chunks: list[TextChunk], corpus_fingerprint: str) -> None:
+        # Recreated rather than upserted: a new chunking can produce fewer
+        # chunks, and the leftovers would stay searchable forever.
+        if self._client.collection_exists(self._collection):
+            self._client.delete_collection(self._collection)
+        self._client.create_collection(
+            collection_name=self._collection,
+            vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
+        )
 
-        vectors = self._embeddings.embed_documents(chunks)
+        vectors = self._embeddings.embed_documents([c.text for c in chunks])
         points = [
             PointStruct(
                 id=i,
                 vector=vec,
-                payload={"text": chunk, "chunk_index": i, "section": ""},
+                payload={
+                    "text": chunk.text,
+                    "chunk_index": i,
+                    "section": chunk.section,
+                    "fingerprint": corpus_fingerprint,
+                },
             )
             for i, (chunk, vec) in enumerate(zip(chunks, vectors, strict=True))
         ]

@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import load_settings  # noqa: E402  (after sys.path setup)
 from observability import setup_tracing  # noqa: E402
+from retrieval.vectorstore import CHUNKER_VERSION  # noqa: E402
 
 THRESHOLDS = {
     "faithfulness": 0.80,
@@ -340,6 +341,7 @@ def evaluate(output_path: str | None = None, limit: int | None = None, use_ragas
         "run_at": datetime.now(UTC).isoformat(),
         "git_sha": _git_sha(),
         "corpus_sha": _corpus_fingerprint(),
+        "chunker": CHUNKER_VERSION,
         "num_questions": len(golden),
         "routing": routing,
         "retrieval": retrieval,

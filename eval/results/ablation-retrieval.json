@@ -1,0 +1,84 @@
+{
+  "run_at": "2026-09-18T19:08:33.284279+00:00",
+  "questions": 24,
+  "note": "Retrieval only; routing excluded so a variant is not penalised for a question the router misdirected.",
+  "variants": [
+    {
+      "variant": "dense_only@3",
+      "recall_at_k": 0.7917,
+      "mrr": 0.5694,
+      "mean_context_chars": 1202,
+      "mean_latency_ms": 285.9
+    },
+    {
+      "variant": "dense_only@5",
+      "recall_at_k": 1.0,
+      "mrr": 0.6194,
+      "mean_context_chars": 2212,
+      "mean_latency_ms": 214.6
+    },
+    {
+      "variant": "sparse_only@3",
+      "recall_at_k": 0.5833,
+      "mrr": 0.3056,
+      "mean_context_chars": 1003,
+      "mean_latency_ms": 0.2
+    },
+    {
+      "variant": "sparse_only@5",
+      "recall_at_k": 0.6667,
+      "mrr": 0.3243,
+      "mean_context_chars": 1924,
+      "mean_latency_ms": 0.1
+    },
+    {
+      "variant": "rrf@3",
+      "recall_at_k": 0.75,
+      "mrr": 0.4653,
+      "mean_context_chars": 1136,
+      "mean_latency_ms": 200.0
+    },
+    {
+      "variant": "rrf@5",
+      "recall_at_k": 0.8333,
+      "mrr": 0.484,
+      "mean_context_chars": 2291,
+      "mean_latency_ms": 237.0
+    },
+    {
+      "variant": "rrf@8",
+      "recall_at_k": 0.9583,
+      "mrr": 0.5011,
+      "mean_context_chars": 3961,
+      "mean_latency_ms": 189.1
+    },
+    {
+      "variant": "rrf_rerank@3",
+      "recall_at_k": 0.75,
+      "mrr": 0.5,
+      "mean_context_chars": 1324,
+      "mean_latency_ms": 931.1
+    },
+    {
+      "variant": "rrf_rerank@5",
+      "recall_at_k": 0.9167,
+      "mrr": 0.5396,
+      "mean_context_chars": 2395,
+      "mean_latency_ms": 939.5
+    },
+    {
+      "variant": "rrf_rerank@8",
+      "recall_at_k": 0.9583,
+      "mrr": 0.5465,
+      "mean_context_chars": 3933,
+      "mean_latency_ms": 1054.2
+    },
+    {
+      "variant": "everything",
+      "recall_at_k": 1.0,
+      "mrr": 0.5503,
+      "mean_context_chars": 7580,
+      "mean_latency_ms": 1215.9
+    }
+  ]
+}

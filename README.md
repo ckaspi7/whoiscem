@@ -93,17 +93,47 @@ artist" from list position is not entailment. And the `conversation` route has
 no retrieved context at all, so nothing on it can be grounded — which is also
 why a misroute onto it is the worst failure the system has.
 
+### Retrieval ablation
+
+Which parts of the pipeline earn their place, measured against the golden
+references with routing excluded ([`eval/ablate_retrieval.py`](eval/ablate_retrieval.py)):
+
+| variant | recall@k | MRR | context chars | ms/query |
+|---|---|---|---|---|
+| **dense only, k=5** | **100.0%** | **0.619** | 2,212 | 215 |
+| dense only, k=3 | 79.2% | 0.569 | 1,202 | 286 |
+| sparse only (BM25), k=5 | 66.7% | 0.324 | 1,924 | 0.1 |
+| RRF fusion, k=5 | 83.3% | 0.484 | 2,291 | 237 |
+| RRF + cross-encoder, k=5 | 91.7% | 0.540 | 2,395 | 940 |
+| RRF + cross-encoder, k=8 | 95.8% | 0.547 | 3,933 | 1,054 |
+| whole document | 100.0% | 0.550 | 7,580 | 1,216 |
+
+**The hybrid pipeline this project is built around loses to plain vector
+search on this corpus** — worse recall, worse MRR, and 4.4× the latency. BM25
+contributes little because a one-page resume has too few documents for term
+frequency to separate anything, and the cross-encoder spends 700 ms per query
+demoting chunks that dense search had already ranked first.
+
+Both are kept and selectable by `RETRIEVAL_STRATEGY`, because that ranking is a
+property of a 7 KB corpus rather than a law. The finding is the point: the
+apparatus was assembled before anything measured whether it helped.
+
+**And on this corpus, retrieving at all is a net loss.** Grounding improves
+monotonically with the amount of context returned, because a model answers from
+more than the single snippet a question references. The default strategy is
+therefore `auto`: pass the whole corpus while it fits in a prompt, and start
+selecting when it does not.
+
 ### Known-broken, on purpose
 
 Measured first so the fix can be reported as a delta rather than asserted:
 
-- **Chunking is degenerate.** The resume splits into three chunks, and top-3
-  reranking therefore returns the entire document on every query. RRF has
-  nothing to fuse and the cross-encoder nothing to discriminate.
 - **Follow-up questions route at 33%.** Retrieval runs on the bare last
   message, so "and before that?" retrieves on three words.
 - **Multi-intent questions are structurally unanswerable** — one label, one
   tool, one branch.
+- **The corpus is too small for retrieval to mean anything.** See the ablation
+  above: the honest fix is more documents, not more retrieval machinery.
 
 ```bash
 python eval/run_eval.py --output eval/results/$(git rev-parse --short HEAD).json
