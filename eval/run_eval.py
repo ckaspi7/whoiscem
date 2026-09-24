@@ -23,6 +23,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from langchain_core.messages import AIMessage, HumanMessage
+
 # Ensure project root is on sys.path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -88,11 +90,19 @@ def _data_fingerprint() -> dict[str, str]:
     }
 
 
+def _as_message(turn: dict) -> HumanMessage | AIMessage:
+    """The golden set's history is plain JSON — {"role": "human"/"ai", ...} —
+    since BaseMessage objects cannot live in a JSON file. Convert on the way in."""
+    cls = HumanMessage if turn["role"] == "human" else AIMessage
+    return cls(content=turn["content"])
+
+
 def run_question(graph, item: dict) -> dict:
     """Send one golden question through the real graph."""
     # Follow-up cases carry prior turns: retrieval runs on the last message, so
     # "and before that?" is the whole query unless something condenses history.
-    messages = list(item.get("history", [])) + [{"role": "human", "content": item["question"]}]
+    messages = [_as_message(turn) for turn in item.get("history", [])]
+    messages.append(HumanMessage(content=item["question"]))
     state = graph.invoke(
         {
             "messages": messages,
@@ -107,8 +117,9 @@ def run_question(graph, item: dict) -> dict:
         }
     )
 
-    raw = state["messages"][-1]["content"]
-    answer = raw if isinstance(raw, str) else "".join(c.content for c in raw)
+    # generate_response now calls the model with .invoke(), not .stream(), so
+    # the final message is already a plain string — no generator to drain.
+    answer = state["messages"][-1].content
 
     expected_route = item["expected_route"]
     acceptable = item.get("acceptable_routes") or [expected_route]

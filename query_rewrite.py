@@ -43,17 +43,18 @@ Conversation so far:
 )
 
 
-def _format_history(messages: list[dict]) -> str:
+def _format_history(messages: list) -> str:
+    """Render recent turns for the prompt. Takes LangChain BaseMessage objects."""
     speaker = {"human": "User", "ai": "Assistant"}
     lines = []
     for message in messages[-MAX_HISTORY_TURNS:]:
-        content = message.get("content")
+        content = getattr(message, "content", None)
         if isinstance(content, str) and content.strip():
-            lines.append(f"{speaker.get(message.get('role'), 'User')}: {content}")
+            lines.append(f"{speaker.get(getattr(message, 'type', None), 'User')}: {content}")
     return "\n".join(lines)
 
 
-def condense_query(query: str, history: list[dict], llm) -> str:
+def condense_query(query: str, history: list, llm) -> str:
     """Rewrite `query` to stand alone. Returns it unchanged when it already does.
 
     Never raises: a condensation failure must degrade to the original question

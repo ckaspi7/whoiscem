@@ -191,3 +191,25 @@ context. Any answer drawn from them scores as unsupported.
 The cross-encoder (`cross-encoder/ms-marco-MiniLM-L-6-v2`) downloads ~90 MB on first run
 and runs fully locally with no API cost. Subsequent runs use the cached model.
 Cold-start on a fresh container adds ~15 seconds to first query latency.
+
+---
+
+## Evaluation Is Rate-Limited, Not Just Slow
+
+Measured, not assumed: OpenAI's Tier 1 caps `gpt-4o-mini` at 10,000 requests per day,
+shared across every caller on the account — local development, CI's `eval-gate`, and the
+deployed app all draw from one pool. Reaching Tier 2 needs $50 of lifetime spend and a
+7-day-old account; deliberately spending toward that would contradict this project's own
+free-tier constraint, so the actual fix is pacing, not upgrading.
+
+A single question through the graph costs roughly 2 requests (route + generate). A full
+RAGAS pass costs far more than "49 questions × 4 metrics" suggests: `faithfulness` alone
+decomposes each answer into claims and verifies each one as a separate call, so one full
+evaluation run is plausibly 500-1,000+ requests. Running several of those back to back —
+which happened once, during active Phase 3 development — exhausted the daily cap outright;
+`eval/compare.py`'s gate then failed on a run that had produced no output at all, and a
+local run showed climbing per-question latency before hitting a wall.
+
+`python eval/run_eval.py --no-ragas` (routing and retrieval only, ~120 requests) is the
+correct tool for iterative verification. Full RAGAS runs are for confirming a baseline
+immediately before a commit, not for every intermediate check.

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+from langchain_core.messages import AIMessage, HumanMessage
+
 from query_rewrite import MAX_HISTORY_TURNS, condense_query
 
 
@@ -22,15 +25,15 @@ def test_a_first_turn_is_returned_unchanged_without_calling_the_model():
 
 def test_a_follow_up_is_rewritten_using_the_history():
     history = [
-        {"role": "human", "content": "What startup did Cem co-found?"},
-        {"role": "ai", "content": "NeoWise, a wearable thermal-device startup."},
+        HumanMessage(content="What startup did Cem co-found?"),
+        AIMessage(content="NeoWise, a wearable thermal-device startup."),
     ]
     llm = _llm("How long was Cem at NeoWise?")
     assert condense_query("How long was that?", history, llm) == "How long was Cem at NeoWise?"
 
 
 def test_surrounding_quotes_are_stripped():
-    history = [{"role": "human", "content": "Which university?"}]
+    history = [HumanMessage(content="Which university?")]
     assert condense_query("And there?", history, _llm('"What did Cem study at UBC?"')) == (
         "What did Cem study at UBC?"
     )
@@ -40,24 +43,24 @@ def test_a_model_failure_falls_back_to_the_original():
     """A rewrite failure must not take the turn down with it."""
     llm = MagicMock()
     llm.invoke.side_effect = RuntimeError("upstream down")
-    history = [{"role": "human", "content": "Where does Cem work?"}]
+    history = [HumanMessage(content="Where does Cem work?")]
     assert condense_query("And before that?", history, llm) == "And before that?"
 
 
 def test_an_empty_rewrite_falls_back_to_the_original():
-    history = [{"role": "human", "content": "Where does Cem work?"}]
+    history = [HumanMessage(content="Where does Cem work?")]
     assert condense_query("And before that?", history, _llm("   ")) == "And before that?"
 
 
 def test_an_answer_shaped_rewrite_is_rejected():
     """A model that answers instead of rewriting would poison routing and retrieval."""
-    history = [{"role": "human", "content": "Where does Cem work?"}]
+    history = [HumanMessage(content="Where does Cem work?")]
     essay = "Cem works at TELUS Communications in Vancouver, where he " + ("builds systems. " * 40)
     assert condense_query("And before that?", history, _llm(essay)) == "And before that?"
 
 
 def test_only_recent_turns_are_sent():
-    history = [{"role": "human", "content": f"question {i}"} for i in range(40)]
+    history = [HumanMessage(content=f"question {i}") for i in range(40)]
     llm = _llm("standalone question")
     condense_query("and then?", history, llm)
 
@@ -69,9 +72,20 @@ def test_only_recent_turns_are_sent():
     assert sent.count("User: question ") <= MAX_HISTORY_TURNS
 
 
-def test_history_without_usable_text_is_treated_as_no_history():
-    """A streaming generator sits in message content mid-turn; it is not history."""
+def test_a_message_with_no_text_content_is_treated_as_no_history():
+    """Multimodal LangChain messages can carry list content instead of a string;
+    it should be skipped rather than crash the prompt formatter."""
     llm = _llm("unused")
-    history = [{"role": "ai", "content": object()}]
+    history = [AIMessage(content=[{"type": "text", "text": "part"}])]
     assert condense_query("Where does Cem work?", history, llm) == "Where does Cem work?"
     llm.invoke.assert_not_called()
+
+
+def test_a_raw_generator_can_no_longer_reach_history_at_all():
+    """This used to be a defensive test: a live streaming generator briefly sat
+    in message content mid-turn, and _format_history had to skip it rather than
+    crash. GraphState no longer allows that state to exist — BaseMessage
+    rejects non-string, non-list content at construction — so the bug this
+    guarded against is now impossible by construction, not just handled."""
+    with pytest.raises(Exception, match="valid string"):
+        AIMessage(content=object())  # type: ignore[arg-type]

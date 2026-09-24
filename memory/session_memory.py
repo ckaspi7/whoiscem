@@ -57,12 +57,15 @@ class SessionMemory:
         except Exception as exc:
             logger.warning("Failed to save session memory: %s", exc)
 
-    def build_summary(self, messages: list[dict], openai_client) -> str:
-        """Summarise the conversation to 3 sentences for future context injection."""
+    def build_summary(self, messages: list, openai_client) -> str:
+        """Summarise the conversation to 3 sentences for future context injection.
+
+        Takes LangChain ``BaseMessage`` objects (``.type`` is ``"human"``/``"ai"``).
+        """
         if not messages:
             return ""
         transcript = "\n".join(
-            f"{m['role'].capitalize()}: {m['content']}" for m in messages if isinstance(m["content"], str)
+            f"{m.type.capitalize()}: {m.content}" for m in messages if isinstance(m.content, str)
         )
         try:
             response = openai_client.chat.completions.create(

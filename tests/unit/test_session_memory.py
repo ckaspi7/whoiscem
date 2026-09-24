@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from langchain_core.messages import AIMessage, HumanMessage
 
 from memory.session_memory import _SESSION_TTL, SessionMemory
 
@@ -72,8 +73,8 @@ def test_build_summary_calls_gpt4o_mini():
     )
 
     messages = [
-        {"role": "human", "content": "Hi"},
-        {"role": "ai", "content": "Hello!"},
+        HumanMessage(content="Hi"),
+        AIMessage(content="Hello!"),
     ]
     result = mem.build_summary(messages, openai_client)
 

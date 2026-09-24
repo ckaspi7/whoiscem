@@ -4,13 +4,14 @@ import logging
 import os
 import time
 import uuid
-from typing import Any, TypedDict
+from typing import Annotated, Any, TypedDict
 
 import streamlit as st
 from dotenv import load_dotenv
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph
+from langgraph.graph.message import add_messages
 from openai import OpenAI
 
 import query_rewrite
@@ -78,7 +79,17 @@ GPT_4O_MINI_OUTPUT_COST_PER_1K = 0.000600  # $ per 1k output tokens
 # Graph state
 # ---------------------------------------------------------------------------
 class GraphState(TypedDict):
-    messages: list[dict[str, str]]
+    # add_messages appends new messages to existing ones (matching by id rather
+    # than duplicating), which is what makes a checkpointer's incremental
+    # updates and LangGraph's prebuilt ToolNode both work. Every message is a
+    # real BaseMessage now: generate_response used to put a live streaming
+    # generator directly into a message's content, which made state
+    # unserializable (no checkpointing possible), made this node's own
+    # measured latency read as ~0s (the real work happened later, wherever the
+    # caller drained the generator), and needed isinstance(..., str) guards
+    # scattered across three modules. A BaseMessage's content is validated at
+    # construction — a generator cannot land here even by accident.
+    messages: Annotated[list[BaseMessage], add_messages]
     next_step: str
     # The last message rewritten to stand alone, which is what routing and
     # retrieval both act on. Identical to the last message on a first turn.
@@ -138,7 +149,7 @@ Key facts about Cem:
     def condense_query(state: GraphState) -> GraphState:
         def _run(state):
             messages = state["messages"]
-            query = messages[-1]["content"]
+            query = messages[-1].content
             # Only pays for a model call when there is history to resolve
             # against, so a first turn costs nothing.
             rewritten = query_rewrite.condense_query(query, messages[:-1], llm_fast)
@@ -148,7 +159,7 @@ Key facts about Cem:
 
     def route_query(state: GraphState) -> GraphState:
         def _run(state):
-            query = state.get("search_query") or state["messages"][-1]["content"]
+            query = state.get("search_query") or state["messages"][-1].content
             qtype = classify_query(query, llm_fast)
             return {**state, "next_step": qtype, "route": qtype}
 
@@ -156,7 +167,7 @@ Key facts about Cem:
 
     def handle_resume(state: GraphState) -> GraphState:
         def _run(state):
-            query = state.get("search_query") or state["messages"][-1]["content"]
+            query = state.get("search_query") or state["messages"][-1].content
             try:
                 chunks = search_resume(query)
                 result = ToolResult.success(format_chunks(chunks))
@@ -238,15 +249,21 @@ Key facts about Cem:
             lc_messages = [SystemMessage(content=system_prompt)]
             if tool_result:
                 lc_messages.append(SystemMessage(content=f"Relevant information:\n{tool_result}"))
-            for msg in messages:
-                if msg["role"] == "human":
-                    lc_messages.append(HumanMessage(content=msg["content"]))
-                elif msg["role"] == "ai" and isinstance(msg["content"], str):
-                    lc_messages.append(AIMessage(content=msg["content"]))
+            # messages are already real HumanMessage/AIMessage objects — no
+            # reconstruction needed, unlike when this read dicts.
+            lc_messages.extend(messages)
 
-            response = llm.stream(lc_messages)
-            updated = list(messages) + [{"role": "ai", "content": response}]
-            return {**state, "messages": updated, "next_step": "end", "context_used": context_used}
+            # A blocking call, not .stream(): the node's own return value must
+            # be a plain, serializable message. The caller still gets live
+            # token-by-token output via graph.stream(..., stream_mode=
+            # "messages"), which surfaces this same call's streaming callbacks
+            # regardless of whether the node awaits .invoke() or .stream().
+            response = llm.invoke(lc_messages)
+            # A single-element list, not the full history: add_messages
+            # appends it. Returning the whole list back here would ask the
+            # reducer to "add" every prior message a second time — harmless
+            # (matched by id, so no duplication) but pointless.
+            return {**state, "messages": [response], "next_step": "end", "context_used": context_used}
 
         return timed("generate_response", _run, state)
 
@@ -403,32 +420,51 @@ def main() -> None:
 
     # --- Display history ---
     for msg in st.session_state.messages:
-        avatar = "😎" if msg["role"] == "ai" else "🧐"
-        with st.chat_message(msg["role"], avatar=avatar):
-            if isinstance(msg["content"], str):
-                st.markdown(msg["content"])
+        avatar = "😎" if msg.type == "ai" else "🧐"
+        with st.chat_message(msg.type, avatar=avatar):
+            if isinstance(msg.content, str):
+                st.markdown(msg.content)
 
     # --- Chat input ---
     if prompt := st.chat_input("Ask me something about Cem..."):
-        st.session_state.messages.append({"role": "human", "content": prompt})
+        st.session_state.messages.append(HumanMessage(content=prompt))
         with st.chat_message("human", avatar="🧐"):
             st.markdown(prompt)
 
         with st.chat_message("ai", avatar="😎"):
             placeholder = st.empty()
+            state: GraphState = {
+                "messages": list(st.session_state.messages),
+                "next_step": "",
+                "search_query": "",
+                "route": "",
+                "tool_result": "",
+                "context_used": "",
+                "context_chunks": [],
+                "tool_error": "",
+                "node_latencies": {},
+            }
+
+            # Two stream modes in one pass: "messages" gives live token deltas
+            # for the placeholder below, from generate_response's own .invoke()
+            # call — LangGraph surfaces a streaming-enabled model's callbacks
+            # regardless of which method the node used. "values" gives the
+            # full state after each step; the last one is the graph's result,
+            # same as graph.invoke() would return, with no separate call.
+            full_response = ""
+            result_state: GraphState | None = None
             with st.spinner("Thinking..."):
-                state: GraphState = {
-                    "messages": list(st.session_state.messages),
-                    "next_step": "",
-                    "search_query": "",
-                    "route": "",
-                    "tool_result": "",
-                    "context_used": "",
-                    "context_chunks": [],
-                    "tool_error": "",
-                    "node_latencies": {},
-                }
-                result_state = graph.invoke(state)
+                for mode, payload in graph.stream(state, stream_mode=["messages", "values"]):
+                    if mode == "messages":
+                        chunk, meta = payload
+                        if meta.get("langgraph_node") == "generate_response" and chunk.content:
+                            full_response += chunk.content
+                            placeholder.markdown(full_response + "▌")
+                    elif mode == "values":
+                        result_state = payload
+
+            assert result_state is not None  # "values" mode always yields at least once
+            placeholder.markdown(full_response)
 
             st.session_state.last_latencies = result_state.get("node_latencies", {})
             context_used = result_state.get("context_used", "")
@@ -439,18 +475,10 @@ def main() -> None:
                 logger.warning(
                     "Tool failure on route=%s: %s", result_state.get("route"), result_state["tool_error"]
                 )
-            raw_response = result_state["messages"][-1]["content"]
 
-            # Stream the response
-            full_response = ""
-            if isinstance(raw_response, str):
-                full_response = raw_response
-            else:
-                for chunk in raw_response:
-                    if hasattr(chunk, "content"):
-                        full_response += chunk.content
-                        placeholder.markdown(full_response + "▌")
-                placeholder.markdown(full_response)
+            # The streamed tokens are for the live placeholder only; the
+            # authoritative text is whatever the node actually returned.
+            full_response = result_state["messages"][-1].content
 
             # Faithfulness check
             final_response = check_faithfulness(full_response, context_used)
@@ -459,13 +487,13 @@ def main() -> None:
 
             _accumulate_cost(final_response)
 
-            result_state["messages"][-1]["content"] = final_response
+            result_state["messages"][-1].content = final_response
             st.session_state.messages = result_state["messages"]
 
-            # Update Redis memory summary in background
+            # Update session memory summary in background
             openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
             summary = memory.build_summary(
-                [m for m in st.session_state.messages if isinstance(m["content"], str)],
+                [m for m in st.session_state.messages if isinstance(m.content, str)],
                 openai_client,
             )
             if summary:

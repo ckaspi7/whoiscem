@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from langchain_core.messages import HumanMessage
 
 # Streamlit resolves a relative AppTest path against the calling file, not the
 # working directory, so point at the app explicitly.
@@ -62,7 +63,7 @@ def test_a_failed_tool_call_never_reaches_the_model_as_context():
         graph = chatbot.create_assistant()
         state = graph.invoke(
             {
-                "messages": [{"role": "human", "content": "Where does Cem work?"}],
+                "messages": [HumanMessage(content="Where does Cem work?")],
                 "next_step": "",
                 "search_query": "",
                 "route": "",
@@ -81,6 +82,8 @@ def test_a_failed_tool_call_never_reaches_the_model_as_context():
     assert state["tool_result"] == ""
     assert state["context_used"] == ""
 
-    answer = "".join(c.content for c in state["messages"][-1]["content"])
+    # generate_response now calls .invoke(), so the final message is already a
+    # plain string, not a generator to drain.
+    answer = state["messages"][-1].content
     assert "qdrant" not in answer.lower()
     assert "connectionerror" not in answer.lower()

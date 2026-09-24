@@ -176,6 +176,32 @@ retrieval singleton that, before this fix, cached that failure for the rest of
 the process instead of retrying. `tools/resume_tool.py` now only commits its
 singletons to module state after setup fully succeeds.
 
+### Messages are real messages now
+
+`generate_response` used to call `llm.stream(...)` and put the raw, live
+generator directly into `GraphState.messages` — the type annotation said
+`list[dict[str, str]]`, which was never true for the turn's own answer while
+it was in flight. That made state unserializable (no checkpointer was
+possible), made this node's own measured latency read as ~0s (the real work
+happened later, wherever the caller drained the generator), and needed
+`isinstance(..., str)` guards scattered across three modules to cope.
+
+Messages are now real LangChain `BaseMessage` objects under `add_messages` —
+the class of bug is gone by construction, not handled defensively: a
+non-string, non-list `content` is rejected by the message's own validation
+before it can reach state. `generate_response` calls `.invoke()`, a plain
+blocking call returning one serializable message; the live token-by-token
+typing effect in the UI comes from `graph.stream(state, stream_mode=
+["messages", "values"])` instead, which surfaces the same call's streaming
+callbacks regardless of whether the node itself awaited `.invoke()` or
+`.stream()` — and hands back the full final state in the same pass, so no
+second call or checkpointer is needed just to read it back.
+
+No RAG-quality change is expected or claimed from this — it is a structural
+fix, verified by full routing/retrieval parity (98.3% / 100%) and RAGAS
+movement within the noise band already established between identical-code
+runs (±0.02-0.03).
+
 ### Known-broken, on purpose
 
 Measured first so the fix can be reported as a delta rather than asserted:
