@@ -202,6 +202,29 @@ jobs:
             echo "::warning title=Scheduled evaluation did not run::OPENAI_API_KEY is not set on this repository."
           fi
 
+      - name: Wait for Qdrant to be ready
+        # services: starts the container; it does not wait for the app inside
+        # it to accept connections. Polled from the runner, which can reach
+        # the published port directly — no need for a client inside the
+        # image, which ships none. Likely root cause of one real failure: the
+        # scheduled run on 2026-09-21 passed "Run full evaluation" but failed
+        # "Compare against the committed baseline", meaning the eval completed
+        # but scored far below tolerance — consistent with the first resume
+        # query racing a not-yet-ready Qdrant and poisoning the retrieval
+        # singleton for the rest of that run (fixed separately in
+        # tools/resume_tool.py, which now self-heals from exactly this).
+        if: steps.key.outputs.present == 'true'
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:6333/readyz > /dev/null 2>&1; then
+              echo "Qdrant ready after ${i} attempt(s)"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Qdrant did not become ready within 30s"
+          exit 1
+
       - name: Run full evaluation
         if: steps.key.outputs.present == 'true'
         run: python eval/run_eval.py --output eval/results/scheduled-run.json

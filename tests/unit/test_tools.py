@@ -252,3 +252,88 @@ def test_cache_tools_do_not_claim_a_refresh_cadence(tmp_path, sample_spotify_cac
 
     assert "refreshed monthly" not in result.lower()
     assert "months ago" in result or "this month" in result
+
+
+# ---------------------------------------------------------------------------
+# Typed results — a failure must never look like content
+#
+# Every tool used to catch its own exceptions and return f"Error: {e}" as an
+# ordinary string, indistinguishable from real content once it reached
+# chatbot.py. The *_result() functions are what graph handlers call instead:
+# ok=True content is what may become context; ok=False error never does.
+# ---------------------------------------------------------------------------
+
+
+def test_spotify_missing_cache_is_success_not_failure(tmp_path):
+    """The lookup worked; there is honestly nothing to report. Not a tool error."""
+    from tools.spotify_tool import get_music_taste_result
+
+    with patch("tools.spotify_tool._CACHE_PATH", str(tmp_path / "missing.json")):
+        result = get_music_taste_result()
+
+    assert result.ok is True
+    assert "not found" in result.content.lower()
+
+
+def test_spotify_a_real_failure_is_reported_as_an_error(tmp_path):
+    cache_file = tmp_path / "spotify_cache.json"
+    cache_file.write_text("{not valid json", encoding="utf-8")
+
+    from tools.spotify_tool import get_music_taste_result
+
+    with patch("tools.spotify_tool._CACHE_PATH", str(cache_file)):
+        result = get_music_taste_result()
+
+    assert result.ok is False
+    assert result.as_context() == "", "a parse failure must not become context"
+
+
+def test_linkedin_missing_cache_is_success_not_failure(tmp_path):
+    from tools.linkedin_tool import get_linkedin_info_result
+
+    with patch("tools.linkedin_tool._CACHE_PATH", str(tmp_path / "missing.json")):
+        result = get_linkedin_info_result()
+
+    assert result.ok is True
+    assert "not found" in result.content.lower()
+
+
+def test_linkedin_a_real_failure_is_reported_as_an_error(tmp_path):
+    cache_file = tmp_path / "linkedin_cache.json"
+    cache_file.write_text("{not valid json", encoding="utf-8")
+
+    from tools.linkedin_tool import get_linkedin_info_result
+
+    with patch("tools.linkedin_tool._CACHE_PATH", str(cache_file)):
+        result = get_linkedin_info_result()
+
+    assert result.ok is False
+    assert result.as_context() == ""
+
+
+def test_personal_missing_user_is_success_not_failure(tmp_path):
+    """No row for Cem is a legitimate empty answer, not a broken database."""
+    db_path = str(tmp_path / "empty.db")
+    conn = sqlite3.connect(db_path)
+    conn.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, full_name TEXT)")
+    conn.commit()
+    conn.close()
+
+    from tools.personal_tool import get_personal_info_result
+
+    with patch("tools.personal_tool._DB_PATH", db_path):
+        result = get_personal_info_result("")
+
+    assert result.ok is True
+    assert "no personal information" in result.content.lower()
+
+
+def test_personal_a_real_failure_is_reported_as_an_error(tmp_path):
+    """A locked or nonexistent database file must not surface as content."""
+    from tools.personal_tool import get_personal_info_result
+
+    with patch("tools.personal_tool._DB_PATH", str(tmp_path / "does" / "not" / "exist.db")):
+        result = get_personal_info_result("")
+
+    assert result.ok is False
+    assert result.as_context() == ""

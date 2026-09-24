@@ -13,9 +13,15 @@ _ROUTE_PROMPT = ChatPromptTemplate.from_messages(
 Take the first category that fits; they are listed in priority order.
 
 - resume: ANY factual question about Cem's career, education, employers, job
-  titles, dates, skills, technologies, projects or accomplishments. The resume
-  is the source of record for all work history. "Where does he work", "what is
-  his job title", "when did he join TELUS" and "what did he study" are resume.
+  titles, dates, skills, technologies, projects or accomplishments. This
+  includes questions naming a specific project, tool or piece of work by name,
+  even one this prompt has never mentioned — for example "What was Project
+  Meridian about?" or "What did Cem build for the onboarding pipeline?" are
+  resume, not conversation: an unfamiliar proper noun in a question about Cem
+  almost always names something on his resume, not something to ask about in
+  general. The resume is the source of record for all work history. "Where
+  does he work", "what is his job title", "when did he join TELUS" and "what
+  did he study" are also resume.
 - linkedin: ONLY the progression through internal titles at TELUS, or the text
   of his LinkedIn headline and About section. Use it when the question is
   specifically about promotions or moving between internal roles. General

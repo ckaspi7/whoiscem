@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -42,3 +43,44 @@ def test_app_boots_with_no_services_running():
     captions = [c.value for c in app.sidebar.caption]
     assert any("Vector store" in c for c in captions), captions
     assert any("Session memory" in c for c in captions), captions
+
+
+@needs_openai
+def test_a_failed_tool_call_never_reaches_the_model_as_context():
+    """The actual graph wiring, not just the tool functions in isolation.
+
+    classify_query is mocked to force the resume route deterministically and
+    for free; search_resume is mocked to fail, the way an unreachable Qdrant
+    would. The only real network call left is the final generation.
+    """
+    import chatbot
+
+    with (
+        patch("chatbot.classify_query", return_value="resume"),
+        patch("chatbot.search_resume", side_effect=ConnectionError("qdrant unreachable")),
+    ):
+        graph = chatbot.create_assistant()
+        state = graph.invoke(
+            {
+                "messages": [{"role": "human", "content": "Where does Cem work?"}],
+                "next_step": "",
+                "search_query": "",
+                "route": "",
+                "tool_result": "",
+                "context_used": "",
+                "context_chunks": [],
+                "tool_error": "",
+                "node_latencies": {},
+            }
+        )
+
+    assert state["route"] == "resume"
+    assert "qdrant unreachable" in state["tool_error"]
+    # The two fields that reach the prompt and the faithfulness judge: an
+    # error must never appear in either, regardless of how the tool failed.
+    assert state["tool_result"] == ""
+    assert state["context_used"] == ""
+
+    answer = "".join(c.content for c in state["messages"][-1]["content"])
+    assert "qdrant" not in answer.lower()
+    assert "connectionerror" not in answer.lower()

@@ -19,10 +19,11 @@ from guardrails.faithfulness_check import check_faithfulness
 from memory.session_memory import SessionMemory
 from observability import setup_tracing, tracing_status
 from router import classify_query
-from tools.linkedin_tool import get_linkedin_info
-from tools.personal_tool import get_personal_info
+from tools.linkedin_tool import get_linkedin_info_result
+from tools.personal_tool import get_personal_info_result
+from tools.result import ToolResult
 from tools.resume_tool import format_chunks, search_resume
-from tools.spotify_tool import get_music_taste
+from tools.spotify_tool import get_music_taste_result
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,10 @@ class GraphState(TypedDict):
     # Retrieved chunks as a list. Ranking metrics over one joined blob are
     # degenerate: precision@k has to see the chunks separately.
     context_chunks: list[str]
+    # Set when the handler's tool call failed. Empty on success, and never
+    # folded into tool_result or context_used — an outage must not become the
+    # model's evidence, nor something the faithfulness judge scores against.
+    tool_error: str
     node_latencies: dict[str, float]
 
 
@@ -151,17 +156,19 @@ Key facts about Cem:
 
     def handle_resume(state: GraphState) -> GraphState:
         def _run(state):
+            query = state.get("search_query") or state["messages"][-1]["content"]
             try:
-                chunks = search_resume(state.get("search_query") or state["messages"][-1]["content"])
-                texts = [c.text for c in chunks]
-                result = format_chunks(chunks)
+                chunks = search_resume(query)
+                result = ToolResult.success(format_chunks(chunks))
             except Exception as e:
-                texts, result = [], f"Error searching resume: {e}"
+                logger.warning("Resume retrieval failed: %s", e)
+                chunks, result = [], ToolResult.failure(str(e))
             return {
                 **state,
-                "tool_result": result,
-                "context_used": result,
-                "context_chunks": texts,
+                "tool_result": result.as_context(),
+                "context_used": result.as_context(),
+                "context_chunks": [c.text for c in chunks],
+                "tool_error": result.error,
                 "next_step": "generate_response",
             }
 
@@ -169,12 +176,13 @@ Key facts about Cem:
 
     def handle_personal(state: GraphState) -> GraphState:
         def _run(state):
-            result = get_personal_info.invoke("")
+            result = get_personal_info_result()
             return {
                 **state,
-                "tool_result": result,
-                "context_used": result,
-                "context_chunks": [result],
+                "tool_result": result.as_context(),
+                "context_used": result.as_context(),
+                "context_chunks": [result.content] if result.ok else [],
+                "tool_error": result.error,
                 "next_step": "generate_response",
             }
 
@@ -182,12 +190,13 @@ Key facts about Cem:
 
     def handle_spotify(state: GraphState) -> GraphState:
         def _run(state):
-            result = get_music_taste.invoke({})
+            result = get_music_taste_result()
             return {
                 **state,
-                "tool_result": result,
-                "context_used": result,
-                "context_chunks": [result],
+                "tool_result": result.as_context(),
+                "context_used": result.as_context(),
+                "context_chunks": [result.content] if result.ok else [],
+                "tool_error": result.error,
                 "next_step": "generate_response",
             }
 
@@ -195,12 +204,13 @@ Key facts about Cem:
 
     def handle_linkedin(state: GraphState) -> GraphState:
         def _run(state):
-            result = get_linkedin_info.invoke({})
+            result = get_linkedin_info_result()
             return {
                 **state,
-                "tool_result": result,
-                "context_used": result,
-                "context_chunks": [result],
+                "tool_result": result.as_context(),
+                "context_used": result.as_context(),
+                "context_chunks": [result.content] if result.ok else [],
+                "tool_error": result.error,
                 "next_step": "generate_response",
             }
 
@@ -213,6 +223,7 @@ Key facts about Cem:
                 "tool_result": "",
                 "context_used": "",
                 "context_chunks": [],
+                "tool_error": "",
                 "next_step": "generate_response",
             }
 
@@ -414,12 +425,20 @@ def main() -> None:
                     "tool_result": "",
                     "context_used": "",
                     "context_chunks": [],
+                    "tool_error": "",
                     "node_latencies": {},
                 }
                 result_state = graph.invoke(state)
 
             st.session_state.last_latencies = result_state.get("node_latencies", {})
             context_used = result_state.get("context_used", "")
+            if result_state.get("tool_error"):
+                # Never shown to the visitor — showErrorDetails is off for that
+                # reason — but a deployed instance's logs should not stay silent
+                # about a tool that is actually failing.
+                logger.warning(
+                    "Tool failure on route=%s: %s", result_state.get("route"), result_state["tool_error"]
+                )
             raw_response = result_state["messages"][-1]["content"]
 
             # Stream the response

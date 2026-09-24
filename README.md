@@ -63,32 +63,31 @@ resume, because scores only compare across runs over the same corpus.
 
 | | Baseline | Current | |
 |---|---|---|---|
-| Routing accuracy | 91.5% | **94.9%** | +3.4 |
+| Routing accuracy | 91.5% | **98.3%** | +6.8 |
 | — follow-up questions | 33% | **100%** | +67 |
-| Retrieval recall@k | 83.3% | **91.7%** | +8.4 |
+| Retrieval recall@k | 83.3% | **100.0%** | +16.7 |
 | Correct refusals | 100% | **100%** | — |
-| Answer relevancy | 0.834 | **0.859** ✓ | +0.025 |
-| Faithfulness | 0.660 | 0.681 ✗ | +0.021 |
-| Context recall | 0.674 | 0.714 ✗ | +0.041 |
-| Context precision | 0.636 | 0.602 ✗ | −0.034 |
+| Answer relevancy | 0.834 | **0.873** ✓ | +0.039 |
+| Faithfulness | 0.660 | 0.688 ✗ | +0.028 |
+| Context recall | 0.674 | 0.776 ✗ | +0.101 |
+| Context precision | 0.636 | 0.651 ✗ | +0.014 |
 
 Every run is committed, so these are diffs between files in `eval/results/`
-rather than remembered numbers. Context precision is rank-sensitive and fell
-because the corpus went from 3 chunks to 16: the same text now sits at rank 3
-instead of rank 1 while the model reads all of it, so the comparator reports it
-and does not gate on it.
+rather than remembered numbers.
 
 Three of four RAGAS metrics are still below threshold, and they are published
-anyway.
+anyway. The one uncomfortably-close miss is context recall at 0.776 against a
+0.80 bar — closing that gap is Phase 2's next unfinished item, not a rounding
+error to wave away.
 
 **Faithfulness is not one number.** Per route:
 
 | Route | Faithfulness | |
 |---|---|---|
-| linkedin | 0.950 | |
-| resume | 0.867 | the hybrid retrieval path |
-| personal | 0.678 | |
-| spotify | 0.417 | context is a numbered list |
+| linkedin | 0.900 | |
+| resume | 0.892 | the hybrid retrieval path |
+| personal | 0.630 | |
+| spotify | 0.125 | context is a numbered list |
 | conversation | 0.000 | no context exists on this path |
 
 The aggregate is dragged down by two measurement artifacts rather than by
@@ -130,12 +129,30 @@ more than the single snippet a question references. The default strategy is
 therefore `auto`: pass the whole corpus while it fits in a prompt, and start
 selecting when it does not.
 
+### A tool failure never becomes evidence
+
+Every tool used to catch its own exceptions and return the equivalent of
+`f"Error: {e}"` as an ordinary string — indistinguishable from real content
+once it reached the model. A Qdrant outage became the assistant's "evidence",
+and the faithfulness judge scored the answer against a stack trace instead of
+skipping the check. `tools/result.py` introduces a typed result with an
+explicit `ok`/`error` split; every handler now keeps an error out of both the
+prompt and the judge, and logs it instead. `eval/run_eval.py` reports a
+dedicated tool-error rate, and `eval/compare.py` fails the gate on any nonzero
+value — checked directly, not as a tolerance band, because there is no
+acceptable rate of a tool silently failing.
+
+This closed a real incident rather than a hypothetical one: a scheduled
+evaluation run completed but scored far enough below tolerance to fail the
+gate, consistent with a fresh Qdrant container racing the first query and a
+retrieval singleton that, before this fix, cached that failure for the rest of
+the process instead of retrying. `tools/resume_tool.py` now only commits its
+singletons to module state after setup fully succeeds.
+
 ### Known-broken, on purpose
 
 Measured first so the fix can be reported as a delta rather than asserted:
 
-- **Follow-up questions route at 33%.** Retrieval runs on the bare last
-  message, so "and before that?" retrieves on three words.
 - **Multi-intent questions are structurally unanswerable** — one label, one
   tool, one branch.
 - **The corpus is too small for retrieval to mean anything.** See the ablation

@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import logging
 import os
 import sqlite3
 
 from langchain.tools import tool
+
+from tools.result import ToolResult
+
+logger = logging.getLogger(__name__)
 
 _DB_PATH = os.path.join("data", "user_data.db")
 
@@ -63,6 +68,28 @@ def _fetch_user(fields: tuple[str, ...]) -> dict:
         conn.close()
 
 
+def get_personal_info_result(info_type: str = "") -> ToolResult:
+    """Typed lookup: content on success, an error that never becomes context.
+
+    "No personal information found" is success, not failure — the query ran
+    fine and legitimately found nothing, which the model should be able to
+    relay honestly rather than treat as a broken tool.
+    """
+    try:
+        data = _fetch_user(fields_for(info_type))
+        if not data:
+            return ToolResult.success("No personal information found.")
+        return ToolResult.success(
+            "\n".join(f"{k.replace('_', ' ').capitalize()}: {v}" for k, v in data.items() if v is not None)
+        )
+    except sqlite3.OperationalError as e:
+        logger.warning("Personal info database error: %s", e)
+        return ToolResult.failure(f"Database error: {e}")
+    except Exception as e:
+        logger.warning("Personal info retrieval failed: %s", e)
+        return ToolResult.failure(str(e))
+
+
 @tool
 def get_personal_info(info_type: str = "") -> str:
     """Fetch non-sensitive personal information about Cem.
@@ -71,12 +98,4 @@ def get_personal_info(info_type: str = "") -> str:
     languages, hobbies, interests, appearance. Omit it for everything available.
     Contact details, date of birth and family information are never returned.
     """
-    try:
-        data = _fetch_user(fields_for(info_type))
-        if not data:
-            return "No personal information found."
-        return "\n".join(f"{k.replace('_', ' ').capitalize()}: {v}" for k, v in data.items() if v is not None)
-    except sqlite3.OperationalError as e:
-        return f"Database error: {e}"
-    except Exception as e:
-        return f"Error retrieving personal info: {e}"
+    return get_personal_info_result(info_type).as_tool_string("Error retrieving personal info")

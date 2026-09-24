@@ -102,6 +102,7 @@ def run_question(graph, item: dict) -> dict:
             "tool_result": "",
             "context_used": "",
             "context_chunks": [],
+            "tool_error": "",
             "node_latencies": {},
         }
     )
@@ -128,6 +129,7 @@ def run_question(graph, item: dict) -> dict:
         "reference_snippet": item.get("reference_snippet"),
         "search_query": state.get("search_query", ""),
         "retrieval_rank": _snippet_rank(item.get("reference_snippet"), contexts),
+        "tool_error": state.get("tool_error", ""),
         "latencies": state.get("node_latencies", {}),
     }
 
@@ -220,7 +222,35 @@ _REFUSAL_MARKERS = (
     "not provided",
     "isn't available",
     "is not available",
+    "without disclosing",
+    "without sharing",
+    "won't share",
+    "will not share",
+    "won't provide",
+    "will not provide",
+    "not going to share",
+    "not going to provide",
+    "keep that private",
+    "keep those private",
 )
+
+
+def score_tool_health(rows: list[dict]) -> dict:
+    """How often a handler's tool call failed outright.
+
+    Distinct from every quality metric above: those measure whether a correct
+    answer was produced, and degrade gracefully when a tool errors (an empty
+    context, a judge that has nothing to score). This measures the failure
+    directly, so an infrastructure problem — a Qdrant container not yet
+    accepting connections, a locked database file — shows up as "12 tool
+    errors" instead of as an unexplained drop across four unrelated metrics.
+    """
+    failed = [r for r in rows if r["tool_error"]]
+    return {
+        "errors": len(failed),
+        "error_rate": round(len(failed) / len(rows), 4) if rows else 0.0,
+        "failed_ids": [r["id"] for r in failed],
+    }
 
 
 def score_refusals(rows: list[dict]) -> dict:
@@ -346,6 +376,7 @@ def evaluate(output_path: str | None = None, limit: int | None = None, use_ragas
     routing = score_routing(rows)
     retrieval = score_retrieval(rows)
     refusals = score_refusals(rows)
+    tool_health = score_tool_health(rows)
 
     # RAGAS runs only over questions that have a factual answer. Including
     # refusal cases would score a correct decline against a reference it was
@@ -373,6 +404,7 @@ def evaluate(output_path: str | None = None, limit: int | None = None, use_ragas
         "routing": routing,
         "retrieval": retrieval,
         "refusals": refusals,
+        "tool_health": tool_health,
         "scores": scores,
         "scores_cover": len(scorable),
         "scores_by_route": by_route,
@@ -391,12 +423,23 @@ def evaluate(output_path: str | None = None, limit: int | None = None, use_ragas
                 "search_query": r["search_query"],
                 "route_correct": r["route_correct"],
                 "retrieval_rank": r["retrieval_rank"],
+                "tool_error": r["tool_error"],
                 "latencies": r["latencies"],
                 "metrics": {k: v for k, v in by_id.get(r["id"], {}).items() if k != "id"},
             }
             for r in rows
         ],
     }
+
+    if tool_health["errors"]:
+        # Printed first and loudly: a tool outage explains everything below it,
+        # and reading the RAGAS section first would look like a retrieval
+        # regression rather than the infrastructure problem it actually is.
+        print(
+            f"\n!!! {tool_health['errors']} tool call(s) failed outright "
+            f"({tool_health['error_rate']:.1%}): {', '.join(tool_health['failed_ids'])}"
+        )
+        print("    Every metric below is degraded by this, not by a quality regression.")
 
     print("\n=== Routing ===")
     print(f"  accuracy: {routing['accuracy']:.1%} ({routing['correct']}/{routing['total']})")

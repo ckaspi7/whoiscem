@@ -104,3 +104,36 @@ def test_a_baseline_without_provenance_reports_no_spurious_changes(tmp_path, cap
     out = capsys.readouterr().out
     assert "data sources changed" not in out
     assert "retrieval configuration changed" not in out
+
+
+# ---------------------------------------------------------------------------
+# Tool health — a hard failure, not a tolerance band
+#
+# This is the check that would have caught the incident that motivated it: a
+# scheduled run whose "Run full evaluation" step succeeded but whose
+# "Compare against the committed baseline" step failed, because a fresh
+# Qdrant container racing the first query silently broke every resume-routed
+# question for the rest of that run. A metric-delta check saw a drop; this
+# check would have named the cause.
+# ---------------------------------------------------------------------------
+
+
+def test_a_tool_error_fails_the_gate_even_with_otherwise_identical_scores(tmp_path):
+    """There is no baseline error rate worth matching — any failure gates."""
+    broken = dict(BASE, tool_health={"errors": 1, "error_rate": 0.017, "failed_ids": ["r008"]})
+    assert compare(_write(tmp_path, "a.json", broken), _write(tmp_path, "b.json", BASE)) == 1
+
+
+def test_zero_tool_errors_does_not_trip_the_gate(tmp_path):
+    clean = dict(BASE, tool_health={"errors": 0, "error_rate": 0.0, "failed_ids": []})
+    assert compare(_write(tmp_path, "a.json", clean), _write(tmp_path, "b.json", BASE)) == 0
+
+
+def test_a_tool_error_names_the_failed_questions(tmp_path, capsys):
+    broken = dict(BASE, tool_health={"errors": 2, "error_rate": 0.034, "failed_ids": ["r008", "r014"]})
+    compare(_write(tmp_path, "a.json", broken), _write(tmp_path, "b.json", BASE))
+
+    out = capsys.readouterr().out
+    assert "r008" in out
+    assert "r014" in out
+    assert "2 tool call(s) failed" in out

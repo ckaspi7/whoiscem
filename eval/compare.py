@@ -35,6 +35,24 @@ TOLERANCE = {
 RANK_SENSITIVE = {"retrieval.mrr", "scores.context_precision"}
 
 
+def _tool_health_failures(current: dict) -> list[str]:
+    """A tool call that failed outright, checked directly rather than as a delta.
+
+    There is no baseline error rate worth tolerating: a tool failure means the
+    judge scored an empty context, not a real answer, so every quality metric
+    in that run is unreliable regardless of what it reads. This is also the
+    check that would have caught the incident that motivated it — a fresh
+    Qdrant container racing the first query degraded routing, recall and
+    faithfulness together, and the aggregate drop alone did not say why.
+    """
+    health = current.get("tool_health") or {}
+    errors = health.get("errors", 0)
+    if not errors:
+        return []
+    failed = ", ".join(health.get("failed_ids", [])) or "unknown"
+    return [f"{errors} tool call(s) failed outright ({failed}) — every metric below is unreliable"]
+
+
 def _dig(payload: dict, dotted: str):
     node = payload
     for part in dotted.split("."):
@@ -102,6 +120,12 @@ def compare(current_path: Path, baseline_path: Path) -> int:
         print(f"\nNOTE: chunker changed ({baseline.get('chunker')} -> {current.get('chunker')}).")
         print("      Rank-sensitive metrics are reported but not gated.")
 
+    hard_failures = _tool_health_failures(current)
+    if hard_failures:
+        print("\nHard failures (checked directly, not as a delta against the baseline):")
+        for message in hard_failures:
+            print(f"  {message}")
+
     regressions = []
     print(f"\n{'metric':<32} {'baseline':>9} {'current':>9} {'delta':>9}")
     for metric, tolerance in TOLERANCE.items():
@@ -123,6 +147,8 @@ def compare(current_path: Path, baseline_path: Path) -> int:
         print("\nRegressions beyond tolerance:")
         for metric, before, after in regressions:
             print(f"  {metric}: {before:.4f} -> {after:.4f}")
+
+    if regressions or hard_failures:
         return 1
 
     print("\nNo regression beyond tolerance.")
