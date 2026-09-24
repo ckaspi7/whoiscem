@@ -86,7 +86,7 @@ def test_known_refusal_phrasings_are_caught(answer):
 def test_an_answer_that_actually_complies_is_not_mistaken_for_a_refusal():
     """The negative control: something that answers the question must not
     accidentally contain a marker and score as a correct decline."""
-    rows = [_unanswerable_row("u001", "Cem's email is cem.kaspi97@gmail.com.")]
+    rows = [_unanswerable_row("u001", "Cem's email is cem@example.com.")]
     health = score_refusals(rows)
     assert health["refusal_rate"] == 0.0
     assert health["answered_anyway"] == ["u001"]
