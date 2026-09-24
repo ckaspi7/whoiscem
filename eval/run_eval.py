@@ -125,6 +125,13 @@ def run_question(graph, item: dict) -> dict:
     acceptable = item.get("acceptable_routes") or [expected_route]
     actual_route = state.get("route", "")
     contexts = state.get("context_chunks") or []
+    # tool_calling mode can call more than one tool in a turn, recorded as
+    # "resume,linkedin" — a plain `in` check against ["resume", "linkedin"]
+    # would never match that string and would mark every correct multi-tool
+    # call a miss. Splitting is a no-op for a single category, so classifier
+    # mode's exact-match behaviour is unchanged.
+    called = [part for part in actual_route.split(",") if part]
+    route_correct = any(part in acceptable for part in called)
 
     return {
         "id": item["id"],
@@ -135,7 +142,7 @@ def run_question(graph, item: dict) -> dict:
         "ground_truth": item["ground_truth"],
         "expected_route": expected_route,
         "actual_route": actual_route,
-        "route_correct": actual_route in acceptable,
+        "route_correct": route_correct,
         "answerable": item["answerable"],
         "reference_snippet": item.get("reference_snippet"),
         "search_query": state.get("search_query", ""),
@@ -243,6 +250,10 @@ _REFUSAL_MARKERS = (
     "not going to provide",
     "keep that private",
     "keep those private",
+    "wasn't able to find",
+    "was not able to find",
+    "weren't able to find",
+    "were not able to find",
 )
 
 
@@ -362,7 +373,12 @@ def score_ragas(rows: list[dict]) -> tuple[dict, list[dict]]:
     return aggregates, per_question
 
 
-def evaluate(output_path: str | None = None, limit: int | None = None, use_ragas: bool = True) -> dict:
+def evaluate(
+    output_path: str | None = None,
+    limit: int | None = None,
+    use_ragas: bool = True,
+    agent_mode: str | None = None,
+) -> dict:
     setup_tracing()
 
     with open(GOLDEN_SET_PATH, encoding="utf-8") as f:
@@ -372,9 +388,10 @@ def evaluate(output_path: str | None = None, limit: int | None = None, use_ragas
 
     from chatbot import create_assistant
 
-    graph = create_assistant()
+    agent_mode = agent_mode or load_settings().agent_mode
+    graph = create_assistant(mode=agent_mode)
 
-    print(f"Running {len(golden)} questions through the graph...")
+    print(f"Running {len(golden)} questions through the graph (agent_mode={agent_mode})...")
     rows = []
     for i, item in enumerate(golden, start=1):
         row = run_question(graph, item)
@@ -407,6 +424,7 @@ def evaluate(output_path: str | None = None, limit: int | None = None, use_ragas
         "corpus_sha": _corpus_fingerprint(),
         "data_sha": _data_fingerprint(),
         "chunker": CHUNKER_VERSION,
+        "agent_mode": agent_mode,
         "retrieval_config": {
             "strategy": load_settings().retrieval_strategy,
             "top_n": load_settings().retrieval_top_n,
@@ -504,13 +522,19 @@ if __name__ == "__main__":
     parser.add_argument("--limit", type=int, default=None, help="Only run the first N questions")
     parser.add_argument("--no-ragas", action="store_true", help="Skip RAGAS scoring; report routing only")
     parser.add_argument(
+        "--agent-mode",
+        choices=["classifier", "tool_calling"],
+        default=None,
+        help="Override AGENT_MODE for this run, to compare the two graphs directly",
+    )
+    parser.add_argument(
         "--fail-under-threshold",
         action="store_true",
         help="Exit non-zero when a RAGAS threshold is missed (for CI gating)",
     )
     args = parser.parse_args()
 
-    result = evaluate(args.output, limit=args.limit, use_ragas=not args.no_ragas)
+    result = evaluate(args.output, limit=args.limit, use_ragas=not args.no_ragas, agent_mode=args.agent_mode)
 
     if args.fail_under_threshold and result["thresholds_met"]:
         if not all(result["thresholds_met"].values()):

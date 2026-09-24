@@ -137,3 +137,42 @@ def test_a_tool_error_names_the_failed_questions(tmp_path, capsys):
     assert "r008" in out
     assert "r014" in out
     assert "2 tool call(s) failed" in out
+
+
+# ---------------------------------------------------------------------------
+# Granularity changes — a rechunk or a different agent_mode both change what
+# a "chunk" is, so rank-position metrics (MRR, context_precision) are not
+# comparable in either direction, not just when they drop.
+# ---------------------------------------------------------------------------
+
+
+def test_a_rechunk_does_not_gate_a_dropped_mrr(tmp_path):
+    before = dict(BASE, chunker="v1", retrieval={"recall_at_k": 0.85, "mrr": 0.70})
+    after = dict(BASE, chunker="v2", retrieval={"recall_at_k": 0.85, "mrr": 0.30})
+    assert compare(_write(tmp_path, "a.json", after), _write(tmp_path, "b.json", before)) == 0
+
+
+def test_an_agent_mode_change_does_not_gate_a_dropped_mrr(tmp_path):
+    before = dict(BASE, agent_mode="classifier", retrieval={"recall_at_k": 0.85, "mrr": 0.70})
+    after = dict(BASE, agent_mode="tool_calling", retrieval={"recall_at_k": 0.85, "mrr": 0.20})
+    assert compare(_write(tmp_path, "a.json", after), _write(tmp_path, "b.json", before)) == 0
+
+
+def test_an_agent_mode_change_labels_a_raised_mrr_as_uninterpreted_not_improved(tmp_path, capsys):
+    """A single pre-merged chunk is trivially rank 1 if found at all — an MRR
+    jump from switching modes is an artifact, not evidence retrieval improved."""
+    before = dict(BASE, agent_mode="classifier", retrieval={"recall_at_k": 0.85, "mrr": 0.57})
+    after = dict(BASE, agent_mode="tool_calling", retrieval={"recall_at_k": 0.85, "mrr": 1.00})
+    compare(_write(tmp_path, "a.json", after), _write(tmp_path, "b.json", before))
+
+    out = capsys.readouterr().out
+    assert "not gated: granularity changed" in out
+    assert "retrieval.mrr" in out and "improved" not in out.split("retrieval.mrr")[1].split("\n")[0]
+
+
+def test_a_non_rank_metric_still_gates_normally_when_agent_mode_changes(tmp_path):
+    """Only the rank-sensitive metrics get the pass — an accuracy drop from
+    switching architectures is a real, reportable finding, not noise."""
+    before = dict(BASE, agent_mode="classifier", routing={"accuracy": 0.98})
+    after = dict(BASE, agent_mode="tool_calling", routing={"accuracy": 0.70})
+    assert compare(_write(tmp_path, "a.json", after), _write(tmp_path, "b.json", before)) == 1

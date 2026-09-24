@@ -77,6 +77,7 @@ def test_the_phrasing_that_was_actually_missed_is_now_caught():
         "That's outside what I know about Cem.",
         "I'm not able to help with that.",
         "I'll keep that private.",
+        "I wasn't able to find specific information about Cem's salary.",
     ],
 )
 def test_known_refusal_phrasings_are_caught(answer):

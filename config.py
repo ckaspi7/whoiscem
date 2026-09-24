@@ -48,6 +48,20 @@ DEFAULT_RETRIEVAL_TOP_N = 5
 RETRIEVAL_STRATEGIES: tuple[str, ...] = ("auto", "dense", "sparse", "rrf", "rrf_rerank")
 DEFAULT_RETRIEVAL_STRATEGY = "auto"
 
+# "classifier" is the original design: an LLM call classifies the query into
+# one of five fixed labels, then a hardcoded switch picks exactly one tool.
+# "tool_calling" binds the tools to the LLM directly (bind_tools) and lets it
+# choose, call zero-to-many of them, and loop back with the results before
+# answering — a real agent rather than a switch statement wearing one's
+# docstrings. Kept alongside each other and both measured (see
+# eval/results/) rather than one replacing the other on faith: the plan this
+# project follows is explicit that demonstrating the comparison is worth more
+# than either choice alone.
+AGENT_MODES: tuple[str, ...] = ("classifier", "tool_calling")
+# Defaults to the measured baseline until the comparison run says otherwise —
+# same discipline as retrieval_strategy: no default changes on faith here.
+DEFAULT_AGENT_MODE = "classifier"
+
 # Roughly 3k tokens; comfortably inside the window and cheap enough per turn.
 CORPUS_FITS_CONTEXT_CHARS = 12_000
 
@@ -85,6 +99,7 @@ class Settings:
     resume_path: str = DEFAULT_RESUME_PATH
     retrieval_top_n: int = DEFAULT_RETRIEVAL_TOP_N
     retrieval_strategy: str = DEFAULT_RETRIEVAL_STRATEGY
+    agent_mode: str = DEFAULT_AGENT_MODE
     phoenix_endpoint: str = DEFAULT_PHOENIX_ENDPOINT
     phoenix_api_key: str = ""
     phoenix_project: str = DEFAULT_PHOENIX_PROJECT
@@ -99,6 +114,8 @@ class Settings:
                 f"RETRIEVAL_STRATEGY must be one of {', '.join(RETRIEVAL_STRATEGIES)} "
                 f"— got {self.retrieval_strategy!r}"
             )
+        if self.agent_mode not in AGENT_MODES:
+            raise ConfigError(f"AGENT_MODE must be one of {', '.join(AGENT_MODES)} — got {self.agent_mode!r}")
         if self.qdrant_mode == "cloud" and not self.qdrant_url:
             raise ConfigError("QDRANT_MODE=cloud requires QDRANT_URL (and usually QDRANT_API_KEY)")
 
@@ -129,6 +146,7 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         resume_path=get("RESUME_PATH", DEFAULT_RESUME_PATH),
         retrieval_top_n=_int(get("RETRIEVAL_TOP_N", str(DEFAULT_RETRIEVAL_TOP_N)), "RETRIEVAL_TOP_N"),
         retrieval_strategy=get("RETRIEVAL_STRATEGY", DEFAULT_RETRIEVAL_STRATEGY).lower(),
+        agent_mode=get("AGENT_MODE", DEFAULT_AGENT_MODE).lower(),
         phoenix_endpoint=get("PHOENIX_COLLECTOR_ENDPOINT", DEFAULT_PHOENIX_ENDPOINT),
         phoenix_api_key=get("PHOENIX_API_KEY"),
         phoenix_project=get("PHOENIX_PROJECT_NAME", DEFAULT_PHOENIX_PROJECT),

@@ -170,6 +170,28 @@ edit.
 
 ---
 
+## Rank Metrics Are Not Comparable Across `AGENT_MODE`
+
+MRR and RAGAS context precision both look sharply better under
+`AGENT_MODE=tool_calling` than under `classifier` (0.566→1.000, 0.646→0.806).
+Neither is retrieval improving. `get_resume_info_result` pre-merges every
+retrieved chunk into one block with `format_chunks` before it reaches state,
+so `tool_calling`'s `context_chunks` is one item per successful tool call, not
+several individually-ranked ones — a single block is trivially "rank 1" if the
+reference is found in it at all. `eval/compare.py` treats a rank-sensitive
+metric the same way whether `agent_mode` changed or the chunker did: reported,
+never gated, in either direction.
+
+The same substitution also means `tool_calling`'s routing accuracy is not
+fully deterministic between identical runs unless the agent's own
+tool-selection call uses `temperature=0` — an early version bound tools to the
+same `temperature=0.7` model used for the classifier's final prose, and
+routing moved from 93.2% to 91.5% across two runs of unchanged code purely
+from sampling. `create_assistant` uses a separate, deterministic, still-
+streaming model for the agent's decisions for exactly this reason.
+
+---
+
 ## Personal Database Schema Drift
 
 A database created before the schema was slimmed does not gain the `birth_year`

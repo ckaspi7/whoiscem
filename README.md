@@ -202,12 +202,82 @@ fix, verified by full routing/retrieval parity (98.3% / 100%) and RAGAS
 movement within the noise band already established between identical-code
 runs (±0.02-0.03).
 
+### A real agent, measured against the switch statement it replaces
+
+The four `@tool`-decorated functions were never bound to an LLM — no
+`bind_tools`, no tool-selection loop. Their docstrings, whose entire purpose is
+to let a model choose between them, were dead weight under a hardcoded
+five-way switch. `AGENT_MODE=tool_calling` binds them for real: the model picks
+zero-to-many tools, a loop executes them and feeds the results back, and it
+answers once it stops calling anything. `AGENT_MODE=classifier` is the original
+design. Both are measured, not one replacing the other on faith:
+
+| | classifier (default) | tool_calling |
+|---|---|---|
+| Routing / tool-selection accuracy | **98.3%** | 91.5% ↓ |
+| Answer relevancy | 0.890 | **0.929** ↑ |
+| Faithfulness | 0.701 | 0.633 ↓ |
+| Context recall | 0.745 | **0.776** ↑ |
+| Multi-intent ("compare his resume to his LinkedIn") | structurally impossible | **calls both tools, unprompted** |
+| Follow-ups without a condensation step | n/a — needs one | **works** (see below) |
+
+A genuinely mixed result, not a clean win either way. `classifier` stays the
+default: for a narrow-domain factual assistant, being wrong or ungrounded is a
+worse failure than sounding slightly less relevant, and it wins on both. But
+`tool_calling` has two structural capabilities the classifier cannot have at
+any accuracy: multi-intent questions and natural follow-up handling, verified
+below.
+
+**Where the accuracy gap comes from**, per the golden set, not guessed at: two
+of the four misroutes are the same pre-existing `linkedin`/`resume` boundary
+ambiguity documented earlier; the other two ("Where is Cem from originally?",
+"What year was Cem born?") are the agent correctly recognizing the answer is
+already in its system prompt's tone-setting "key facts" and skipping a
+redundant tool call — which is reasonable efficiency but means that answer is
+unretrieved and ungrounded, exactly the "facts hardcoded in the prompt are
+invisible to the faithfulness judge" issue this project already tracks.
+
+**A first pass measured worse — 81.4% routing** — because the agent, given no
+stronger instruction, treated the absence of a fact from those same "key facts"
+as license to guess or decline rather than check a tool. Not hallucination —
+it never invented an answer, it said "I don't have information" for things
+like NeoWise that the resume tool clearly has — but premature refusal. A single
+system-prompt addendum (`_TOOL_CALLING_ADDENDUM` in `chatbot.py`) — "always
+check a tool before answering or declining" — closed 12 of 14 points of that
+gap. This is also why the two remaining numbers above are the measured floor
+of a real fix, not an unpolished first attempt.
+
+**No `condense_query` node in this graph**, unlike the classifier, and
+deliberately: the agent sees full conversation history natively when deciding
+which tool to call and with what arguments, so it can resolve "How long was
+that?" into a well-formed `get_resume_info(query="How long was Cem at
+NeoWise?")` call by itself. Measured against the same follow-up golden cases
+the classifier needed an explicit condensation step to pass, it does, with one
+fewer moving part.
+
+**Multi-intent arrived as a side effect of building this properly, not as
+separate work.** One `AIMessage` can carry more than one `tool_call`, and the
+execution loop already handles that — "Compare his resume to his LinkedIn"
+measurably calls `get_resume_info` and `get_linkedin_info` in the same turn.
+
+**One measurement caveat, not a result:** MRR and context precision both look
+sharply better under `tool_calling` (0.566→1.000, 0.646→0.806) — this is an
+artifact, not retrieval improving. `get_resume_info_result` pre-merges every
+chunk into one block before it reaches state, so if the reference is found at
+all it is trivially "rank 1" of one. `eval/compare.py` knows this and reports
+both directions as uninterpreted rather than gating or celebrating either.
+
+A `temperature=0` model drives the agent's own tool-selection, not the
+`temperature=0.7` model used for the classifier's final prose — measured
+directly: reusing the 0.7 model for tool selection made *which tool got
+called* nondeterministic (routing moved 93.2%→91.5% between two runs of
+identical code), a worse property for an agent's decisions than it is for a
+chat reply's phrasing.
+
 ### Known-broken, on purpose
 
 Measured first so the fix can be reported as a delta rather than asserted:
 
-- **Multi-intent questions are structurally unanswerable** — one label, one
-  tool, one branch.
 - **The corpus is too small for retrieval to mean anything.** See the ablation
   above: the honest fix is more documents, not more retrieval machinery.
 

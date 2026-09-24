@@ -8,7 +8,7 @@ from typing import Annotated, Any, TypedDict
 
 import streamlit as st
 from dotenv import load_dotenv
-from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph
 from langgraph.graph.message import add_messages
@@ -20,11 +20,11 @@ from guardrails.faithfulness_check import check_faithfulness
 from memory.session_memory import SessionMemory
 from observability import setup_tracing, tracing_status
 from router import classify_query
-from tools.linkedin_tool import get_linkedin_info_result
-from tools.personal_tool import get_personal_info_result
+from tools.linkedin_tool import get_linkedin_info, get_linkedin_info_result
+from tools.personal_tool import get_personal_info, get_personal_info_result
 from tools.result import ToolResult
-from tools.resume_tool import format_chunks, search_resume
-from tools.spotify_tool import get_music_taste_result
+from tools.resume_tool import format_chunks, get_resume_info, get_resume_info_result, search_resume
+from tools.spotify_tool import get_music_taste, get_music_taste_result
 
 logger = logging.getLogger(__name__)
 
@@ -113,17 +113,24 @@ class GraphState(TypedDict):
 # ---------------------------------------------------------------------------
 # LangGraph factory
 # ---------------------------------------------------------------------------
-def create_assistant(prior_context: str = "") -> Any:
-    llm = ChatOpenAI(temperature=0.7, model="gpt-4o-mini", streaming=True)
-    llm_fast = ChatOpenAI(temperature=0, model="gpt-4o-mini", streaming=False)
+def _timed(name: str, fn, state: GraphState) -> GraphState:
+    start = time.perf_counter()
+    result = fn(state)
+    elapsed = time.perf_counter() - start
+    latencies = dict(result.get("node_latencies", {}))
+    latencies[name] = round(elapsed, 3)
+    result["node_latencies"] = latencies
+    return result
 
+
+def _system_prompt(prior_context: str) -> str:
     # Built outside the f-string: a backslash in an f-string expression is a
     # syntax error before Python 3.12, and this project targets 3.11.
     prior_block = ""
     if prior_context:
         prior_block = "Prior conversation context (returning visitor):\n" + prior_context
 
-    system_prompt = f"""You are a helpful personal assistant chatbot for Cem Kaspi.
+    return f"""You are a helpful personal assistant chatbot for Cem Kaspi.
 You have access to Cem's resume, personal information, Spotify listening history, and LinkedIn profile.
 Use the available tools to retrieve the most relevant information to answer queries about Cem.
 If you did not receive any relevant information from the tools, say so honestly.
@@ -137,14 +144,39 @@ Key facts about Cem:
 
 {prior_block}"""
 
-    def timed(name: str, fn, state: GraphState) -> GraphState:
-        start = time.perf_counter()
-        result = fn(state)
-        elapsed = time.perf_counter() - start
-        latencies = dict(result.get("node_latencies", {}))
-        latencies[name] = round(elapsed, 3)
-        result["node_latencies"] = latencies
-        return result
+
+def create_assistant(prior_context: str = "", mode: str | None = None) -> Any:
+    """Build the compiled graph. ``mode`` defaults to ``settings.agent_mode``.
+
+    Two independent graph shapes, chosen by configuration rather than one
+    replacing the other on faith: "classifier" is the original design (an LLM
+    picks one of five fixed labels, a hardcoded switch calls exactly one
+    tool); "tool_calling" binds the tools to the LLM directly and lets it
+    choose, call zero-to-many of them, and loop back with the results before
+    answering. Both are measured (see eval/results/) so the choice of default
+    is evidence, not preference.
+    """
+    llm = ChatOpenAI(temperature=0.7, model="gpt-4o-mini", streaming=True)
+    llm_fast = ChatOpenAI(temperature=0, model="gpt-4o-mini", streaming=False)
+    system_prompt = _system_prompt(prior_context)
+    mode = mode or load_settings().agent_mode
+
+    if mode == "tool_calling":
+        # Not llm: that call decides *and* eventually writes the final answer
+        # in the same loop, and llm's temperature=0.7 was chosen for prose
+        # variety, not for tool-selection — measured directly, it made which
+        # tool got called nondeterministic (routing moved 93.2% -> 91.5%
+        # between two identical runs). The classifier avoids this by using a
+        # separate temp=0 model for its own decision point; this does the
+        # same, while keeping streaming=True so the final round still types
+        # live in the UI.
+        llm_agent = ChatOpenAI(temperature=0, model="gpt-4o-mini", streaming=True)
+        return _build_tool_calling_graph(llm_agent, system_prompt)
+    return _build_classifier_graph(llm, llm_fast, system_prompt)
+
+
+def _build_classifier_graph(llm: ChatOpenAI, llm_fast: ChatOpenAI, system_prompt: str) -> Any:
+    """The original design: classify, then a hardcoded switch calls one tool."""
 
     def condense_query(state: GraphState) -> GraphState:
         def _run(state):
@@ -155,7 +187,7 @@ Key facts about Cem:
             rewritten = query_rewrite.condense_query(query, messages[:-1], llm_fast)
             return {**state, "search_query": rewritten}
 
-        return timed("condense_query", _run, state)
+        return _timed("condense_query", _run, state)
 
     def route_query(state: GraphState) -> GraphState:
         def _run(state):
@@ -163,7 +195,7 @@ Key facts about Cem:
             qtype = classify_query(query, llm_fast)
             return {**state, "next_step": qtype, "route": qtype}
 
-        return timed("route_query", _run, state)
+        return _timed("route_query", _run, state)
 
     def handle_resume(state: GraphState) -> GraphState:
         def _run(state):
@@ -183,7 +215,7 @@ Key facts about Cem:
                 "next_step": "generate_response",
             }
 
-        return timed("handle_resume", _run, state)
+        return _timed("handle_resume", _run, state)
 
     def handle_personal(state: GraphState) -> GraphState:
         def _run(state):
@@ -197,7 +229,7 @@ Key facts about Cem:
                 "next_step": "generate_response",
             }
 
-        return timed("handle_personal", _run, state)
+        return _timed("handle_personal", _run, state)
 
     def handle_spotify(state: GraphState) -> GraphState:
         def _run(state):
@@ -211,7 +243,7 @@ Key facts about Cem:
                 "next_step": "generate_response",
             }
 
-        return timed("handle_spotify", _run, state)
+        return _timed("handle_spotify", _run, state)
 
     def handle_linkedin(state: GraphState) -> GraphState:
         def _run(state):
@@ -225,7 +257,7 @@ Key facts about Cem:
                 "next_step": "generate_response",
             }
 
-        return timed("handle_linkedin", _run, state)
+        return _timed("handle_linkedin", _run, state)
 
     def handle_conversation(state: GraphState) -> GraphState:
         def _run(state):
@@ -238,7 +270,7 @@ Key facts about Cem:
                 "next_step": "generate_response",
             }
 
-        return timed("handle_conversation", _run, state)
+        return _timed("handle_conversation", _run, state)
 
     def generate_response(state: GraphState) -> GraphState:
         def _run(state):
@@ -265,7 +297,7 @@ Key facts about Cem:
             # (matched by id, so no duplication) but pointless.
             return {**state, "messages": [response], "next_step": "end", "context_used": context_used}
 
-        return timed("generate_response", _run, state)
+        return _timed("generate_response", _run, state)
 
     workflow = StateGraph(GraphState)
     workflow.add_node("condense_query", condense_query)
@@ -299,6 +331,144 @@ Key facts about Cem:
 
     workflow.add_edge("condense_query", "route_query")
     workflow.set_entry_point("condense_query")
+    return workflow.compile()
+
+
+# Maps a tool's registered name to the golden set's route category, so
+# routing/tool-selection accuracy is scored identically for both graph modes —
+# eval/run_eval.py never needs to know which mode produced a given result.
+_TOOL_TO_CATEGORY: dict[str, str] = {
+    "get_resume_info": "resume",
+    "get_personal_info": "personal",
+    "get_music_taste": "spotify",
+    "get_linkedin_info": "linkedin",
+}
+
+
+def _call_tool(name: str, args: dict) -> ToolResult:
+    """Dispatch a tool call by name to its typed result function.
+
+    Not the @tool-decorated function itself: those return a plain string
+    (content on success, an error-prefixed string on failure) for the LLM
+    tool-calling contract. The typed function is what lets execute_tools keep
+    a failed call's error text out of context_used while still handing the
+    agent the same string a human calling the tool would see.
+    """
+    if name == "get_resume_info":
+        return get_resume_info_result(args.get("query", ""))
+    if name == "get_personal_info":
+        return get_personal_info_result(args.get("info_type", ""))
+    if name == "get_music_taste":
+        return get_music_taste_result()
+    if name == "get_linkedin_info":
+        return get_linkedin_info_result()
+    return ToolResult.failure(f"Unknown tool: {name}")
+
+
+# A measured addition, not a guess written in advance: a first pass at this
+# graph — no addendum, just the shared system prompt — routed at 81.4% against
+# the classifier's 98.3% on the same golden set. Nearly every miss had the same
+# shape: the agent declined ("I don't have information about that") instead of
+# calling a tool that would have answered it, for anything not already in the
+# prompt's few "key facts" lines. Not hallucination — it never invented an
+# answer — but premature refusal, treating four bullet points as the ceiling of
+# what it knows rather than as tone-setting context. This addendum is the fix,
+# and its effect is measured in eval/results/ under agent_mode=tool_calling,
+# same as everything else in this file.
+_TOOL_CALLING_ADDENDUM = """
+The "Key facts" above are for tone and identity only — never treat their
+absence as evidence you lack information. For any question about Cem's career,
+education, background, music taste, or LinkedIn history, call the relevant
+tool before answering, even if you suspect you already know. Only say you
+don't have something after checking, and never guess or invent a detail no
+tool returned."""
+
+
+def _build_tool_calling_graph(llm: ChatOpenAI, system_prompt: str) -> Any:
+    """Bind the tools to the LLM and let it choose — a real agent, not a switch.
+
+    No condense_query node: unlike the classifier, which only ever sees one
+    isolated string (the query) with no memory of its own, this agent sees the
+    full conversation history natively when deciding which tool to call and
+    with what arguments — it can resolve "and before that?" while constructing
+    the tool call itself. Whether that actually holds up is exactly what
+    eval/run_eval.py measures per mode, rather than being assumed.
+
+    One AIMessage can carry more than one tool_call — the model may decide to
+    call get_resume_info and get_linkedin_info in the same turn for "compare
+    his resume to his LinkedIn" — and execute_tools' loop already handles
+    that, which is most of Phase 3.2's multi-intent case arriving as a side
+    effect of building this properly rather than needing separate work.
+    """
+    tools = [get_resume_info, get_personal_info, get_music_taste, get_linkedin_info]
+    llm_with_tools = llm.bind_tools(tools)
+    system_prompt = system_prompt + _TOOL_CALLING_ADDENDUM
+
+    def agent(state: GraphState) -> GraphState:
+        def _run(state):
+            lc_messages = [SystemMessage(content=system_prompt), *state["messages"]]
+            response = llm_with_tools.invoke(lc_messages)
+            updates = {**state, "messages": [response]}
+            # Only when nothing has called a tool yet this turn: a later round
+            # with no further tool_calls is the agent's final answer after an
+            # earlier round already set a real route, and must not overwrite it.
+            if not getattr(response, "tool_calls", None) and not state.get("route"):
+                updates["route"] = "conversation"
+            return updates
+
+        return _timed("agent", _run, state)
+
+    def execute_tools(state: GraphState) -> GraphState:
+        def _run(state):
+            last = state["messages"][-1]
+            tool_messages: list[ToolMessage] = []
+            categories, context_parts, chunk_parts, error_parts = [], [], [], []
+
+            for call in last.tool_calls:
+                name, args = call["name"], call.get("args") or {}
+                try:
+                    result = _call_tool(name, args)
+                except Exception as e:
+                    logger.warning("Tool %s failed: %s", name, e)
+                    result = ToolResult.failure(str(e))
+
+                categories.append(_TOOL_TO_CATEGORY.get(name, name))
+                if result.ok:
+                    context_parts.append(result.content)
+                    chunk_parts.append(result.content)
+                else:
+                    error_parts.append(f"{name}: {result.error}")
+                tool_messages.append(
+                    ToolMessage(
+                        content=result.as_tool_string(f"Error calling {name}"),
+                        tool_call_id=call["id"],
+                    )
+                )
+
+            # Accumulated, not overwritten: a second round of tool calls in the
+            # same turn (genuine multi-hop) must not lose the first round's
+            # context, route, or errors.
+            return {
+                **state,
+                "messages": tool_messages,
+                "route": ",".join(filter(None, [state.get("route", ""), *categories])),
+                "context_used": "\n\n".join(filter(None, [state.get("context_used", ""), *context_parts])),
+                "context_chunks": (state.get("context_chunks") or []) + chunk_parts,
+                "tool_error": "; ".join(filter(None, [state.get("tool_error", ""), *error_parts])),
+            }
+
+        return _timed("execute_tools", _run, state)
+
+    def should_continue(state: GraphState) -> str:
+        last = state["messages"][-1]
+        return "tools" if getattr(last, "tool_calls", None) else "end"
+
+    workflow = StateGraph(GraphState)
+    workflow.add_node("agent", agent)
+    workflow.add_node("execute_tools", execute_tools)
+    workflow.add_conditional_edges("agent", should_continue, {"tools": "execute_tools", "end": "__end__"})
+    workflow.add_edge("execute_tools", "agent")
+    workflow.set_entry_point("agent")
     return workflow.compile()
 
 
@@ -446,18 +616,22 @@ def main() -> None:
             }
 
             # Two stream modes in one pass: "messages" gives live token deltas
-            # for the placeholder below, from generate_response's own .invoke()
-            # call — LangGraph surfaces a streaming-enabled model's callbacks
-            # regardless of which method the node used. "values" gives the
-            # full state after each step; the last one is the graph's result,
-            # same as graph.invoke() would return, with no separate call.
+            # for the placeholder below — LangGraph surfaces a streaming-
+            # enabled model's callbacks regardless of which method the node
+            # used. "values" gives the full state after each step; the last
+            # one is the graph's result, same as graph.invoke() would return,
+            # with no separate call. Node names differ by mode:
+            # generate_response (classifier) vs agent (tool_calling, possibly
+            # invoked more than once per turn — a round that decides to call a
+            # tool typically emits little or no text, so its chunks simply add
+            # nothing rather than needing to be filtered out separately).
             full_response = ""
             result_state: GraphState | None = None
             with st.spinner("Thinking..."):
                 for mode, payload in graph.stream(state, stream_mode=["messages", "values"]):
                     if mode == "messages":
                         chunk, meta = payload
-                        if meta.get("langgraph_node") == "generate_response" and chunk.content:
+                        if meta.get("langgraph_node") in ("generate_response", "agent") and chunk.content:
                             full_response += chunk.content
                             placeholder.markdown(full_response + "▌")
                     elif mode == "values":

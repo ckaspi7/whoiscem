@@ -37,14 +37,50 @@ python scripts/refresh_cache.py
 
 ### Request flow (LangGraph)
 
-Every user message traverses a compiled `StateGraph` defined in `chatbot.py`:
+`chatbot.py:create_assistant(mode=None)` compiles one of two `StateGraph`
+shapes, selected by `mode` or `AGENT_MODE` (`config.py`). Both are measured
+against each other (`eval/results/v8-classifier.json` /
+`v9-tool-calling.json`) rather than one replacing the other on faith — see the
+README's "A real agent, measured against the switch statement it replaces".
+`AGENT_MODE=classifier` is the default: it wins on routing accuracy (98.3% vs
+91.5%) and faithfulness (0.701 vs 0.633), which matter more for a narrow-domain
+factual assistant than `tool_calling`'s edge on answer relevancy and its
+structural ability to do multi-intent and follow-ups without a condensation
+step. Every user message still traverses `check_faithfulness` and session
+memory the same way regardless of mode (steps 5-6 below).
+
+**`classifier`** (`_build_classifier_graph`) — the original design:
 
 1. **`condense_query`** (`query_rewrite.py`) — rewrites the latest message into a standalone question using recent history ("and before that?" → "Where did Cem work before TELUS Communications?"), so routing and retrieval never act on a bare pronoun. Only calls the LLM when there is history to resolve against; a first turn is a no-op pass-through. Sets `search_query`.
 2. **`route_query`** — LLM classifies `search_query` into one of five intents: `resume`, `personal`, `spotify`, `linkedin`, `conversation` (see `router.py`). Sets `route` (kept apart from `next_step`, which every later node overwrites as control flow).
 3. **Handler node** — one of `handle_resume/personal/spotify/linkedin/conversation` calls the route's typed `*_result()` function (see below) and sets `tool_result` + `context_used` from `ToolResult.as_context()` — a failure's error text never reaches either field, only `tool_error`.
-4. **`generate_response`** — calls GPT-4o-mini with `.invoke()` (blocking, not `.stream()`) using `tool_result` as injected context, and returns one plain `AIMessage`. The caller (`chatbot.py:main()`, `eval/run_eval.py`) gets live token-by-token output via `graph.stream(state, stream_mode=["messages", "values"])` instead — the same call's streaming callbacks surface through LangGraph regardless of which method the node used, and the same pass yields the full final state, so nothing needs a second call or a checkpointer just to read the result back.
+4. **`generate_response`** — calls GPT-4o-mini with `.invoke()` (blocking, not `.stream()`) using `tool_result` as injected context, and returns one plain `AIMessage`.
+
+**`tool_calling`** (`_build_tool_calling_graph`) — a real agent: the four
+`@tool`-decorated functions are bound directly (`llm.bind_tools(...)`) to a
+dedicated, deterministic (`temperature=0`, still `streaming=True`) model — not
+the classifier's `temperature=0.7` prose model, which measurably made tool
+selection nondeterministic when tried. No `condense_query` node: the agent
+sees full history natively and resolves a follow-up while constructing the
+tool call itself. Two nodes loop until no more tools are called:
+
+1. **`agent`** — invokes the tool-bound LLM with the full message history under a system prompt plus `_TOOL_CALLING_ADDENDUM` (told the model to always check a tool rather than treat its "key facts" as a ceiling — a first pass without this addendum measured 81.4% routing from premature refusals; with it, 91.5%). Sets `route="conversation"` only if nothing has called a tool yet this turn.
+2. **`execute_tools`** — dispatches each `tool_call` by name through `_call_tool` to the matching `*_result()` function (not the `@tool`-wrapped one — that returns a plain string for the LLM's own tool-calling contract). One `AIMessage` can carry more than one `tool_call` — "compare his resume to his LinkedIn" calls `get_resume_info` and `get_linkedin_info` in the same turn, which is Phase 3.2's multi-intent case arriving as a side effect rather than needing separate work. Accumulates into `route`/`context_used`/`context_chunks`/`tool_error` rather than overwriting, so a second round of tool calls in the same turn (genuine multi-hop) does not erase the first.
+
+Both graphs converge back into the shared tail:
+
 5. **`check_faithfulness`** (post-node, in `guardrails/faithfulness_check.py`) — a GPT-4o-mini judge scores the response 1–5 against `context_used`; scores ≤1 are refused, 2–3 get a disclaimer. Context is per-route, not per-answer, so this is only as good as the route it followed — see the faithfulness-by-route breakdown in the README.
 6. **Session memory** (`memory/session_memory.py`) — after every turn, the conversation is summarised to 3 sentences and stored under `session:{uuid}:summary`, TTL 30 days. Redis when `REDIS_URL` is set and reachable, an in-process fallback otherwise. Returning visitors get this injected into the system prompt.
+
+The caller (`chatbot.py:main()`, `eval/run_eval.py`) gets live token-by-token
+output via `graph.stream(state, stream_mode=["messages", "values"])` rather
+than a node returning a raw generator — the same call's streaming callbacks
+surface through LangGraph regardless of which method the node used
+(`.invoke()` still streams token deltas out), and the same pass yields the
+full final state, so nothing needs a second call or a checkpointer just to
+read the result back. `main()`'s node-name filter accepts both
+`generate_response` and `agent`, since the two modes name their final-answer
+node differently.
 
 ### Typed tool results
 
@@ -73,7 +109,7 @@ Per-node latencies are tracked in `GraphState.node_latencies` and shown in the S
 
 ### Evaluation
 
-`eval/run_eval.py` runs the golden set (`eval/golden_set.json`, generated by `eval/build_golden_set.py` — never hand-edit the JSON) through this real graph and scores routing accuracy, retrieval recall@k/MRR against verbatim golden snippets, refusal rate on unanswerable/adversarial cases, a dedicated tool-error rate, and RAGAS (faithfulness/answer_relevancy/context_recall/context_precision, over answerable questions only). `eval/compare.py` gates a run against the most recent committed result in `eval/results/`; any nonzero tool-error count fails the gate outright, checked directly rather than as a tolerance band. `eval/ablate_retrieval.py` measures the retrieval strategies against each other, routing excluded.
+`eval/run_eval.py` runs the golden set (`eval/golden_set.json`, generated by `eval/build_golden_set.py` — never hand-edit the JSON) through this real graph and scores routing/tool-selection accuracy, retrieval recall@k/MRR against verbatim golden snippets, refusal rate on unanswerable/adversarial cases, a dedicated tool-error rate, and RAGAS (faithfulness/answer_relevancy/context_recall/context_precision, over answerable questions only). `--agent-mode classifier|tool_calling` overrides `AGENT_MODE` for one run, which is how `v8-classifier.json`/`v9-tool-calling.json` were produced side by side. `eval/compare.py` gates a run against the most recent committed result in `eval/results/`; any nonzero tool-error count fails the gate outright, checked directly rather than as a tolerance band, and MRR/context precision are reported but never gated across a chunker or agent_mode change, in either direction — both change what a "chunk" is, not just how good retrieval is. `eval/ablate_retrieval.py` measures the retrieval strategies against each other, routing excluded.
 
 ## Environment variables
 
@@ -84,7 +120,8 @@ Required: `OPENAI_API_KEY`
 Observability: `PHOENIX_COLLECTOR_ENDPOINT` (unset = local collector on :6006), `PHOENIX_API_KEY`, `PHOENIX_PROJECT_NAME`  
 Vector store: `QDRANT_MODE` = `embedded` (default; on-disk at `QDRANT_PATH`, no server) | `server` (`QDRANT_HOST`/`QDRANT_PORT`) | `cloud` (`QDRANT_URL`/`QDRANT_API_KEY`)  
 Session memory: `REDIS_URL` — unset means an in-process fallback, not a disabled feature  
-Resume source: `RESUME_PATH` (defaults to `data/resume.pdf`)  
+Resume source: `RESUME_PATH` (defaults to `data/resume.md`)  
+Agent architecture: `AGENT_MODE` = `classifier` (default, measured best) | `tool_calling` (real agent; see README)  
 Spotify cache refresh only: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`
 
 See `.env.example` for the full template.

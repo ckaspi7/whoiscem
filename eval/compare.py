@@ -115,10 +115,27 @@ def compare(current_path: Path, baseline_path: Path) -> int:
     if before_cfg and before_cfg != after_cfg:
         print(f"\nNOTE: retrieval configuration changed: {before_cfg} -> {after_cfg}.")
 
+    before_mode = baseline.get("agent_mode")
+    after_mode = current.get("agent_mode")
+    mode_changed = bool(before_mode) and before_mode != after_mode
+    if mode_changed:
+        print(f"\nNOTE: agent_mode changed: {before_mode} -> {after_mode}. This is a different graph")
+        print("      architecture, not a code regression on the same one — read deltas as a comparison.")
+
     rechunked = current.get("chunker") != baseline.get("chunker")
     if rechunked:
         print(f"\nNOTE: chunker changed ({baseline.get('chunker')} -> {current.get('chunker')}).")
-        print("      Rank-sensitive metrics are reported but not gated.")
+
+    # Both cases change what a "chunk" even is: rechunking obviously, and
+    # switching agent_mode because tool_calling's context_chunks is one
+    # pre-merged block per successful tool call (get_resume_info_result
+    # already joins everything with format_chunks), not the classifier's
+    # several individually-ranked chunks. A single block is trivially rank 1
+    # if it is found at all, so MRR and context_precision moving is an
+    # artifact of granularity, not evidence retrieval got better or worse.
+    granularity_changed = rechunked or mode_changed
+    if granularity_changed:
+        print("      Rank-sensitive metrics are reported but not gated, in either direction.")
 
     hard_failures = _tool_health_failures(current)
     if hard_failures:
@@ -133,12 +150,15 @@ def compare(current_path: Path, baseline_path: Path) -> int:
         if before is None or after is None:
             continue
         delta = after - before
+        rank_sensitive_and_uninterpretable = granularity_changed and metric in RANK_SENSITIVE
         flag = ""
-        if delta < -tolerance and rechunked and metric in RANK_SENSITIVE:
-            flag = "  down (not gated: rechunked)"
+        if delta < -tolerance and rank_sensitive_and_uninterpretable:
+            flag = "  down (not gated: granularity changed)"
         elif delta < -tolerance:
             flag = "  REGRESSION"
             regressions.append((metric, before, after))
+        elif delta > tolerance and rank_sensitive_and_uninterpretable:
+            flag = "  up (not gated: granularity changed)"
         elif delta > tolerance:
             flag = "  improved"
         print(f"{metric:<32} {before:>9.4f} {after:>9.4f} {delta:>+9.4f}{flag}")
