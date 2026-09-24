@@ -129,6 +129,33 @@ more than the single snippet a question references. The default strategy is
 therefore `auto`: pass the whole corpus while it fits in a prompt, and start
 selecting when it does not.
 
+### Caching
+
+The table above measures each strategy's first-call cost. It also exposed a
+real inefficiency: running all eleven variants over the same 24 questions
+re-embeds the identical query text up to nine times, since every RRF and
+reranked variant recomputes the fused candidate list — and therefore the query
+embedding — from scratch.
+
+`retrieval/cache.py` adds a query-embedding cache and a full-retrieval-result
+cache, Redis when `REDIS_URL` is set and reachable, an in-process fallback
+otherwise — the same degrade-never-raise pattern as session memory. Retrieval
+entries are scoped by the corpus fingerprint, so a rebuilt index can never
+serve a stale answer. Re-running the ablation with it enabled:
+
+| variant | before | after |
+|---|---|---|
+| dense only, k=5 (same query as a prior variant) | 215 ms | **1.7 ms** |
+| RRF fusion, k=5 | 237 ms | **1.4 ms** |
+| RRF fusion, k=8 | — | **1.3 ms** |
+
+The cross-encoder pass itself is not cached — reranking a fresh candidate set
+is the point of asking again with different parameters — so the
+`rrf_rerank@*` and whole-document variants are largely unchanged (~800–940 ms):
+caching removed the redundant embedding call, not the reranking cost. Full
+evaluation after enabling it shows no regression against the prior baseline on
+any metric.
+
 ### A tool failure never becomes evidence
 
 Every tool used to catch its own exceptions and return the equivalent of

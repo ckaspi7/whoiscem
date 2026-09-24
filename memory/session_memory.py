@@ -2,15 +2,18 @@ from __future__ import annotations
 
 import logging
 
+import redis_backend
 from config import load_settings
 
 logger = logging.getLogger(__name__)
 
 _SESSION_TTL = 60 * 60 * 24 * 30  # 30 days
 
-BACKEND_REDIS = "redis"
-BACKEND_IN_PROCESS = "in-process"
-BACKEND_DISABLED = "disabled"
+# Re-exported for callers and tests that referred to these before the
+# connection logic moved into redis_backend.
+BACKEND_REDIS = redis_backend.BACKEND_REDIS
+BACKEND_IN_PROCESS = redis_backend.BACKEND_IN_PROCESS
+BACKEND_DISABLED = redis_backend.BACKEND_DISABLED
 
 
 class SessionMemory:
@@ -24,29 +27,8 @@ class SessionMemory:
     """
 
     def __init__(self, redis_url: str | None = None) -> None:
-        self._redis = None
-        self._backend = BACKEND_DISABLED
-
         url = redis_url if redis_url is not None else load_settings().redis_url
-        if url:
-            try:
-                import redis as redis_lib
-
-                client = redis_lib.from_url(url, decode_responses=True, socket_connect_timeout=2)
-                client.ping()
-                self._redis = client
-                self._backend = BACKEND_REDIS
-            except Exception as exc:
-                logger.warning("Redis unreachable at %s — falling back in-process: %s", url, exc)
-
-        if self._redis is None:
-            try:
-                import fakeredis
-
-                self._redis = fakeredis.FakeRedis(decode_responses=True)
-                self._backend = BACKEND_IN_PROCESS
-            except Exception as exc:
-                logger.warning("No session memory backend available: %s", exc)
+        self._redis, self._backend = redis_backend.connect(url, purpose="session memory")
 
     @property
     def available(self) -> bool:

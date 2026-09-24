@@ -39,30 +39,41 @@ python scripts/refresh_cache.py
 
 Every user message traverses a compiled `StateGraph` defined in `chatbot.py`:
 
-1. **`route_query`** — LLM classifies the query into one of five intents: `resume`, `personal`, `spotify`, `linkedin`, `conversation` (see `router.py`).
-2. **Handler node** — one of `handle_resume/personal/spotify/linkedin/conversation` runs the appropriate tool and sets `tool_result` + `context_used` on the state.
-3. **`generate_response`** — GPT-4o-mini streams the answer using the tool result as injected context.
-4. **`check_faithfulness`** (post-node, in `guardrails/faithfulness_check.py`) — a GPT-4o-mini judge scores the response 1–5 against the retrieved context; scores ≤1 are refused, 2–3 get a disclaimer.
-5. **Redis session memory** (`memory/session_memory.py`) — after every turn, the conversation is summarised to 3 sentences and stored in Redis for 30 days, keyed by `session:{uuid}:summary`. Returning visitors get this injected into the system prompt.
+1. **`condense_query`** (`query_rewrite.py`) — rewrites the latest message into a standalone question using recent history ("and before that?" → "Where did Cem work before TELUS Communications?"), so routing and retrieval never act on a bare pronoun. Only calls the LLM when there is history to resolve against; a first turn is a no-op pass-through. Sets `search_query`.
+2. **`route_query`** — LLM classifies `search_query` into one of five intents: `resume`, `personal`, `spotify`, `linkedin`, `conversation` (see `router.py`). Sets `route` (kept apart from `next_step`, which every later node overwrites as control flow).
+3. **Handler node** — one of `handle_resume/personal/spotify/linkedin/conversation` calls the route's typed `*_result()` function (see below) and sets `tool_result` + `context_used` from `ToolResult.as_context()` — a failure's error text never reaches either field, only `tool_error`.
+4. **`generate_response`** — GPT-4o-mini streams the answer using `tool_result` as injected context.
+5. **`check_faithfulness`** (post-node, in `guardrails/faithfulness_check.py`) — a GPT-4o-mini judge scores the response 1–5 against `context_used`; scores ≤1 are refused, 2–3 get a disclaimer. Context is per-route, not per-answer, so this is only as good as the route it followed — see the faithfulness-by-route breakdown in the README.
+6. **Session memory** (`memory/session_memory.py`) — after every turn, the conversation is summarised to 3 sentences and stored under `session:{uuid}:summary`, TTL 30 days. Redis when `REDIS_URL` is set and reachable, an in-process fallback otherwise. Returning visitors get this injected into the system prompt.
+
+### Typed tool results
+
+Every tool (`tools/*.py`) has a `*_result()` function returning `ToolResult` (`tools/result.py`) — `ok=True` with `content`, or `ok=False` with `error`. `ToolResult.as_context()` returns `content` on success and `""` on failure: an error can never masquerade as retrieved evidence to the model or the faithfulness judge. The `@tool`-decorated functions (`get_resume_info`, `get_personal_info`, `get_music_taste`, `get_linkedin_info`) are thin string-interface wrappers over these, kept for the LangChain tool-calling surface; `chatbot.py`'s handlers call the typed functions directly, not `.invoke()`.
 
 ### Hybrid RAG pipeline (resume path only)
 
-The `resume` handler calls `tools/resume_tool.py`, which orchestrates three lazy-initialised singletons:
+The `resume` handler calls `tools/resume_tool.py:search_resume()`, which orchestrates three lazy-initialised singletons via `_init_retrieval()`:
 
-- **`QdrantVectorStore`** (`retrieval/vectorstore.py`) — dense cosine search using `text-embedding-3-small`. Collection `resume_chunks` is auto-built from `data/Cem_Kaspi_Resume.pdf` using a `SemanticChunker` on first run.
-- **`BM25Index`** (`retrieval/bm25.py`) — sparse keyword search built from all chunks stored in Qdrant.
+- **`QdrantVectorStore`** (`retrieval/vectorstore.py`) — dense cosine search using `text-embedding-3-small`. Collection `resume_chunks` is built from `RESUME_PATH` (default `data/resume.md`) on first query, or whenever `needs_rebuild()` detects the source bytes or `CHUNKER_VERSION` changed. Markdown is chunked structurally on headings (`retrieval/chunking.py`); a PDF falls back to `SemanticChunker`, since extraction strips its headings.
+- **`BM25Index`** (`retrieval/bm25.py`) — sparse keyword search, built from the vector store's own chunks so its returned ids are the store's ids (fusion joins on real identity, not list position).
 - **`CrossEncoderReranker`** (`retrieval/reranker.py`) — `cross-encoder/ms-marco-MiniLM-L-6-v2` (downloads ~90 MB on first run, then cached).
 
-These three feed into `reciprocal_rank_fusion` (`retrieval/fusion.py`) → top-20 from each list → RRF merge → cross-encoder rerank → top-3 chunks returned to the LLM.
+`RETRIEVAL_STRATEGY` selects how these combine: `auto` (default — the whole corpus, reranked, while it fits `CORPUS_FITS_CONTEXT_CHARS`; plain dense search once it doesn't), `dense`, `sparse`, `rrf`, or `rrf_rerank` (RRF fusion of top-`CANDIDATE_POOL` from each, then cross-encoder rerank). See `eval/results/ablation-retrieval.json` and the README's ablation table before assuming hybrid beats dense on a given corpus size — on the current 7 KB resume it does not.
+
+`_init_retrieval()` commits `_store`/`_bm25`/`_reranker` to module globals only after each stage fully succeeds, so a transient failure (a Qdrant container not yet ready) is retried on the next call instead of poisoning the process. `retrieval/cache.py` (`RetrievalCache`) caches query embeddings and full retrieval results, same Redis-or-in-process pattern as session memory (shared connection logic in `redis_backend.py`), scoped by the corpus fingerprint so a rebuilt index can't serve a stale cached answer.
 
 ### Other tools
 
-- `tools/personal_tool.py` — queries a SQLite database populated from `data/seed_data.json`.
-- `tools/spotify_tool.py` / `tools/linkedin_tool.py` — serve from JSON caches in `data/cache/`; these are manually refreshed (see `LIMITATIONS.md`).
+- `tools/personal_tool.py` — queries a SQLite database populated from `data/seed_data.json`, projecting an explicit column allowlist (never `SELECT *`).
+- `tools/spotify_tool.py` / `tools/linkedin_tool.py` — serve from JSON caches in `data/cache/`; manually refreshed (see `LIMITATIONS.md`), and the answer states the cache's real age (`tools/freshness.py`) rather than asserting a refresh cadence.
 
 ### Observability
 
-Per-node latencies are tracked in `GraphState.node_latencies` and shown in the Streamlit sidebar. Distributed tracing is not wired yet: the project is standardising on Arize Phoenix via OpenTelemetry/OpenInference, and LangSmith has been removed rather than run two platforms at once.
+Per-node latencies are tracked in `GraphState.node_latencies` and shown in the Streamlit sidebar. Distributed tracing is via `observability.py` (OpenTelemetry through OpenInference, exported to Arize Phoenix) — a local collector needs no account (`pip install arize-phoenix && phoenix serve`), or set `PHOENIX_COLLECTOR_ENDPOINT`/`PHOENIX_API_KEY` for Phoenix Cloud. `setup_tracing()` must run before `create_assistant()`: the instrumentor patches LangChain's callback manager, so anything constructed earlier is never traced.
+
+### Evaluation
+
+`eval/run_eval.py` runs the golden set (`eval/golden_set.json`, generated by `eval/build_golden_set.py` — never hand-edit the JSON) through this real graph and scores routing accuracy, retrieval recall@k/MRR against verbatim golden snippets, refusal rate on unanswerable/adversarial cases, a dedicated tool-error rate, and RAGAS (faithfulness/answer_relevancy/context_recall/context_precision, over answerable questions only). `eval/compare.py` gates a run against the most recent committed result in `eval/results/`; any nonzero tool-error count fails the gate outright, checked directly rather than as a tolerance band. `eval/ablate_retrieval.py` measures the retrieval strategies against each other, routing excluded.
 
 ## Environment variables
 
@@ -80,11 +91,14 @@ See `.env.example` for the full template.
 
 ## Key design constraints
 
-- The `_store`, `_bm25`, and `_reranker` singletons in `resume_tool.py` are module-level globals. They initialise lazily on first query. Qdrant index is rebuilt automatically if the collection doesn't exist.
-- The Qdrant client is built by `retrieval/backends.py:create_qdrant_client()` from `Settings`, never from hardcoded coordinates. `QdrantVectorStore` takes an injected client, which is how the integration tests run without a server.
+- The `_store`, `_bm25`, `_reranker`, and `_cache` singletons in `resume_tool.py` are module-level globals, initialised lazily on first query. Each is committed to its global only after that stage's setup fully succeeds — a transient failure (a Qdrant container not yet ready) must be retried on the next call, not permanently cached as broken. `tests/unit/test_resume_tool.py` guards this against regressing; it is the fix for a real incident where a CI service-container race silently broke retrieval for an entire scheduled run.
+- The Qdrant index rebuilds when `needs_rebuild()` finds the source bytes or `retrieval/vectorstore.py:CHUNKER_VERSION` changed, not merely when the collection is absent. A stale index answers happily from the previous corpus.
+- The Qdrant client is built by `retrieval/backends.py:create_qdrant_client()` from `Settings`, never from hardcoded coordinates. `QdrantVectorStore` takes an injected client and an optional `RetrievalCache`, which is how the integration tests run without a server or a cache.
 - Embedded Qdrant takes an exclusive lock on `QDRANT_PATH`: the app and the test suite cannot share one path at the same time.
 - `chatbot.py` targets Python 3.11 — no f-string expression may contain a backslash (legal only from 3.12). `tests/unit/test_app_boot.py` guards this.
-- Redis failure is non-fatal: `SessionMemory` catches all exceptions and degrades to no-op (app runs without session memory).
+- A tool's failure must never reach `tool_result`/`context_used` as text (see Typed tool results, above) — `ToolResult.as_context()` is the enforcement point. A handler that bypasses it and interpolates an exception into either field reintroduces the bug the faithfulness judge used to silently score against a stack trace.
+- Redis failure (session memory or the retrieval cache) is non-fatal: both fall back in-process via `redis_backend.connect()`, never raising just because a cache is unavailable.
 - The Streamlit app uses `st.query_params["sid"]` for session identity, making sessions shareable via URL.
-- Streamlit Cloud secrets override `.env` values — the loop at the top of `chatbot.py` merges them into `os.environ`.
+- Streamlit Cloud secrets override `.env` values — `_apply_streamlit_secrets()` in `chatbot.py` merges them into `os.environ`, called after `set_page_config()` (reading `st.secrets` is itself a Streamlit command and must not be first) and before `setup_tracing()`/`create_assistant()`.
+- The golden set (`eval/golden_set.json`) is generated, not hand-authored — edit `eval/build_golden_set.py` and rerun it. `tests/unit/test_golden_set.py` fails the build if the committed JSON drifts from what the generator produces, or if a `reference_snippet`/`reference_section` no longer appears in the indexed resume.
 - The cross-encoder adds ~15 s cold-start latency on a fresh container while the model downloads.

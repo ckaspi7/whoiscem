@@ -136,6 +136,57 @@ def test_vectorstore_accepts_an_injected_client():
     injected.collection_exists.assert_called_once_with("resume_chunks")
 
 
+def test_dense_search_uses_the_cache_when_one_is_given():
+    """The concrete motivation: eval/ablate_retrieval.py embeds one query up to
+    nine times across its strategy variants without this."""
+    injected_client = MagicMock()
+    injected_client.search.return_value = []
+    cache = MagicMock()
+    cache.get_embedding.return_value = None  # first call: a miss
+
+    with patch("retrieval.vectorstore.OpenAIEmbeddings") as embeddings_cls:
+        embeddings_cls.return_value.embed_query.return_value = [0.1, 0.2]
+        from retrieval.vectorstore import EMBEDDING_MODEL, QdrantVectorStore
+
+        store = QdrantVectorStore(client=injected_client, settings=Settings(), cache=cache)
+        store.dense_search("where does Cem work?")
+
+    cache.get_embedding.assert_called_once_with(EMBEDDING_MODEL, "where does Cem work?")
+    cache.set_embedding.assert_called_once_with(EMBEDDING_MODEL, "where does Cem work?", [0.1, 0.2])
+
+
+def test_dense_search_skips_the_api_call_on_a_cache_hit():
+    injected_client = MagicMock()
+    injected_client.search.return_value = []
+    cache = MagicMock()
+    cache.get_embedding.return_value = [0.9, 0.9]  # a hit
+
+    with patch("retrieval.vectorstore.OpenAIEmbeddings") as embeddings_cls:
+        from retrieval.vectorstore import QdrantVectorStore
+
+        store = QdrantVectorStore(client=injected_client, settings=Settings(), cache=cache)
+        store.dense_search("where does Cem work?")
+
+    embeddings_cls.return_value.embed_query.assert_not_called()
+    cache.set_embedding.assert_not_called()
+
+
+def test_dense_search_works_uncached_by_default():
+    """No cache passed: existing callers keep calling the API directly, unchanged."""
+    injected_client = MagicMock()
+    injected_client.search.return_value = []
+
+    with patch("retrieval.vectorstore.OpenAIEmbeddings") as embeddings_cls:
+        embeddings_cls.return_value.embed_query.return_value = [0.1]
+        from retrieval.vectorstore import QdrantVectorStore
+
+        store = QdrantVectorStore(client=injected_client, settings=Settings())
+        store.dense_search("a query")
+        store.dense_search("a query")
+
+    assert embeddings_cls.return_value.embed_query.call_count == 2
+
+
 # ---------------------------------------------------------------------------
 # Resume source
 # ---------------------------------------------------------------------------

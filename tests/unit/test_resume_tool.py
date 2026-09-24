@@ -25,18 +25,21 @@ import pytest
 import tools.resume_tool as resume_tool
 
 
+def _clear_singletons() -> None:
+    resume_tool._store = None
+    resume_tool._bm25 = None
+    resume_tool._reranker = None
+    resume_tool._cache = None
+    resume_tool._corpus_chars = 0
+    resume_tool._corpus_fp = ""
+
+
 @pytest.fixture(autouse=True)
 def _reset_retrieval_singletons():
     """The module caches its singletons at call time; tests must not leak them."""
-    resume_tool._store = None
-    resume_tool._bm25 = None
-    resume_tool._reranker = None
-    resume_tool._corpus_chars = 0
+    _clear_singletons()
     yield
-    resume_tool._store = None
-    resume_tool._bm25 = None
-    resume_tool._reranker = None
-    resume_tool._corpus_chars = 0
+    _clear_singletons()
 
 
 def test_a_failed_store_setup_is_retried_not_cached(tmp_path):
@@ -120,3 +123,61 @@ def test_get_resume_info_result_never_puts_the_error_in_content():
     assert result.ok is False
     assert result.as_context() == ""
     assert "qdrant down" in result.error
+
+
+# ---------------------------------------------------------------------------
+# search_resume caches its full result, not just the embedding
+# ---------------------------------------------------------------------------
+
+
+def test_search_resume_does_not_recompute_an_identical_query(fake_redis):
+    from retrieval.cache import RetrievalCache
+    from retrieval.types import ScoredChunk
+
+    resume_tool._store = MagicMock()
+    resume_tool._store.dense_search.return_value = [
+        ScoredChunk(chunk_id="1", text="Cem works at TELUS.", score=0.9)
+    ]
+    resume_tool._bm25 = MagicMock()
+    resume_tool._reranker = MagicMock()
+    resume_tool._corpus_fp = "test-fingerprint"
+
+    cache = RetrievalCache.__new__(RetrievalCache)
+    cache._redis = fake_redis
+    cache._backend = "in-process"
+    resume_tool._cache = cache
+
+    fake_settings = MagicMock(retrieval_top_n=5, retrieval_strategy="dense")
+    with patch("tools.resume_tool.load_settings", return_value=fake_settings):
+        first = resume_tool.search_resume("Where does Cem work?")
+        second = resume_tool.search_resume("Where does Cem work?")
+
+    assert first == second
+    resume_tool._store.dense_search.assert_called_once()
+
+
+def test_search_resume_treats_a_different_query_as_a_different_cache_entry(fake_redis):
+    from retrieval.cache import RetrievalCache
+    from retrieval.types import ScoredChunk
+
+    resume_tool._store = MagicMock()
+    resume_tool._store.dense_search.side_effect = [
+        [ScoredChunk(chunk_id="1", text="answer one", score=0.9)],
+        [ScoredChunk(chunk_id="2", text="answer two", score=0.8)],
+    ]
+    resume_tool._bm25 = MagicMock()
+    resume_tool._reranker = MagicMock()
+    resume_tool._corpus_fp = "test-fingerprint"
+
+    cache = RetrievalCache.__new__(RetrievalCache)
+    cache._redis = fake_redis
+    cache._backend = "in-process"
+    resume_tool._cache = cache
+
+    fake_settings = MagicMock(retrieval_top_n=5, retrieval_strategy="dense")
+    with patch("tools.resume_tool.load_settings", return_value=fake_settings):
+        first = resume_tool.search_resume("Where does Cem work?")
+        second = resume_tool.search_resume("What did Cem study?")
+
+    assert first != second
+    assert resume_tool._store.dense_search.call_count == 2

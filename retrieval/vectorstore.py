@@ -11,11 +11,13 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from config import Settings, load_settings
 from retrieval.backends import create_qdrant_client
+from retrieval.cache import RetrievalCache
 from retrieval.chunking import chunk_markdown
 from retrieval.types import ScoredChunk, TextChunk
 
 COLLECTION_NAME = "resume_chunks"
 VECTOR_SIZE = 1536  # text-embedding-ada-002 / text-embedding-3-small
+EMBEDDING_MODEL = "text-embedding-3-small"
 
 # Bumped when the chunking strategy changes, so an index built by an older
 # version is rebuilt rather than silently reused. A stale index is the quietest
@@ -43,11 +45,15 @@ class QdrantVectorStore:
         client: QdrantClient | None = None,
         settings: Settings | None = None,
         collection_name: str = COLLECTION_NAME,
+        cache: RetrievalCache | None = None,
     ) -> None:
         self._settings = settings or load_settings()
         self._client = client or create_qdrant_client(self._settings)
         self._collection = collection_name
-        self._embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+        self._embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL)
+        # None means uncached — every existing caller that builds a store
+        # without passing one keeps calling the API directly, unchanged.
+        self._cache = cache
 
     @property
     def collection_name(self) -> str:
@@ -79,7 +85,7 @@ class QdrantVectorStore:
         return records[0].payload.get("fingerprint")
 
     def dense_search(self, query: str, top_k: int = 20) -> list[ScoredChunk]:
-        query_vec = self._embeddings.embed_query(query)
+        query_vec = self._embed_query(query)
         results = self._client.search(
             collection_name=self._collection,
             query_vector=query_vec,
@@ -129,6 +135,25 @@ class QdrantVectorStore:
         """Release the client. Embedded mode holds an exclusive lock on its directory."""
         self._client.close()
 
+    def _embed_query(self, text: str) -> list[float]:
+        """Embed one query, through the cache when one is configured.
+
+        Only the query path is cached, not indexing: embed_documents runs once
+        per rebuild already, while a query can repeat many times — the same
+        question asked twice, or, concretely, eval/ablate_retrieval.py
+        re-embedding one query for every strategy variant that uses it.
+        """
+        if self._cache:
+            cached = self._cache.get_embedding(EMBEDDING_MODEL, text)
+            if cached is not None:
+                return cached
+
+        vector = self._embeddings.embed_query(text)
+
+        if self._cache:
+            self._cache.set_embedding(EMBEDDING_MODEL, text, vector)
+        return vector
+
     def _extract_text(self, path: str) -> str:
         """Read the resume as text.
 
@@ -150,7 +175,7 @@ class QdrantVectorStore:
         if path.lower().endswith((".md", ".markdown")):
             return chunk_markdown(text)
         splitter = SemanticChunker(
-            OpenAIEmbeddings(model="text-embedding-3-small"),
+            OpenAIEmbeddings(model=EMBEDDING_MODEL),
             breakpoint_threshold_type="percentile",
         )
         return [TextChunk(text=piece) for piece in splitter.split_text(text)]

@@ -7,10 +7,12 @@ from langchain.tools import tool
 
 from config import CORPUS_FITS_CONTEXT_CHARS, load_settings
 from retrieval.bm25 import BM25Index
+from retrieval.cache import RetrievalCache
 from retrieval.fusion import reciprocal_rank_fusion
 from retrieval.reranker import CrossEncoderReranker
 from retrieval.types import ScoredChunk
 from retrieval.vectorstore import QdrantVectorStore
+from retrieval.vectorstore import fingerprint as corpus_fingerprint
 from tools.result import ToolResult
 
 logger = logging.getLogger(__name__)
@@ -21,7 +23,9 @@ CANDIDATE_POOL = 20
 _store: QdrantVectorStore | None = None
 _bm25: BM25Index | None = None
 _reranker: CrossEncoderReranker | None = None
+_cache: RetrievalCache | None = None
 _corpus_chars: int = 0
+_corpus_fp: str = ""
 
 
 def _init_retrieval() -> tuple[QdrantVectorStore, BM25Index, CrossEncoderReranker]:
@@ -39,20 +43,26 @@ def _init_retrieval() -> tuple[QdrantVectorStore, BM25Index, CrossEncoderReranke
     results — no error, just quietly wrong — because ``_bm25 is None`` was
     false from then on.
     """
-    global _store, _bm25, _reranker, _corpus_chars
+    global _store, _bm25, _reranker, _cache, _corpus_chars, _corpus_fp
 
     if _store is None:
         settings = load_settings()
         resume_path = settings.resume_path
         if not os.path.exists(resume_path):
             raise FileNotFoundError(f"Resume not found at {resume_path}. Set RESUME_PATH to point at it.")
-        store = QdrantVectorStore(settings=settings)
+        # RetrievalCache never raises — connect() degrades to in-process or
+        # disabled internally — so building it before the store cannot itself
+        # trigger the retry-on-failure path this function exists to guarantee.
+        cache = RetrievalCache()
+        store = QdrantVectorStore(settings=settings, cache=cache)
         # Rebuilds when the resume or the chunking strategy changed, not merely
         # when the collection is absent. A stale index answers happily.
         if store.needs_rebuild(resume_path):
             logger.info("Building the resume index from %s", resume_path)
             store.build_from_file(resume_path)
         _store = store  # only now: setup fully succeeded
+        _cache = cache
+        _corpus_fp = corpus_fingerprint(resume_path)
 
     if _bm25 is None:
         # The chunks themselves, so BM25 returns the vector store's identifiers
@@ -80,12 +90,40 @@ def search_resume(query: str, top_n: int | None = None, strategy: str | None = N
     Raises on failure rather than returning an empty list, so a caller that
     needs to distinguish "nothing relevant" from "the store is unreachable"
     can. See ``get_resume_info_result`` for the typed, non-raising wrapper.
+
+    The full result is cached per (strategy, top_n, query), scoped to the
+    corpus fingerprint so a rebuilt index — a new resume, a changed chunker —
+    cannot serve a stale answer: the fingerprint in the key simply stops
+    matching. "auto" is cached as itself rather than its resolved branch,
+    which is safe because it always resolves the same way for a given corpus.
     """
     store, bm25, reranker = _init_retrieval()
     settings = load_settings()
     top_n = top_n or settings.retrieval_top_n
     strategy = strategy or settings.retrieval_strategy
 
+    cache_key = f"{strategy}:{top_n}:{query}"
+    if _cache:
+        cached = _cache.get_retrieval(_corpus_fp, cache_key)
+        if cached is not None:
+            return cached
+
+    result = _dispatch(query, top_n, strategy, store, bm25, reranker)
+
+    if _cache:
+        _cache.set_retrieval(_corpus_fp, cache_key, result)
+    return result
+
+
+def _dispatch(
+    query: str,
+    top_n: int,
+    strategy: str,
+    store: QdrantVectorStore,
+    bm25: BM25Index,
+    reranker: CrossEncoderReranker,
+) -> list[ScoredChunk]:
+    """The actual retrieval logic, uncached — search_resume owns the cache."""
     if strategy == "auto":
         if _corpus_chars and _corpus_chars <= CORPUS_FITS_CONTEXT_CHARS:
             # Everything, still ranked: the model reads it all, and the most
