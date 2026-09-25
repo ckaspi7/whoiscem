@@ -274,6 +274,68 @@ called* nondeterministic (routing moved 93.2%→91.5% between two runs of
 identical code), a worse property for an agent's decisions than it is for a
 chat reply's phrasing.
 
+### Self-correction: the faithfulness score stops being thrown away
+
+The judge score existed for one purpose before this: decide whether to show a
+warning banner. Phase 3.3 gives it a second job — on the resume route, a score
+below 4 now triggers one bounded retry (reformulate the query, re-run
+retrieval, regenerate) before falling through to that same banner.
+
+Scoped to `resume` specifically, not every route, because it's the only one
+with a lever a retry can actually pull: `personal`, `spotify`, and `linkedin`
+are fixed lookups — the same `info_type`, or no argument at all, every time —
+so retrying would spend a judge call and a generation call to reproduce the
+exact answer already given. `conversation` has no retrieved context to
+reformulate in the first place.
+
+Measured against the same classifier + gpt-4o-mini baseline, no other change
+(`v10-gpt4o-mini-baseline.json` → `v12-self-correction.json`):
+
+| | before | after | |
+|---|---|---|---|
+| Routing accuracy | 98.3% | 98.3% | — |
+| Faithfulness | 0.713 | 0.673 | −0.040 (within the 0.07 tolerance) |
+| Answer relevancy | 0.873 | **0.887** | +0.014 |
+| Context recall | 0.745 | **0.776** | +0.031 |
+| Context precision | 0.646 | 0.650 | +0.004 |
+
+Gates clean, and the one metric that moved is worth explaining rather than
+waving away. Only two questions triggered a retry this run — one unanswerable
+(not scored by RAGAS at all) and one multi-intent ("Compare his resume to his
+LinkedIn — do they agree?"). Reformulating the resume query cannot fix an
+answer that is also missing `linkedin` data, which classifier mode
+structurally never fetches — the retry correctly detected a bad answer and
+correctly tried the only lever it has, and that lever was the wrong one for
+this specific failure. For scale: `spotify`'s faithfulness moved by −0.167
+between these same two runs from ordinary judge-call noise, on a route
+self-correction never touches — the resume route's −0.056 move is smaller than
+that, and fully attributable to the one case above, not a new regression.
+
+### Trajectory evaluation: the right tools, not just an acceptable one
+
+Phase 3.5. `route_correct` only checks that *some* acceptable category was
+touched — a multi-intent question calling just one of the two tools it needs
+still counts as correct under that metric, because one of them is on
+`acceptable_routes` even if the other was never called. Trajectory evaluation
+checks the stronger claim: every category the question needed, and no calls
+beyond what it needed.
+
+Real, measured (`eval/results/v13-trajectory.json`, tool_calling +
+gpt-4o-mini — a routing-only pass, since trajectory shape doesn't need RAGAS's
+judge calls to evaluate):
+
+- **Multi-intent completeness: 3/3.** Every multi-intent question called every
+  tool it needed, not just one — confirming Phase 3.2's capability holds up
+  under the stricter check, not only under a metric a half-answered comparison
+  could still pass.
+- **1.07 average tool calls per turn.** Lean by default, not padded with
+  speculative calls.
+- **Two "unnecessary" calls, both already-known misroutes.** `l002`/`l003`
+  called `resume` instead of `linkedin` — the same confusion already visible
+  in routing accuracy, not an independent over-calling problem. Nothing in
+  this run called a tool beyond what routing accuracy already flags as a
+  mistake.
+
 ### Cheaper and slightly better, measured: gpt-6-luna as a classifier-mode override
 
 `CHAT_MODEL` swaps the model behind routing, condensation, and generation in

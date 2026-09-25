@@ -114,6 +114,10 @@ def run_question(graph, item: dict) -> dict:
             "context_chunks": [],
             "tool_error": "",
             "node_latencies": {},
+            "faithfulness_score": None,
+            "retry_count": 0,
+            "trajectory": [],
+            "agent_rounds": 0,
         }
     )
 
@@ -143,12 +147,16 @@ def run_question(graph, item: dict) -> dict:
         "expected_route": expected_route,
         "actual_route": actual_route,
         "route_correct": route_correct,
+        "acceptable_routes": acceptable,
         "answerable": item["answerable"],
         "reference_snippet": item.get("reference_snippet"),
         "search_query": state.get("search_query", ""),
         "retrieval_rank": _snippet_rank(item.get("reference_snippet"), contexts),
         "tool_error": state.get("tool_error", ""),
         "latencies": state.get("node_latencies", {}),
+        "faithfulness_score": state.get("faithfulness_score"),
+        "self_correction_retried": state.get("retry_count", 0) > 0,
+        "trajectory": state.get("trajectory") or [],
     }
 
 
@@ -276,6 +284,62 @@ def score_tool_health(rows: list[dict]) -> dict:
         "errors": len(failed),
         "error_rate": round(len(failed) / len(rows), 4) if rows else 0.0,
         "failed_ids": [r["id"] for r in failed],
+    }
+
+
+def score_self_correction(rows: list[dict]) -> dict:
+    """How often Phase 3.3's retry actually fired, and whether it helped.
+
+    Only meaningful under classifier mode — tool_calling does not wire the
+    retry loop (see LIMITATIONS.md). Reported unconditionally regardless of
+    mode: a run under tool_calling will simply show zero retries, which is
+    correct, not a bug to chase.
+    """
+    retried = [r for r in rows if r.get("self_correction_retried")]
+    return {
+        "retried": len(retried),
+        "retried_ids": [r["id"] for r in retried],
+    }
+
+
+def score_trajectory(rows: list[dict]) -> dict:
+    """Evaluate the *path* a tool-calling turn took, not just its final route.
+
+    Phase 3.5. Meaningless under classifier mode, which physically cannot call
+    more than one tool per turn — rows without a trajectory report as
+    {"measured": 0} rather than as zeroes that look like a regression.
+
+    route_correct only requires *any* acceptable category to have been
+    touched, which a single tool call already satisfies. A multi_intent
+    question's acceptable_routes names every category it expects — "compare
+    his resume to his LinkedIn" expects both `resume` and `linkedin` — so this
+    checks the stronger, actually-relevant claim: not just that the agent
+    called a relevant tool, but a call to every category the question needed,
+    and no calls outside what it needed.
+    """
+    scored = [r for r in rows if r.get("trajectory")]
+    if not scored:
+        return {"measured": 0}
+
+    incomplete_multi_intent = []
+    unnecessary_calls = []
+    for row in scored:
+        called = {entry["category"] for entry in row["trajectory"]}
+        acceptable = set(row.get("acceptable_routes") or [row["expected_route"]])
+        if row["case_type"] == "multi_intent" and not acceptable.issubset(called):
+            incomplete_multi_intent.append(row["id"])
+        extra = called - acceptable
+        if extra:
+            unnecessary_calls.append({"id": row["id"], "extra": sorted(extra)})
+
+    multi_intent_rows = [r for r in scored if r["case_type"] == "multi_intent"]
+    return {
+        "measured": len(scored),
+        "avg_tool_calls": round(sum(len(r["trajectory"]) for r in scored) / len(scored), 2),
+        "multi_intent_total": len(multi_intent_rows),
+        "multi_intent_complete": len(multi_intent_rows) - len(incomplete_multi_intent),
+        "multi_intent_incomplete_ids": incomplete_multi_intent,
+        "unnecessary_calls": unnecessary_calls,
     }
 
 
@@ -415,6 +479,8 @@ def evaluate(
     retrieval = score_retrieval(rows)
     refusals = score_refusals(rows)
     tool_health = score_tool_health(rows)
+    self_correction = score_self_correction(rows)
+    trajectory = score_trajectory(rows)
 
     # RAGAS runs only over questions that have a factual answer. Including
     # refusal cases would score a correct decline against a reference it was
@@ -445,6 +511,8 @@ def evaluate(
         "retrieval": retrieval,
         "refusals": refusals,
         "tool_health": tool_health,
+        "self_correction": self_correction,
+        "trajectory": trajectory,
         "scores": scores,
         "scores_cover": len(scorable),
         "scores_by_route": by_route,
@@ -465,6 +533,9 @@ def evaluate(
                 "retrieval_rank": r["retrieval_rank"],
                 "tool_error": r["tool_error"],
                 "latencies": r["latencies"],
+                "faithfulness_score": r["faithfulness_score"],
+                "self_correction_retried": r["self_correction_retried"],
+                "trajectory": r["trajectory"],
                 "metrics": {k: v for k, v in by_id.get(r["id"], {}).items() if k != "id"},
             }
             for r in rows
@@ -496,6 +567,23 @@ def evaluate(
         )
         if retrieval["missed"]:
             print(f"  never retrieved: {', '.join(retrieval['missed'])}")
+
+    if self_correction["retried"]:
+        print("\n=== Self-correction (Phase 3.3, resume route only) ===")
+        ids = ", ".join(self_correction["retried_ids"])
+        print(f"  retried: {self_correction['retried']} question(s): {ids}")
+
+    if trajectory.get("measured"):
+        print("\n=== Trajectory (Phase 3.5, tool_calling mode only) ===")
+        print(f"  avg tool calls/turn: {trajectory['avg_tool_calls']}")
+        complete, total = trajectory["multi_intent_complete"], trajectory["multi_intent_total"]
+        print(f"  multi-intent complete: {complete}/{total}")
+        if trajectory["multi_intent_incomplete_ids"]:
+            print(f"    incomplete: {', '.join(trajectory['multi_intent_incomplete_ids'])}")
+        if trajectory["unnecessary_calls"]:
+            print(f"  unnecessary calls: {len(trajectory['unnecessary_calls'])}")
+            for entry in trajectory["unnecessary_calls"]:
+                print(f"    {entry['id']}: called {', '.join(entry['extra'])} beyond what was needed")
 
     if refusals.get("measured"):
         print("\n=== Refusals (should decline) ===")

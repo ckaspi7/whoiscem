@@ -16,7 +16,7 @@ from openai import OpenAI
 
 import query_rewrite
 from config import load_settings
-from guardrails.faithfulness_check import check_faithfulness
+from guardrails.faithfulness_check import check_faithfulness, score_faithfulness
 from memory.session_memory import SessionMemory
 from observability import setup_tracing, tracing_status
 from router import classify_query
@@ -108,6 +108,25 @@ class GraphState(TypedDict):
     # model's evidence, nor something the faithfulness judge scores against.
     tool_error: str
     node_latencies: dict[str, float]
+    # The raw 1-5 judge score for the current answer, or None when nothing was
+    # scored (no context, or the judge call failed) — classifier mode only,
+    # set by check_faithfulness_node. Distinct from the user-facing tiering
+    # guardrails.faithfulness_check.check_faithfulness still applies outside
+    # the graph: this drives the self-correction retry below, not the banner.
+    faithfulness_score: int | None
+    # How many times this turn has already retried after a low resume-route
+    # score. Bounded by _MAX_FAITHFULNESS_RETRIES so a persistently ungrounded
+    # answer degrades to the existing disclaimer/refusal tiering rather than
+    # looping.
+    retry_count: int
+    # tool_calling mode only: one entry per tool call across every round this
+    # turn, in order — {"round", "tool", "category", "args", "ok"}. Phase 3.5's
+    # trajectory eval needs the actual sequence, which the accumulated `route`
+    # string alone cannot reconstruct (it loses round boundaries and args).
+    trajectory: list[dict]
+    # tool_calling mode only: how many rounds of execute_tools have run this
+    # turn, stamped onto each round's trajectory entries.
+    agent_rounds: int
 
 
 # ---------------------------------------------------------------------------
@@ -202,6 +221,20 @@ def create_assistant(prior_context: str = "", mode: str | None = None, model: st
         llm_agent = _llm(0, streaming=True, **extra)
         return _build_tool_calling_graph(llm_agent, system_prompt)
     return _build_classifier_graph(llm, llm_fast, system_prompt)
+
+
+# Self-correction (Phase 3.3) is scoped to the resume route only. personal,
+# spotify, and linkedin are fixed lookups — the same info_type, or no argument
+# at all, every time — so retrying returns byte-identical content; retrying
+# them would spend a judge call and a generation call to reproduce the exact
+# answer already given. conversation has no retrieved context at all, so
+# there is nothing a retry could reformulate. resume is the only route with a
+# free-text query a differently-worded retry could actually change.
+_RETRIABLE_ROUTE = "resume"
+# Bounds the loop to one retry per turn regardless of how the second attempt
+# scores — an answer that is still ungrounded after a reformulated search is
+# a case for the existing disclaimer/refusal tiering, not another round trip.
+_MAX_FAITHFULNESS_RETRIES = 1
 
 
 def _build_classifier_graph(llm: ChatOpenAI, llm_fast: ChatOpenAI, system_prompt: str) -> Any:
@@ -320,6 +353,13 @@ def _build_classifier_graph(llm: ChatOpenAI, llm_fast: ChatOpenAI, system_prompt
             # "messages"), which surfaces this same call's streaming callbacks
             # regardless of whether the node awaits .invoke() or .stream().
             response = llm.invoke(lc_messages)
+            if state.get("retry_count", 0) > 0:
+                # This call is regenerating the same turn's answer after a
+                # self-correction retry — it must replace the first attempt,
+                # not sit beside it as a second assistant message. add_messages
+                # matches by id, so reusing the prior answer's id is what makes
+                # this a replacement instead of an append.
+                response.id = messages[-1].id
             # A single-element list, not the full history: add_messages
             # appends it. Returning the whole list back here would ask the
             # reducer to "add" every prior message a second time — harmless
@@ -327,6 +367,44 @@ def _build_classifier_graph(llm: ChatOpenAI, llm_fast: ChatOpenAI, system_prompt
             return {**state, "messages": [response], "next_step": "end", "context_used": context_used}
 
         return _timed("generate_response", _run, state)
+
+    def check_faithfulness_node(state: GraphState) -> GraphState:
+        def _run(state):
+            answer = state["messages"][-1].content
+            score = score_faithfulness(answer, state.get("context_used", ""))
+            return {**state, "faithfulness_score": score}
+
+        return _timed("check_faithfulness", _run, state)
+
+    def reformulate_and_retry(state: GraphState) -> GraphState:
+        def _run(state):
+            query = state.get("search_query", "")
+            new_query = query_rewrite.reformulate_for_retry(query, llm_fast)
+            try:
+                chunks = search_resume(new_query)
+                result = ToolResult.success(format_chunks(chunks))
+            except Exception as e:
+                logger.warning("Resume retry retrieval failed: %s", e)
+                chunks, result = [], ToolResult.failure(str(e))
+            return {
+                **state,
+                "search_query": new_query,
+                "tool_result": result.as_context(),
+                "context_used": result.as_context(),
+                "context_chunks": [c.text for c in chunks],
+                "tool_error": result.error,
+                "retry_count": state.get("retry_count", 0) + 1,
+            }
+
+        return _timed("reformulate_and_retry", _run, state)
+
+    def _should_retry(state: GraphState) -> str:
+        score = state.get("faithfulness_score")
+        already_retried = state.get("retry_count", 0) >= _MAX_FAITHFULNESS_RETRIES
+        is_retriable_route = state.get("route") == _RETRIABLE_ROUTE
+        if score is not None and score < 4 and is_retriable_route and not already_retried:
+            return "retry"
+        return "finish"
 
     workflow = StateGraph(GraphState)
     workflow.add_node("condense_query", condense_query)
@@ -337,6 +415,8 @@ def _build_classifier_graph(llm: ChatOpenAI, llm_fast: ChatOpenAI, system_prompt
     workflow.add_node("handle_linkedin", handle_linkedin)
     workflow.add_node("handle_conversation", handle_conversation)
     workflow.add_node("generate_response", generate_response)
+    workflow.add_node("check_faithfulness", check_faithfulness_node)
+    workflow.add_node("reformulate_and_retry", reformulate_and_retry)
 
     workflow.add_conditional_edges(
         "route_query",
@@ -357,6 +437,20 @@ def _build_classifier_graph(llm: ChatOpenAI, llm_fast: ChatOpenAI, system_prompt
         "handle_conversation",
     ):
         workflow.add_edge(node, "generate_response")
+
+    # Self-correction (Phase 3.3): the faithfulness score used to end at a text
+    # banner applied outside the graph. Now it drives one bounded retry —
+    # reformulate the query, re-run resume retrieval, regenerate — before
+    # falling through to that same outer banner. Scoped to the resume route
+    # only: see _RETRIABLE_ROUTE above for why the other routes have no
+    # retrieval lever a retry could actually change.
+    workflow.add_edge("generate_response", "check_faithfulness")
+    workflow.add_conditional_edges(
+        "check_faithfulness",
+        _should_retry,
+        {"retry": "reformulate_and_retry", "finish": "__end__"},
+    )
+    workflow.add_edge("reformulate_and_retry", "generate_response")
 
     workflow.add_edge("condense_query", "route_query")
     workflow.set_entry_point("condense_query")
@@ -452,6 +546,13 @@ def _build_tool_calling_graph(llm: ChatOpenAI, system_prompt: str) -> Any:
             last = state["messages"][-1]
             tool_messages: list[ToolMessage] = []
             categories, context_parts, chunk_parts, error_parts = [], [], [], []
+            # One entry per call, this round's index carried on each — trajectory
+            # eval (Phase 3.5) needs the actual sequence of (round, tool, args),
+            # not just which categories got touched somewhere in the turn. The
+            # accumulated `route` string already loses "which round" and "with
+            # what arguments"; this doesn't.
+            round_num = state.get("agent_rounds", 0)
+            trajectory_entries: list[dict] = []
 
             for call in last.tool_calls:
                 name, args = call["name"], call.get("args") or {}
@@ -461,7 +562,11 @@ def _build_tool_calling_graph(llm: ChatOpenAI, system_prompt: str) -> Any:
                     logger.warning("Tool %s failed: %s", name, e)
                     result = ToolResult.failure(str(e))
 
-                categories.append(_TOOL_TO_CATEGORY.get(name, name))
+                category = _TOOL_TO_CATEGORY.get(name, name)
+                categories.append(category)
+                trajectory_entries.append(
+                    {"round": round_num, "tool": name, "category": category, "args": args, "ok": result.ok}
+                )
                 if result.ok:
                     context_parts.append(result.content)
                     chunk_parts.append(result.content)
@@ -483,6 +588,8 @@ def _build_tool_calling_graph(llm: ChatOpenAI, system_prompt: str) -> Any:
                 "route": ",".join(filter(None, [state.get("route", ""), *categories])),
                 "context_used": "\n\n".join(filter(None, [state.get("context_used", ""), *context_parts])),
                 "context_chunks": (state.get("context_chunks") or []) + chunk_parts,
+                "trajectory": (state.get("trajectory") or []) + trajectory_entries,
+                "agent_rounds": round_num + 1,
                 "tool_error": "; ".join(filter(None, [state.get("tool_error", ""), *error_parts])),
             }
 
@@ -642,6 +749,10 @@ def main() -> None:
                 "context_chunks": [],
                 "tool_error": "",
                 "node_latencies": {},
+                "faithfulness_score": None,
+                "retry_count": 0,
+                "trajectory": [],
+                "agent_rounds": 0,
             }
 
             # Two stream modes in one pass: "messages" gives live token deltas

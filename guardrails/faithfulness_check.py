@@ -17,16 +17,15 @@ def _get_client() -> OpenAI:
     return _client
 
 
-def check_faithfulness(answer: str, context: str) -> str:
-    """Score answer faithfulness against retrieved context, then gate or warn.
+def score_faithfulness(answer: str, context: str) -> int | None:
+    """Score how grounded `answer` is in `context`, 1 (hallucinated) to 5 (fully grounded).
 
-    Score 4-5: return answer unchanged.
-    Score 2-3: prepend a visible warning badge.
-    Score 1:   replace with a safe refusal.
-    Falls back to the original answer if the judge call fails.
+    None means "nothing to act on" — either there is no context to check
+    against, or the judge call itself failed — never a low score. A caller
+    driving a retry must treat None as "don't retry", not as "score is bad".
     """
     if not context.strip():
-        return answer
+        return None
 
     prompt = (
         "You are a faithfulness judge. Given a context and an answer, "
@@ -45,11 +44,21 @@ def check_faithfulness(answer: str, context: str) -> str:
             max_tokens=100,
         )
         result = json.loads(response.choices[0].message.content)
-        score = int(result.get("score", 1))
+        return int(result.get("score", 1))
     except Exception:
-        return answer  # fail open — don't break the app
+        return None  # fail open — don't break the app
 
-    if score >= 4:
+
+def check_faithfulness(answer: str, context: str) -> str:
+    """Score answer faithfulness against retrieved context, then gate or warn.
+
+    Score 4-5: return answer unchanged.
+    Score 2-3: prepend a visible warning badge.
+    Score 1:   replace with a safe refusal.
+    No score (no context, or the judge call failed): return answer unchanged.
+    """
+    score = score_faithfulness(answer, context)
+    if score is None or score >= 4:
         return answer
     if score >= 2:
         return _WARN_PREFIX + answer

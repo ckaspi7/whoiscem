@@ -68,6 +68,25 @@ def test_the_committed_baseline_is_discoverable():
     assert payload["routing"]["accuracy"] > 0
 
 
+def test_a_more_recent_no_ragas_run_is_not_picked_as_the_baseline(tmp_path, monkeypatch):
+    """A --no-ragas run (e.g. a trajectory-only measurement) has `routing` but
+    no `scores` — the same shape latest_baseline used to accept. Picking it
+    over an older full run would silently stop gating every RAGAS threshold
+    until a newer full run replaced it."""
+    import compare
+
+    monkeypatch.setattr(compare, "RESULTS_DIR", tmp_path)
+    full_run = dict(BASE, run_at="2026-09-24T00:00:00Z")
+    no_ragas_run = dict(BASE, run_at="2026-09-25T00:00:00Z", scores={})
+    _write(tmp_path, "full.json", full_run)
+    newer_no_ragas = _write(tmp_path, "no_ragas.json", no_ragas_run)
+
+    found = latest_baseline()
+    assert found is not None
+    assert found != newer_no_ragas
+    assert json.loads(found.read_text(encoding="utf-8"))["scores"]
+
+
 @pytest.mark.parametrize("metric", ["routing.accuracy", "retrieval.recall_at_k", "scores.faithfulness"])
 def test_every_gated_metric_is_present_in_the_committed_baseline(metric):
     payload = json.loads(latest_baseline().read_text(encoding="utf-8"))

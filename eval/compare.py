@@ -63,7 +63,7 @@ def _dig(payload: dict, dotted: str):
 
 
 def latest_baseline(exclude: Path | None = None) -> Path | None:
-    """Most recent committed result, by the run_at it records."""
+    """Most recent committed *full* result, by the run_at it records."""
     candidates = []
     for path in RESULTS_DIR.glob("*.json"):
         if exclude and path.resolve() == exclude.resolve():
@@ -73,8 +73,14 @@ def latest_baseline(exclude: Path | None = None) -> Path | None:
         except (OSError, ValueError):
             continue
         # Only full evaluation runs are baselines. eval/results also holds
-        # ablation studies, which measure one component and have no routing.
-        if "routing" not in payload or "run_at" not in payload:
+        # ablation studies (no routing) and --no-ragas runs (routing present,
+        # but no scores) — e.g. v13-trajectory.json, committed for its
+        # trajectory numbers, not as a RAGAS reference. A --no-ragas run
+        # passing this check would silently become the picked baseline the
+        # moment it is the newest file, and every RAGAS threshold would stop
+        # being gated until a newer full run replaced it — the same failure
+        # shape as the incident that motivated this function's own docstring.
+        if "routing" not in payload or "run_at" not in payload or not payload.get("scores"):
             continue
         candidates.append((payload["run_at"], path))
     if not candidates:

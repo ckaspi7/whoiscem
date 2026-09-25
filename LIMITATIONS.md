@@ -258,6 +258,30 @@ immediately before a commit, not for every intermediate check.
 
 ---
 
+## Self-Correction Retries Only Have One Lever
+
+Phase 3.3's retry (reformulate the resume query, re-search, regenerate on a
+low faithfulness score) cannot fix an answer that is bad for a reason other
+than "the resume search was worded badly." Measured directly, not assumed:
+the one RAGAS-scorable question that triggered a retry in a full run was a
+multi-intent question needing `linkedin` data — classifier mode never fetches
+a second tool's data — so reformulating the resume query a second time cannot
+supply a source it never queried in the first place. The retry correctly
+identified a bad answer and correctly tried the only lever available to it;
+that lever was not the fix this case needed. This is `classifier` mode's
+already-documented multi-intent limitation compounding with itself, not a bug
+in the retry logic — see the README's self-correction section for the actual
+before/after numbers this produced.
+
+The retry is scoped to the `resume` route specifically, and this is
+structural, not an oversight: `personal`, `spotify`, and `linkedin` are fixed
+lookups (the same `info_type`, or no argument at all, every time), so a retry
+there would spend a judge call and a generation call to reproduce byte-
+identical content. `conversation` has no retrieved context to reformulate at
+all.
+
+---
+
 ## `CHAT_MODEL=gpt-6-luna` Only Works Correctly Under `AGENT_MODE=classifier`
 
 Measured, not assumed (`eval/results/v10-gpt4o-mini-baseline.json` /

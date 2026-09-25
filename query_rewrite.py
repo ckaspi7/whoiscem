@@ -43,6 +43,41 @@ Conversation so far:
 )
 
 
+_REFORMULATE_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """The previous search for this question did not return a well-grounded
+answer. Rewrite the search query to use different wording or a broader phrasing
+that might match the resume's own terms more directly. Keep the same
+underlying question — do not answer it, and do not narrow it.
+
+Reply with the rewritten query only, no preamble.""",
+        ),
+        ("human", "{query}"),
+    ]
+)
+
+
+def reformulate_for_retry(query: str, llm) -> str:
+    """Broaden or rephrase a query after a low-faithfulness resume answer.
+
+    Never raises: a failed reformulation falls back to the original query,
+    same discipline as condense_query. A no-op on this project's current
+    corpus more often than not — `RETRIEVAL_STRATEGY=auto` already hands the
+    model the whole resume once it fits in context, so a different query
+    mostly just changes the rerank order rather than which chunks come back.
+    It starts to matter for real once the corpus outgrows that ceiling.
+    """
+    try:
+        response = llm.invoke(_REFORMULATE_PROMPT.invoke({"query": query}))
+        rewritten = (response.content or "").strip().strip('"')
+    except Exception as exc:
+        logger.warning("Query reformulation failed, using the original: %s", exc)
+        return query
+    return rewritten or query
+
+
 def _format_history(messages: list) -> str:
     """Render recent turns for the prompt. Takes LangChain BaseMessage objects."""
     speaker = {"human": "User", "ai": "Assistant"}

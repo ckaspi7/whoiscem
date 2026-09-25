@@ -168,6 +168,72 @@ def test_unknown_tool_name_is_reported_as_a_tool_error_not_a_crash():
 
 
 # ---------------------------------------------------------------------------
+# trajectory — Phase 3.5's raw material: the actual (round, tool, args, ok)
+# sequence, which the accumulated `route` string alone cannot reconstruct.
+# ---------------------------------------------------------------------------
+
+
+def test_trajectory_records_each_call_in_a_round_with_its_category():
+    ai_calls_both = AIMessage(
+        content="",
+        tool_calls=[
+            _call("get_resume_info", {"query": "resume"}, "c1"),
+            _call("get_linkedin_info", {}, "c2"),
+        ],
+    )
+    final = AIMessage(content="They agree.")
+    llm = _mock_llm(ai_calls_both, final)
+
+    with (
+        patch("chatbot.get_resume_info_result", return_value=ToolResult.success("resume says X")),
+        patch("chatbot.get_linkedin_info_result", return_value=ToolResult.success("linkedin says X")),
+    ):
+        state = _run_graph(llm, "Compare his resume to his LinkedIn")
+
+    trajectory = state["trajectory"]
+    assert len(trajectory) == 2
+    assert {e["category"] for e in trajectory} == {"resume", "linkedin"}
+    assert all(e["round"] == 0 for e in trajectory)
+    assert all(e["ok"] for e in trajectory)
+
+
+def test_trajectory_carries_the_actual_arguments_a_tool_was_called_with():
+    ai_calls_tool = AIMessage(content="", tool_calls=[_call("get_resume_info", {"query": "NeoWise"})])
+    final = AIMessage(content="NeoWise was a startup.")
+    with patch("chatbot.get_resume_info_result", return_value=ToolResult.success("NeoWise info")):
+        state = _run_graph(_mock_llm(ai_calls_tool, final), "What was NeoWise?")
+
+    assert state["trajectory"][0]["args"] == {"query": "NeoWise"}
+    assert state["trajectory"][0]["tool"] == "get_resume_info"
+
+
+def test_trajectory_numbers_rounds_in_order_across_multi_hop_calls():
+    round1 = AIMessage(content="", tool_calls=[_call("get_resume_info", {"query": "work"}, "c1")])
+    round2 = AIMessage(content="", tool_calls=[_call("get_music_taste", {}, "c2")])
+    final = AIMessage(content="done")
+    llm = _mock_llm(round1, round2, final)
+
+    with (
+        patch("chatbot.get_resume_info_result", return_value=ToolResult.success("resume info")),
+        patch("chatbot.get_music_taste_result", return_value=ToolResult.success("music info")),
+    ):
+        state = _run_graph(llm, "irrelevant, the mock script drives this")
+
+    trajectory = state["trajectory"]
+    assert [e["round"] for e in trajectory] == [0, 1]
+    assert [e["category"] for e in trajectory] == ["resume", "spotify"]
+
+
+def test_trajectory_records_a_failed_call_as_not_ok():
+    ai_calls_tool = AIMessage(content="", tool_calls=[_call("get_resume_info", {"query": "work"})])
+    final = AIMessage(content="I'm having trouble accessing that right now.")
+    with patch("chatbot.get_resume_info_result", return_value=ToolResult.failure("connection refused")):
+        state = _run_graph(_mock_llm(ai_calls_tool, final), "Where does Cem work?")
+
+    assert state["trajectory"][0]["ok"] is False
+
+
+# ---------------------------------------------------------------------------
 # CHAT_MODEL — gpt-6-luna only supports tool calling at reasoning_effort="none"
 # ---------------------------------------------------------------------------
 
