@@ -52,6 +52,11 @@ _SECRET_KEYS = (
     "RESUME_PATH",
 )
 
+# Deliberately generous: legitimate questions about Cem are a sentence or
+# two. This bounds cost per turn (Phase 4.3), not phrasing — the app is
+# deployed publicly on the owner's own API key with no other rate limit yet.
+MAX_INPUT_CHARS = 1000
+
 
 def _apply_streamlit_secrets() -> None:
     """Let Streamlit Cloud secrets override .env values.
@@ -836,6 +841,21 @@ def main() -> None:
 
     # --- Chat input ---
     if prompt := st.chat_input("Ask me something about Cem..."):
+        if len(prompt) > MAX_INPUT_CHARS:
+            # Rejected before it ever reaches session state or the graph: an
+            # unbounded input is an unbounded cost, and this app is deployed
+            # publicly on the owner's own API key with no other rate limit
+            # (Phase 4.1's daily spend cap is the other half of that, not yet
+            # built). Nothing is sent to the model, and the oversized text
+            # never enters conversation history — it would otherwise still
+            # cost tokens on every future turn as context, even though this
+            # turn itself made no API call.
+            st.error(
+                f"That message is {len(prompt):,} characters — please keep it under "
+                f"{MAX_INPUT_CHARS:,}. Nothing was sent to the model."
+            )
+            return
+
         st.session_state.messages.append(HumanMessage(content=prompt))
         with st.chat_message("human", avatar="🧐"):
             st.markdown(prompt)

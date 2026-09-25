@@ -151,17 +151,43 @@ it doesn't have.
 
 ---
 
-## The Faithfulness Judge No Longer Fails Open Silently (Phase 4.3, partial)
+## Guardrails: Three of Four Phase 4.3 Items Done
 
-Two of the four Phase 4.3 guardrail items are done; move-into-the-graph and
-input-side guardrails are not. The judge call now sets
-`response_format={"type": "json_object"}` — previously absent, so a ```` ```json ````
-fence around the reply broke `json.loads` and the guard disabled itself with
-no signal anywhere. `tests/unit/test_guardrails.py::test_malformed_json_fails_open`
-still asserts the fail-open *behaviour* is correct (the app must not break),
-but a failure there is now logged (`guardrails.faithfulness_check`, level
-WARNING) instead of vanishing — a safety gate that can go silently inert is
-worse than no gate, and this is what makes that visible instead of mute.
+The judge call now sets `response_format={"type": "json_object"}` — previously
+absent, so a ```` ```json ```` fence around the reply broke `json.loads` and the
+guard disabled itself with no signal anywhere.
+`tests/unit/test_guardrails.py::test_malformed_json_fails_open` still asserts
+the fail-open *behaviour* is correct (the app must not break), but a failure
+there is now logged (`guardrails.faithfulness_check`, level WARNING) instead
+of vanishing — a safety gate that can go silently inert is worse than no
+gate, and this is what makes that visible instead of mute.
+
+An input length cap (`chatbot.MAX_INPUT_CHARS`, 1000) now rejects an
+oversized message before it reaches session state or the graph — no API call
+at all, and the oversized text never enters conversation history, where it
+would otherwise still cost tokens as context on every future turn even though
+the turn that sent it made no call.
+
+**Deliberately not done: a heuristic prompt-injection filter.** The golden
+set's adversarial cases (`a001`–`a004`: "ignore your previous instructions",
+"developer mode", a false-premise correction attempt, a request to fabricate
+a reference letter) already measure at 100% under the model's own judgment
+via the system prompt — there is no measured gap a keyword filter would
+close. What a naive filter would add is real, unmeasured false-positive
+risk: a legitimate question that happens to contain a flagged word ("Did Cem
+ever have to *ignore* a flaky test in CI?") gets refused for something it
+never did. Adding a filter to say one exists, without a measured case it
+improves, is exactly the kind of unmeasured change this project's own
+discipline argues against.
+
+**Not done: moving the disclaimer/refusal banner into the graph.** Phase
+3.3's score already lives in the graph and drives a real retry; the *tiering*
+that turns a low score into a banner still runs in `chatbot.py:main()` after
+`graph.stream()` completes, so a user still watches a possibly-ungrounded
+answer type out live before it is replaced. Fixing this means giving up live
+token-by-token display in favour of buffering the full answer until it is
+checked — a real UX trade-off (responsiveness vs. never showing an answer
+that gets pulled back), not just a refactor, and not made yet.
 
 ---
 

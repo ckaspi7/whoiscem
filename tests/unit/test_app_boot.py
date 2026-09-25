@@ -47,6 +47,24 @@ def test_app_boots_with_no_services_running():
 
 
 @needs_openai
+def test_an_oversized_input_is_rejected_without_calling_the_model():
+    """Phase 4.3: an unbounded input is an unbounded cost on a publicly
+    deployed app with no other rate limit yet. The rejection itself happens
+    before any model call — needs_openai is only for app boot (index setup),
+    the same as test_app_boots_with_no_services_running above."""
+    from streamlit.testing.v1 import AppTest
+
+    import chatbot
+
+    app = AppTest.from_file(APP, default_timeout=120).run()
+    app.chat_input[0].set_value("x" * (chatbot.MAX_INPUT_CHARS + 1)).run()
+
+    assert not app.exception, [e.message for e in app.exception]
+    assert app.error, "expected a visible rejection message"
+    assert not app.chat_message, "the oversized message must not enter chat history"
+
+
+@needs_openai
 def test_a_failed_tool_call_never_reaches_the_model_as_context():
     """The actual graph wiring, not just the tool functions in isolation.
 
