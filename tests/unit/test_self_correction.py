@@ -2,8 +2,8 @@
 graph. Now, on the resume route only, a low score drives one bounded retry —
 reformulate the query, re-run resume retrieval, regenerate — before falling
 through to that same outer banner. Fully mocked: no real LLM or retrieval
-calls, and no real judge call (score_faithfulness itself is patched directly;
-its own correctness is covered by tests/unit/test_guardrails.py).
+calls, and no real judge call (score_faithfulness_with_usage itself is patched
+directly; its own correctness is covered by tests/unit/test_guardrails.py).
 """
 
 from __future__ import annotations
@@ -26,6 +26,9 @@ INITIAL_STATE = {
     "node_latencies": {},
     "faithfulness_score": None,
     "retry_count": 0,
+    "trajectory": [],
+    "agent_rounds": 0,
+    "token_usage": {},
 }
 
 _CHUNK_1 = [ScoredChunk(chunk_id="1", text="Cem works at TELUS.", score=0.9)]
@@ -39,13 +42,19 @@ def _mock_llm(*responses: AIMessage) -> MagicMock:
     return llm
 
 
+_NO_USAGE = {"input": 0, "output": 0}
+
+
 def _run_graph(question: str, route: str, scores: list, llm_responses: list[AIMessage], search_results=None):
     """Run the classifier graph for one turn with the LLM, router, faithfulness
     score, and resume search all under direct control."""
     with (
         patch("chatbot.ChatOpenAI", return_value=_mock_llm(*llm_responses)),
-        patch("chatbot.classify_query", return_value=route),
-        patch("chatbot.score_faithfulness", side_effect=scores),
+        patch("chatbot.classify_query", return_value=(route, dict(_NO_USAGE))),
+        patch(
+            "chatbot.score_faithfulness_with_usage",
+            side_effect=[(score, dict(_NO_USAGE)) for score in scores],
+        ),
         patch("chatbot.search_resume", side_effect=search_results or [_CHUNK_1]),
     ):
         graph = chatbot.create_assistant(mode="classifier")
@@ -102,11 +111,39 @@ def test_retry_replaces_the_first_answer_rather_than_appending_a_second_message(
     assert state["messages"][-1].content == "a well-grounded second answer"
 
 
+def test_token_usage_from_the_judge_accumulates_across_a_retry():
+    """Phase 4.2: check_faithfulness_node calls the raw OpenAI client, so its
+    real usage has to be threaded through state explicitly rather than caught
+    by get_openai_callback like the graph's own ChatOpenAI calls are."""
+    with (
+        patch("chatbot.ChatOpenAI") as llm_cls,
+        patch("chatbot.classify_query", return_value=("resume", dict(_NO_USAGE))),
+        patch(
+            "chatbot.score_faithfulness_with_usage",
+            side_effect=[(2, {"input": 100, "output": 20}), (5, {"input": 120, "output": 25})],
+        ),
+        patch("chatbot.search_resume", side_effect=[_CHUNK_1, _CHUNK_2]),
+    ):
+        llm_cls.return_value.invoke.side_effect = [
+            AIMessage(content="a vague first answer"),
+            AIMessage(content="reformulated query"),
+            AIMessage(content="a well-grounded second answer"),
+        ]
+        state = chatbot.create_assistant(mode="classifier").invoke(
+            {**INITIAL_STATE, "messages": [HumanMessage(content="Where does Cem work?")]}
+        )
+
+    assert state["token_usage"]["check_faithfulness"] == {"input": 220, "output": 45}
+
+
 def test_reformulated_query_drives_the_retry_search():
     with (
         patch("chatbot.ChatOpenAI") as llm_cls,
-        patch("chatbot.classify_query", return_value="resume"),
-        patch("chatbot.score_faithfulness", side_effect=[2, 5]),
+        patch("chatbot.classify_query", return_value=("resume", dict(_NO_USAGE))),
+        patch(
+            "chatbot.score_faithfulness_with_usage",
+            side_effect=[(2, dict(_NO_USAGE)), (5, dict(_NO_USAGE))],
+        ),
         patch("chatbot.search_resume", side_effect=[_CHUNK_1, _CHUNK_2]) as search,
     ):
         llm_cls.return_value.invoke.side_effect = [

@@ -69,16 +69,18 @@ def test_build_summary_calls_gpt4o_mini():
 
     openai_client = MagicMock()
     openai_client.chat.completions.create.return_value = MagicMock(
-        choices=[MagicMock(message=MagicMock(content="3-sentence summary."))]
+        choices=[MagicMock(message=MagicMock(content="3-sentence summary."))],
+        usage=MagicMock(prompt_tokens=80, completion_tokens=25),
     )
 
     messages = [
         HumanMessage(content="Hi"),
         AIMessage(content="Hello!"),
     ]
-    result = mem.build_summary(messages, openai_client)
+    result, usage = mem.build_summary(messages, openai_client)
 
     assert result == "3-sentence summary."
+    assert usage == {"input": 80, "output": 25}
     call_kwargs = openai_client.chat.completions.create.call_args.kwargs
     assert call_kwargs["model"] == "gpt-4o-mini"
 
@@ -86,5 +88,18 @@ def test_build_summary_calls_gpt4o_mini():
 def test_build_summary_empty_messages():
     mem = SessionMemory.__new__(SessionMemory)
     mem._redis = None
-    result = mem.build_summary([], MagicMock())
+    result, usage = mem.build_summary([], MagicMock())
     assert result == ""
+    assert usage == {"input": 0, "output": 0}
+
+
+def test_build_summary_failure_reports_zero_usage():
+    mem = SessionMemory.__new__(SessionMemory)
+    mem._redis = None
+    openai_client = MagicMock()
+    openai_client.chat.completions.create.side_effect = RuntimeError("boom")
+
+    result, usage = mem.build_summary([HumanMessage(content="Hi")], openai_client)
+
+    assert result == ""
+    assert usage == {"input": 0, "output": 0}

@@ -29,6 +29,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import load_settings  # noqa: E402  (after sys.path setup)
+from cost import estimate_cost  # noqa: E402
 from observability import setup_tracing  # noqa: E402
 from retrieval.vectorstore import CHUNKER_VERSION  # noqa: E402
 
@@ -118,6 +119,7 @@ def run_question(graph, item: dict) -> dict:
             "retry_count": 0,
             "trajectory": [],
             "agent_rounds": 0,
+            "token_usage": {},
         }
     )
 
@@ -157,6 +159,7 @@ def run_question(graph, item: dict) -> dict:
         "faithfulness_score": state.get("faithfulness_score"),
         "self_correction_retried": state.get("retry_count", 0) > 0,
         "trajectory": state.get("trajectory") or [],
+        "token_usage": state.get("token_usage") or {},
     }
 
 
@@ -467,6 +470,8 @@ def evaluate(
         f"(agent_mode={agent_mode}, chat_model={chat_model})..."
     )
     rows = []
+    graph_input, graph_output = 0, 0
+    judge_input, judge_output = 0, 0
     for i, item in enumerate(golden, start=1):
         row = run_question(graph, item)
         flag = "ok " if row["route_correct"] else "MIS"
@@ -474,6 +479,38 @@ def evaluate(
         if not row["route_correct"]:
             print(f"        routed {row['expected_route']} -> {row['actual_route'] or 'none'}")
         rows.append(row)
+        # Every graph node captures its own response's real usage directly
+        # (chatbot.py's _add_usage) rather than via a callback: confirmed
+        # directly that LangChain's get_openai_callback does not propagate
+        # through LangGraph's node execution (a real turn showed 0 tokens
+        # captured that way despite a real model call happening). Summed here
+        # per node, with check_faithfulness split out since it is always
+        # gpt-4o-mini regardless of chat_model.
+        for node, usage in (row.get("token_usage") or {}).items():
+            if node == "check_faithfulness":
+                judge_input += usage["input"]
+                judge_output += usage["output"]
+            else:
+                graph_input += usage["input"]
+                graph_output += usage["output"]
+
+    # Deliberately named "graph_cost", not "total_cost": RAGAS's own judge
+    # calls below are a separate, substantial cost this cannot see (RAGAS
+    # calls the API directly, outside anything this harness instruments), and
+    # are typically the dominant cost of a full run — see LIMITATIONS.md's
+    # rate-limit section. This is the cost of the app's own turn, comparable
+    # to what a real user's message would cost in production.
+    graph_cost = {
+        "requests_measured": len(golden),
+        "input_tokens": graph_input + judge_input,
+        "output_tokens": graph_output + judge_output,
+        "estimated_usd": round(
+            estimate_cost(chat_model, graph_input, graph_output)
+            + estimate_cost("gpt-4o-mini", judge_input, judge_output),
+            4,
+        ),
+        "excludes": "RAGAS's own judge calls, and embedding calls",
+    }
 
     routing = score_routing(rows)
     retrieval = score_retrieval(rows)
@@ -513,6 +550,7 @@ def evaluate(
         "tool_health": tool_health,
         "self_correction": self_correction,
         "trajectory": trajectory,
+        "graph_cost": graph_cost,
         "scores": scores,
         "scores_cover": len(scorable),
         "scores_by_route": by_route,
@@ -605,6 +643,10 @@ def evaluate(
                 value = metrics.get("faithfulness")
                 if value is not None:
                     print(f"    {route:<14} {value:.4f}")
+
+    print(f"\n=== Graph cost (real usage, {chat_model} + gpt-4o-mini judge) ===")
+    print(f"  ${graph_cost['estimated_usd']:.4f} over {graph_cost['requests_measured']} questions")
+    print(f"  excludes: {graph_cost['excludes']}")
 
     if output_path:
         out = Path(output_path)

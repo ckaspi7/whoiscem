@@ -234,6 +234,29 @@ def test_trajectory_records_a_failed_call_as_not_ok():
 
 
 # ---------------------------------------------------------------------------
+# Phase 4.2 — stream_usage=True on every construction, streaming or not.
+# Confirmed directly: ChatOpenAI(streaming=True) without it returns no real
+# usage_metadata at all, even for a call that produced a real answer, and
+# defaults to False if not set explicitly.
+# ---------------------------------------------------------------------------
+
+
+def test_every_llm_construction_requests_stream_usage_in_classifier_mode():
+    with patch("chatbot.ChatOpenAI") as llm_cls:
+        chatbot.create_assistant(mode="classifier")
+
+    assert llm_cls.call_args_list, "expected llm and llm_fast to be constructed"
+    assert all(c.kwargs.get("stream_usage") is True for c in llm_cls.call_args_list)
+
+
+def test_every_llm_construction_requests_stream_usage_in_tool_calling_mode():
+    with patch("chatbot.ChatOpenAI") as llm_cls:
+        chatbot.create_assistant(mode="tool_calling")
+
+    assert all(c.kwargs.get("stream_usage") is True for c in llm_cls.call_args_list)
+
+
+# ---------------------------------------------------------------------------
 # CHAT_MODEL — gpt-6-luna only supports tool calling at reasoning_effort="none"
 # ---------------------------------------------------------------------------
 

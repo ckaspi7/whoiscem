@@ -57,13 +57,16 @@ class SessionMemory:
         except Exception as exc:
             logger.warning("Failed to save session memory: %s", exc)
 
-    def build_summary(self, messages: list, openai_client) -> str:
+    def build_summary(self, messages: list, openai_client) -> tuple[str, dict[str, int]]:
         """Summarise the conversation to 3 sentences for future context injection.
 
         Takes LangChain ``BaseMessage`` objects (``.type`` is ``"human"``/``"ai"``).
+        Returns ``(summary, usage)`` — the real token counts this call cost,
+        for honest cost accounting (Phase 4.2) rather than a length estimate.
         """
+        no_usage = {"input": 0, "output": 0}
         if not messages:
-            return ""
+            return "", dict(no_usage)
         transcript = "\n".join(
             f"{m.type.capitalize()}: {m.content}" for m in messages if isinstance(m.content, str)
         )
@@ -82,10 +85,12 @@ class SessionMemory:
                 temperature=0,
                 max_tokens=150,
             )
-            return response.choices[0].message.content.strip()
+            usage = response.usage
+            tokens = {"input": usage.prompt_tokens, "output": usage.completion_tokens} if usage else no_usage
+            return response.choices[0].message.content.strip(), tokens
         except Exception as exc:
             logger.warning("Failed to build conversation summary: %s", exc)
-            return ""
+            return "", dict(no_usage)
 
     @staticmethod
     def _key(session_id: str) -> str:

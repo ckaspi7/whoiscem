@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from langchain_core.prompts import ChatPromptTemplate
 
+from cost import usage_from_response
+
 _VALID_TYPES = frozenset({"resume", "personal", "spotify", "linkedin", "conversation"})
 
 _ROUTE_PROMPT = ChatPromptTemplate.from_messages(
@@ -39,8 +41,13 @@ Reply with only the single category word.""",
 )
 
 
-def classify_query(query: str, llm) -> str:
-    """Return one of: resume | personal | spotify | linkedin | conversation."""
+def classify_query(query: str, llm) -> tuple[str, dict[str, int]]:
+    """Classify into resume | personal | spotify | linkedin | conversation.
+
+    Returns (category, usage) — real token counts for this call (Phase 4.2),
+    not a length estimate.
+    """
     response = llm.invoke(_ROUTE_PROMPT.invoke({"query": query}))
     result = response.content.strip().lower()
-    return result if result in _VALID_TYPES else "conversation"
+    category = result if result in _VALID_TYPES else "conversation"
+    return category, usage_from_response(response)

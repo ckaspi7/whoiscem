@@ -87,18 +87,56 @@ half-wired.
 
 ---
 
-## Cost Accounting
+## Cost Accounting (Phase 4.2 — fixed, with two real gotchas found by running it)
 
-**Status: the number in the sidebar is wrong, and knowingly so.**
+**Status: real per-call usage, not a length estimate.** Every node that calls a
+model (`condense_query`, `route_query`/`agent`, `generate_response`, a
+self-correction retry, the faithfulness judge, the session summariser) now
+reads its own response's real token counts and prices them at whichever model
+actually made the call — `cost.py` holds the published per-model rates.
+Embeddings are the one deliberate exception: `text-embedding-3-small` costs
+~$0.02/1M tokens on a handful of tokens per query, several orders of magnitude
+below either chat model, and often skipped entirely by `RetrievalCache` — not
+worth a real code path.
 
-`_accumulate_cost` estimates tokens as `len(text) // 4` and applies the *output*
-price to all of them. Four of the five model calls per turn — the router, the
-faithfulness judge, the summariser and the embeddings — are not counted at all.
-`tiktoken` is a dependency and unused; the API already returns exact usage.
+Two things were not visible until this was actually built and run, not
+assumed from documentation:
 
-It is displayed to five decimal places, which implies a precision it does not
-have. Replacing the estimate with reported usage is scheduled; until then, read
-the figure as a lower bound of the wrong quantity.
+- **`langchain_community`'s `get_openai_callback()` does not propagate through
+  LangGraph's node execution.** The obvious, minimally-invasive design —
+  wrap the whole `graph.stream()` call in one `with get_openai_callback() as
+  cb:` block — silently reported 0 tokens for every node's call despite a real
+  model call happening and a real answer coming back. Confirmed directly with
+  a live call, not inferred from a changelog. The fix: every node reads its
+  own response's `usage_metadata` right where it makes the call
+  (`cost.usage_from_response`, merged into state by node via `_add_usage`),
+  the same pattern `check_faithfulness_node` already used for its own
+  (non-LangChain) call.
+- **`ChatOpenAI(streaming=True)` returns no usage data on `.invoke()` unless
+  `stream_usage=True` is also set** — it defaults to `False`. Without it,
+  `generate_response`'s own call (the actual answer) read as 0 input/0 output
+  tokens despite a real, priced completion coming back — the node's own
+  underlying HTTP request never asked OpenAI's streaming endpoint to include
+  a usage object, which the API only attaches when explicitly requested.
+  `create_assistant`'s `_llm` helper sets `stream_usage=True` unconditionally
+  now, harmless on the one non-streaming construction (`llm_fast`).
+
+The sidebar's help text says what it excludes rather than implying completeness
+it doesn't have.
+
+---
+
+## The Faithfulness Judge No Longer Fails Open Silently (Phase 4.3, partial)
+
+Two of the four Phase 4.3 guardrail items are done; move-into-the-graph and
+input-side guardrails are not. The judge call now sets
+`response_format={"type": "json_object"}` — previously absent, so a ```` ```json ````
+fence around the reply broke `json.loads` and the guard disabled itself with
+no signal anywhere. `tests/unit/test_guardrails.py::test_malformed_json_fails_open`
+still asserts the fail-open *behaviour* is correct (the app must not break),
+but a failure there is now logged (`guardrails.faithfulness_check`, level
+WARNING) instead of vanishing — a safety gate that can go silently inert is
+worse than no gate, and this is what makes that visible instead of mute.
 
 ---
 

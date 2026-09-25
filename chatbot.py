@@ -16,7 +16,8 @@ from openai import OpenAI
 
 import query_rewrite
 from config import load_settings
-from guardrails.faithfulness_check import check_faithfulness, score_faithfulness
+from cost import estimate_cost, usage_from_response
+from guardrails.faithfulness_check import apply_faithfulness_tiering, score_faithfulness_with_usage
 from memory.session_memory import SessionMemory
 from observability import setup_tracing, tracing_status
 from router import classify_query
@@ -66,13 +67,6 @@ def _apply_streamlit_secrets() -> None:
         val = secrets.get(key)
         if val:
             os.environ[key] = str(val)
-
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-GPT_4O_MINI_INPUT_COST_PER_1K = 0.000150  # $ per 1k input tokens
-GPT_4O_MINI_OUTPUT_COST_PER_1K = 0.000600  # $ per 1k output tokens
 
 
 # ---------------------------------------------------------------------------
@@ -127,6 +121,15 @@ class GraphState(TypedDict):
     # tool_calling mode only: how many rounds of execute_tools have run this
     # turn, stamped onto each round's trajectory entries.
     agent_rounds: int
+    # Real per-node token usage (Phase 4.2), keyed by node name — every node
+    # that calls a model reads its own response's usage_metadata and merges it
+    # in via _add_usage. Not LangChain's get_openai_callback: confirmed
+    # directly that it does not propagate through LangGraph's node execution
+    # (a real graph turn showed 0 tokens captured that way despite a real
+    # model call happening), so each call site captures its own instead.
+    # check_faithfulness stays a separate key because it is always
+    # gpt-4o-mini regardless of CHAT_MODEL — see main()'s cost accounting.
+    token_usage: dict[str, dict[str, int]]
 
 
 # ---------------------------------------------------------------------------
@@ -140,6 +143,22 @@ def _timed(name: str, fn, state: GraphState) -> GraphState:
     latencies[name] = round(elapsed, 3)
     result["node_latencies"] = latencies
     return result
+
+
+def _add_usage(token_usage: dict[str, dict[str, int]] | None, node: str, usage: dict[str, int]) -> dict:
+    """Merge one call's real usage into a node-keyed running total (Phase 4.2).
+
+    Per node, not one grand total: check_faithfulness stays pinned to
+    gpt-4o-mini regardless of CHAT_MODEL, so it must be priced separately from
+    everything else in state — see main()'s cost accounting below.
+    """
+    merged = dict(token_usage or {})
+    existing = merged.get(node, {"input": 0, "output": 0})
+    merged[node] = {
+        "input": existing["input"] + usage["input"],
+        "output": existing["output"] + usage["output"],
+    }
+    return merged
 
 
 def _system_prompt(prior_context: str) -> str:
@@ -188,7 +207,17 @@ def create_assistant(prior_context: str = "", mode: str | None = None, model: st
     fixed_temperature = chat_model == "gpt-6-luna"
 
     def _llm(temperature: float, streaming: bool, **extra: Any) -> ChatOpenAI:
-        kwargs: dict[str, Any] = {"model": chat_model, "streaming": streaming, **extra}
+        # stream_usage defaults to False on ChatOpenAI — a streaming call
+        # without it returns no usage_metadata at all (confirmed directly: a
+        # real generate_response call produced a real answer but usage_from_
+        # response read 0/0). Harmless to set unconditionally: it only affects
+        # the streaming code path, and llm_fast (streaming=False) ignores it.
+        kwargs: dict[str, Any] = {
+            "model": chat_model,
+            "streaming": streaming,
+            "stream_usage": True,
+            **extra,
+        }
         if not fixed_temperature:
             kwargs["temperature"] = temperature
         return ChatOpenAI(**kwargs)
@@ -246,16 +275,18 @@ def _build_classifier_graph(llm: ChatOpenAI, llm_fast: ChatOpenAI, system_prompt
             query = messages[-1].content
             # Only pays for a model call when there is history to resolve
             # against, so a first turn costs nothing.
-            rewritten = query_rewrite.condense_query(query, messages[:-1], llm_fast)
-            return {**state, "search_query": rewritten}
+            rewritten, usage = query_rewrite.condense_query(query, messages[:-1], llm_fast)
+            token_usage = _add_usage(state.get("token_usage"), "condense_query", usage)
+            return {**state, "search_query": rewritten, "token_usage": token_usage}
 
         return _timed("condense_query", _run, state)
 
     def route_query(state: GraphState) -> GraphState:
         def _run(state):
             query = state.get("search_query") or state["messages"][-1].content
-            qtype = classify_query(query, llm_fast)
-            return {**state, "next_step": qtype, "route": qtype}
+            qtype, usage = classify_query(query, llm_fast)
+            token_usage = _add_usage(state.get("token_usage"), "route_query", usage)
+            return {**state, "next_step": qtype, "route": qtype, "token_usage": token_usage}
 
         return _timed("route_query", _run, state)
 
@@ -360,26 +391,36 @@ def _build_classifier_graph(llm: ChatOpenAI, llm_fast: ChatOpenAI, system_prompt
                 # matches by id, so reusing the prior answer's id is what makes
                 # this a replacement instead of an append.
                 response.id = messages[-1].id
+            gen_usage = usage_from_response(response)
+            token_usage = _add_usage(state.get("token_usage"), "generate_response", gen_usage)
             # A single-element list, not the full history: add_messages
             # appends it. Returning the whole list back here would ask the
             # reducer to "add" every prior message a second time — harmless
             # (matched by id, so no duplication) but pointless.
-            return {**state, "messages": [response], "next_step": "end", "context_used": context_used}
+            return {
+                **state,
+                "messages": [response],
+                "next_step": "end",
+                "context_used": context_used,
+                "token_usage": token_usage,
+            }
 
         return _timed("generate_response", _run, state)
 
     def check_faithfulness_node(state: GraphState) -> GraphState:
         def _run(state):
             answer = state["messages"][-1].content
-            score = score_faithfulness(answer, state.get("context_used", ""))
-            return {**state, "faithfulness_score": score}
+            score, usage = score_faithfulness_with_usage(answer, state.get("context_used", ""))
+            token_usage = _add_usage(state.get("token_usage"), "check_faithfulness", usage)
+            return {**state, "faithfulness_score": score, "token_usage": token_usage}
 
         return _timed("check_faithfulness", _run, state)
 
     def reformulate_and_retry(state: GraphState) -> GraphState:
         def _run(state):
             query = state.get("search_query", "")
-            new_query = query_rewrite.reformulate_for_retry(query, llm_fast)
+            new_query, usage = query_rewrite.reformulate_for_retry(query, llm_fast)
+            token_usage = _add_usage(state.get("token_usage"), "reformulate_and_retry", usage)
             try:
                 chunks = search_resume(new_query)
                 result = ToolResult.success(format_chunks(chunks))
@@ -394,6 +435,7 @@ def _build_classifier_graph(llm: ChatOpenAI, llm_fast: ChatOpenAI, system_prompt
                 "context_chunks": [c.text for c in chunks],
                 "tool_error": result.error,
                 "retry_count": state.get("retry_count", 0) + 1,
+                "token_usage": token_usage,
             }
 
         return _timed("reformulate_and_retry", _run, state)
@@ -531,7 +573,8 @@ def _build_tool_calling_graph(llm: ChatOpenAI, system_prompt: str) -> Any:
         def _run(state):
             lc_messages = [SystemMessage(content=system_prompt), *state["messages"]]
             response = llm_with_tools.invoke(lc_messages)
-            updates = {**state, "messages": [response]}
+            token_usage = _add_usage(state.get("token_usage"), "agent", usage_from_response(response))
+            updates = {**state, "messages": [response], "token_usage": token_usage}
             # Only when nothing has called a tool yet this turn: a later round
             # with no further tool_calls is the agent's final answer after an
             # earlier round already set a real route, and must not overwrite it.
@@ -609,19 +652,26 @@ def _build_tool_calling_graph(llm: ChatOpenAI, system_prompt: str) -> Any:
 
 
 # ---------------------------------------------------------------------------
-# Token cost accounting
+# Token cost accounting (Phase 4.2)
 # ---------------------------------------------------------------------------
-def _estimate_cost(text: str) -> float:
-    tokens = len(text) // 4
-    return tokens * GPT_4O_MINI_OUTPUT_COST_PER_1K / 1000
+def _accumulate_real_cost(*priced_usages: tuple[str, dict[str, int]]) -> None:
+    """Add real per-call token usage to the running session total.
 
-
-def _accumulate_cost(chunk_text: str) -> None:
+    Replaces estimating tokens as len(text) // 4 and pricing all of it at the
+    output rate — which counted only the final answer's characters, missing
+    every other call a turn makes (router, judge, summariser) and mispricing
+    the one call it did count. `priced_usages` is (model, usage) pairs, not a
+    single model, because the judge and summariser stay pinned to gpt-4o-mini
+    regardless of CHAT_MODEL while the graph's own calls use whichever model
+    is actually configured — each needs its own rate, not one applied to all.
+    """
     if "total_tokens" not in st.session_state:
         st.session_state.total_tokens = 0
         st.session_state.total_cost = 0.0
-    st.session_state.total_tokens += len(chunk_text) // 4
-    st.session_state.total_cost = st.session_state.total_tokens * GPT_4O_MINI_OUTPUT_COST_PER_1K / 1000
+    for model, usage in priced_usages:
+        input_tokens, output_tokens = usage.get("input", 0), usage.get("output", 0)
+        st.session_state.total_tokens += input_tokens + output_tokens
+        st.session_state.total_cost += estimate_cost(model, input_tokens, output_tokens)
 
 
 # ---------------------------------------------------------------------------
@@ -689,7 +739,15 @@ def main() -> None:
         st.markdown("### Session Info")
         cost = st.session_state.total_cost
         tokens = st.session_state.total_tokens
-        st.metric("Session cost", f"${cost:.5f}", help="Estimated based on gpt-4o-mini token pricing")
+        st.metric(
+            "Session cost",
+            f"${cost:.5f}",
+            help=(
+                "Real token usage from the API's own usage object, priced at each model's "
+                "published rate — not an estimate from text length. Excludes embedding calls "
+                "(a few tokens per query, ~$0.02/1M — negligible next to either chat model)."
+            ),
+        )
         st.metric("Tokens used", f"{tokens:,}")
 
         if st.session_state.last_latencies:
@@ -737,6 +795,7 @@ def main() -> None:
         with st.chat_message("human", avatar="🧐"):
             st.markdown(prompt)
 
+        chat_model = load_settings().chat_model
         with st.chat_message("ai", avatar="😎"):
             placeholder = st.empty()
             state: GraphState = {
@@ -753,6 +812,7 @@ def main() -> None:
                 "retry_count": 0,
                 "trajectory": [],
                 "agent_rounds": 0,
+                "token_usage": {},
             }
 
             # Two stream modes in one pass: "messages" gives live token deltas
@@ -794,24 +854,50 @@ def main() -> None:
             # authoritative text is whatever the node actually returned.
             full_response = result_state["messages"][-1].content
 
-            # Faithfulness check
-            final_response = check_faithfulness(full_response, context_used)
+            # Faithfulness check. classifier mode already scored this exact
+            # answer in-graph (for the self-correction retry decision) — reuse
+            # it instead of paying for a second judge call on the same text.
+            # tool_calling mode never scores in-graph, so this is where it
+            # happens for that mode.
+            faithfulness_score = result_state.get("faithfulness_score")
+            judge_usage = (result_state.get("token_usage") or {}).get("check_faithfulness")
+            if judge_usage is None:
+                faithfulness_score, judge_usage = score_faithfulness_with_usage(full_response, context_used)
+            final_response = apply_faithfulness_tiering(full_response, faithfulness_score)
             if final_response != full_response:
                 placeholder.markdown(final_response)
-
-            _accumulate_cost(final_response)
 
             result_state["messages"][-1].content = final_response
             st.session_state.messages = result_state["messages"]
 
             # Update session memory summary in background
             openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
-            summary = memory.build_summary(
+            summary, summary_usage = memory.build_summary(
                 [m for m in st.session_state.messages if isinstance(m.content, str)],
                 openai_client,
             )
             if summary:
                 memory.save_summary(session_id, summary)
+
+            # Real usage from every call this turn: every graph node captures
+            # its own response's usage_metadata directly (see _add_usage and
+            # cost.usage_from_response) rather than a callback, priced at
+            # whichever CHAT_MODEL is actually configured — except
+            # check_faithfulness and the summariser, which stay pinned to
+            # gpt-4o-mini regardless of it (see cost.py and
+            # guardrails/faithfulness_check.py for why).
+            graph_usage = {
+                node: usage
+                for node, usage in (result_state.get("token_usage") or {}).items()
+                if node != "check_faithfulness"
+            }
+            graph_input = sum(u["input"] for u in graph_usage.values())
+            graph_output = sum(u["output"] for u in graph_usage.values())
+            _accumulate_real_cost(
+                (chat_model, {"input": graph_input, "output": graph_output}),
+                ("gpt-4o-mini", judge_usage),
+                ("gpt-4o-mini", summary_usage),
+            )
 
         st.rerun()
 

@@ -57,7 +57,7 @@ def test_a_failed_tool_call_never_reaches_the_model_as_context():
     import chatbot
 
     with (
-        patch("chatbot.classify_query", return_value="resume"),
+        patch("chatbot.classify_query", return_value=("resume", {"input": 0, "output": 0})),
         patch("chatbot.search_resume", side_effect=ConnectionError("qdrant unreachable")),
     ):
         graph = chatbot.create_assistant()
@@ -72,6 +72,11 @@ def test_a_failed_tool_call_never_reaches_the_model_as_context():
                 "context_chunks": [],
                 "tool_error": "",
                 "node_latencies": {},
+                "faithfulness_score": None,
+                "retry_count": 0,
+                "trajectory": [],
+                "agent_rounds": 0,
+                "token_usage": {},
             }
         )
 
