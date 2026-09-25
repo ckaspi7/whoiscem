@@ -12,76 +12,6 @@ A personal AI chatbot built to answer questions about Cem Kaspi — and to demon
 
 ---
 
-## Architecture
-
-```
-User Query
-    │
-    ▼
-┌─────────────┐
-│ route_query │  LLM classifies intent:
-│             │  resume / personal / spotify / linkedin / conversation
-└──────┬──────┘
-       │
-  ┌────▼────────────────────────────────────────────┐
-  │  Handler node (one of five)                      │
-  │                                                  │
-  │  resume → Hybrid Retrieval Pipeline:             │
-  │    ├─ Dense search  (Qdrant + OpenAI embeddings) │
-  │    ├─ Sparse search (BM25)                       │
-  │    ├─ RRF fusion    (top-20 from each)           │
-  │    └─ Cross-encoder rerank → top-3 chunks        │
-  │                                                  │
-  │  personal → SQLite user database                 │
-  │  spotify  → Cached Spotify snapshot, real age reported │
-  │  linkedin → Cached LinkedIn snapshot, real age reported │
-  └────┬────────────────────────────────────────────┘
-       │
-  ┌────▼──────────────┐
-  │ generate_response │  GPT-4o-mini streams the answer
-  └────┬──────────────┘
-       │
-  ┌────▼─────────────────┐
-  │ faithfulness_check   │  GPT-4o-mini judges answer grounding (score 1–5)
-  │                      │  ≥4 → pass  |  2–3 → warn  |  1 → refuse
-  └────┬─────────────────┘
-       │
-  ┌────▼──────────────────────────────────────────┐
-  │ Redis session memory                          │
-  │ Rolling 3-sentence summary stored per UUID   │
-  │ Returning visitors get prior context injected │
-  └───────────────────────────────────────────────┘
-```
-
-The diagram shows `AGENT_MODE=classifier`, the default — `generate_response`
-and the single-tool handler above become a real tool-calling agent under
-`AGENT_MODE=tool_calling`, and `faithfulness_check`'s score now drives one
-bounded retry on the resume route rather than only gating the banner shown
-above. Both are measured changes, detailed below, not shown here to keep this
-diagram to the shape most traffic actually takes.
-
-### Headless API (Phase 4.1)
-
-`api.py` is a second surface onto the same graph, independent of the
-Streamlit UI: `POST /chat` and a real `GET /healthz` (actual dependency
-checks — Qdrant, the OpenAI key — not just "the process is up"), with auth
-(`API_KEY`, optional — unset logs a loud warning rather than failing closed,
-for local dev), a sliding-window rate limit, and a daily spend cap tracked in
-`SpendTracker` (`spend_tracker.py`, Redis-backed like session memory) using
-the same real per-call usage `cost.py` computes for the Streamlit sidebar.
-Built for headless access — load testing and Phase 3.5's trajectory eval
-without driving a browser — not yet as what the deployed Streamlit app
-itself calls: see **What I'd build next** and `LIMITATIONS.md` for exactly
-what that split does and does not protect today.
-
-```bash
-uvicorn api:app --reload
-curl -X POST localhost:8000/chat -H "Content-Type: application/json" \
-  -d '{"message": "Where does Cem work?"}'
-```
-
----
-
 ## Measured Results
 
 First committed baseline: 59 golden questions through the shipping graph —
@@ -434,6 +364,76 @@ Measured first so the fix can be reported as a delta rather than asserted:
 ```bash
 python eval/run_eval.py --output eval/results/$(git rev-parse --short HEAD).json
 python eval/run_eval.py --no-ragas      # routing only, no judge calls
+```
+
+---
+
+## Architecture
+
+```
+User Query
+    │
+    ▼
+┌─────────────┐
+│ route_query │  LLM classifies intent:
+│             │  resume / personal / spotify / linkedin / conversation
+└──────┬──────┘
+       │
+  ┌────▼────────────────────────────────────────────┐
+  │  Handler node (one of five)                      │
+  │                                                  │
+  │  resume → Hybrid Retrieval Pipeline:             │
+  │    ├─ Dense search  (Qdrant + OpenAI embeddings) │
+  │    ├─ Sparse search (BM25)                       │
+  │    ├─ RRF fusion    (top-20 from each)           │
+  │    └─ Cross-encoder rerank → top-3 chunks        │
+  │                                                  │
+  │  personal → SQLite user database                 │
+  │  spotify  → Cached Spotify snapshot, real age reported │
+  │  linkedin → Cached LinkedIn snapshot, real age reported │
+  └────┬────────────────────────────────────────────┘
+       │
+  ┌────▼──────────────┐
+  │ generate_response │  GPT-4o-mini streams the answer
+  └────┬──────────────┘
+       │
+  ┌────▼─────────────────┐
+  │ faithfulness_check   │  GPT-4o-mini judges answer grounding (score 1–5)
+  │                      │  ≥4 → pass  |  2–3 → warn  |  1 → refuse
+  └────┬─────────────────┘
+       │
+  ┌────▼──────────────────────────────────────────┐
+  │ Redis session memory                          │
+  │ Rolling 3-sentence summary stored per UUID   │
+  │ Returning visitors get prior context injected │
+  └───────────────────────────────────────────────┘
+```
+
+The diagram shows `AGENT_MODE=classifier`, the default — `generate_response`
+and the single-tool handler above become a real tool-calling agent under
+`AGENT_MODE=tool_calling`, and `faithfulness_check`'s score now drives one
+bounded retry on the resume route rather than only gating the banner shown
+above. Both are measured changes, detailed above, not shown here to keep this
+diagram to the shape most traffic actually takes.
+
+### Headless API (Phase 4.1)
+
+`api.py` is a second surface onto the same graph, independent of the
+Streamlit UI: `POST /chat` and a real `GET /healthz` (actual dependency
+checks — Qdrant, the OpenAI key — not just "the process is up"), with auth
+(`API_KEY`, optional — unset logs a loud warning rather than failing closed,
+for local dev), a sliding-window rate limit, and a daily spend cap tracked in
+`SpendTracker` (`spend_tracker.py`, Redis-backed like session memory) using
+the same real per-call usage `cost.py` computes for the Streamlit sidebar.
+Built for headless access — load testing and Phase 3.5's trajectory eval
+without driving a browser — not yet as what the deployed Streamlit app
+itself calls: see **What I'd build next** and `LIMITATIONS.md` for exactly
+what that split does and does not protect today.
+
+```bash
+uvicorn api:app --reload
+curl -X POST localhost:8000/chat -H "Content-Type: application/json" \
+  -d '{"message": "Where does Cem work?"}'
 ```
 
 ---
