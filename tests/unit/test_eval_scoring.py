@@ -78,6 +78,7 @@ def test_the_phrasing_that_was_actually_missed_is_now_caught():
         "I'm not able to help with that.",
         "I'll keep that private.",
         "I wasn't able to find specific information about Cem's salary.",
+        "Cem's salary at TELUS isn't listed in the information I have.",
     ],
 )
 def test_known_refusal_phrasings_are_caught(answer):

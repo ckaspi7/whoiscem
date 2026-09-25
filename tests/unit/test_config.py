@@ -71,6 +71,28 @@ def test_reads_process_environment_by_default(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# Chat model — CHAT_MODEL, same discipline as AGENT_MODE and RETRIEVAL_STRATEGY
+# ---------------------------------------------------------------------------
+
+
+def test_chat_model_defaults_to_gpt_4o_mini():
+    assert load_settings(env={}).chat_model == "gpt-4o-mini"
+
+
+def test_chat_model_reads_gpt_6_luna_from_the_environment():
+    assert load_settings(env={"CHAT_MODEL": "gpt-6-luna"}).chat_model == "gpt-6-luna"
+
+
+def test_chat_model_is_case_insensitive_and_trimmed():
+    assert load_settings(env={"CHAT_MODEL": " GPT-6-Luna "}).chat_model == "gpt-6-luna"
+
+
+def test_unknown_chat_model_is_rejected():
+    with pytest.raises(ConfigError, match="CHAT_MODEL"):
+        load_settings(env={"CHAT_MODEL": "gpt-9000"})
+
+
+# ---------------------------------------------------------------------------
 # Client construction — one adapter, three modes
 # ---------------------------------------------------------------------------
 

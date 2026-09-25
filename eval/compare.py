@@ -122,6 +122,13 @@ def compare(current_path: Path, baseline_path: Path) -> int:
         print(f"\nNOTE: agent_mode changed: {before_mode} -> {after_mode}. This is a different graph")
         print("      architecture, not a code regression on the same one — read deltas as a comparison.")
 
+    before_model = baseline.get("chat_model")
+    after_model = current.get("chat_model")
+    if before_model and before_model != after_model:
+        print(f"\nNOTE: chat_model changed: {before_model} -> {after_model}.")
+        print("      Unlike agent_mode, this does not change what a chunk is — rank-sensitive")
+        print("      metrics are still gated normally.")
+
     rechunked = current.get("chunker") != baseline.get("chunker")
     if rechunked:
         print(f"\nNOTE: chunker changed ({baseline.get('chunker')} -> {current.get('chunker')}).")

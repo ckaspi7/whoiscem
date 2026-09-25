@@ -37,17 +37,24 @@ python scripts/refresh_cache.py
 
 ### Request flow (LangGraph)
 
-`chatbot.py:create_assistant(mode=None)` compiles one of two `StateGraph`
-shapes, selected by `mode` or `AGENT_MODE` (`config.py`). Both are measured
-against each other (`eval/results/v8-classifier.json` /
-`v9-tool-calling.json`) rather than one replacing the other on faith — see the
-README's "A real agent, measured against the switch statement it replaces".
-`AGENT_MODE=classifier` is the default: it wins on routing accuracy (98.3% vs
-91.5%) and faithfulness (0.701 vs 0.633), which matter more for a narrow-domain
-factual assistant than `tool_calling`'s edge on answer relevancy and its
-structural ability to do multi-intent and follow-ups without a condensation
-step. Every user message still traverses `check_faithfulness` and session
-memory the same way regardless of mode (steps 5-6 below).
+`chatbot.py:create_assistant(mode=None, model=None)` compiles one of two
+`StateGraph` shapes, selected by `mode` or `AGENT_MODE` (`config.py`), using
+the chat model selected by `model` or `CHAT_MODEL`. The two axes are
+orthogonal and independently measured. Modes: both are measured against each
+other (`eval/results/v8-classifier.json` / `v9-tool-calling.json`) rather than
+one replacing the other on faith — see the README's "A real agent, measured
+against the switch statement it replaces". `AGENT_MODE=classifier` is the
+default: it wins on routing accuracy (98.3% vs 91.5%) and faithfulness (0.701
+vs 0.633), which matter more for a narrow-domain factual assistant than
+`tool_calling`'s edge on answer relevancy and its structural ability to do
+multi-intent and follow-ups without a condensation step. Every user message
+still traverses `check_faithfulness` and session memory the same way
+regardless of mode (steps 5-6 below). Models: `eval/results/
+v10-gpt4o-mini-baseline.json` / `v11-gpt6-luna-comparison.json` — see the
+README's gpt-6-luna comparison and `CHAT_MODEL` below; `CHAT_MODEL` stays at
+`gpt-4o-mini` by default even though `gpt-6-luna` measures better under
+`classifier` mode, because the same comparison shows it broken under
+`tool_calling`, and the setting is global across both modes.
 
 **`classifier`** (`_build_classifier_graph`) — the original design:
 
@@ -122,6 +129,7 @@ Vector store: `QDRANT_MODE` = `embedded` (default; on-disk at `QDRANT_PATH`, no 
 Session memory: `REDIS_URL` — unset means an in-process fallback, not a disabled feature  
 Resume source: `RESUME_PATH` (defaults to `data/resume.md`)  
 Agent architecture: `AGENT_MODE` = `classifier` (default, measured best) | `tool_calling` (real agent; see README)  
+Chat model: `CHAT_MODEL` = `gpt-4o-mini` (default) | `gpt-6-luna` (measured better under `classifier` mode only, broken under `tool_calling` — see README/LIMITATIONS)  
 Spotify cache refresh only: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`
 
 See `.env.example` for the full template.
@@ -139,5 +147,6 @@ See `.env.example` for the full template.
 - Streamlit Cloud secrets override `.env` values — `_apply_streamlit_secrets()` in `chatbot.py` merges them into `os.environ`, called after `set_page_config()` (reading `st.secrets` is itself a Streamlit command and must not be first) and before `setup_tracing()`/`create_assistant()`.
 - The golden set (`eval/golden_set.json`) is generated, not hand-authored — edit `eval/build_golden_set.py` and rerun it. `tests/unit/test_golden_set.py` fails the build if the committed JSON drifts from what the generator produces, or if a `reference_snippet`/`reference_section` no longer appears in the indexed resume.
 - `GraphState.messages` is `Annotated[list[BaseMessage], add_messages]` — real LangChain messages, not dicts. A node that wants to add a message returns `{"messages": [new_message]}` (a single-element list); the reducer appends it. Returning the full accumulated list back (e.g. via `{**state, ...}` without overriding `"messages"`) is harmless — `add_messages` matches by id and replaces in place rather than duplicating — but only a single new message is ever actually being added anywhere in this graph today.
-- OpenAI's Tier 1 caps `gpt-4o-mini` at 10,000 requests/day, shared across local dev, CI, and the deployed app. A full RAGAS eval run is several hundred to 1,000+ requests, not ~200 — `faithfulness` decomposes each answer into claims and verifies each separately. Use `eval/run_eval.py --no-ragas` (~120 requests) for iteration; save full RAGAS runs for a baseline right before a commit. See LIMITATIONS.md.
+- OpenAI's Tier 1 caps `gpt-4o-mini` at 10,000 requests/day (a rolling 24-hour window, confirmed from the `x-ratelimit-reset-requests` header — not a fixed midnight reset), shared across local dev, CI, and the deployed app. A full RAGAS eval run costs roughly 2,700 requests, measured, not the ~500-1,000 first estimated — `faithfulness` decomposes each answer into claims and verifies each separately. Use `eval/run_eval.py --no-ragas` (~120 requests) for iteration; save full RAGAS runs for a baseline right before a commit; check `x-ratelimit-remaining-requests` with one minimal request before a run that matters rather than assume the window has reset. See LIMITATIONS.md.
+- `gpt-6-luna` (a `CHAT_MODEL` option) rejects any non-default `temperature` outright (only `1`, the default, is accepted) and only supports tool/function calling at `reasoning_effort="none"`. `create_assistant` handles both — omitting the `temperature` override and setting `reasoning_effort` only for the tool-bound agent — rather than let either surface as a live 400. Neither constraint applies to `gpt-4o-mini`.
 - The cross-encoder adds ~15 s cold-start latency on a fresh container while the model downloads.

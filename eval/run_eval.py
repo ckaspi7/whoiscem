@@ -254,6 +254,10 @@ _REFUSAL_MARKERS = (
     "was not able to find",
     "weren't able to find",
     "were not able to find",
+    "isn't listed",
+    "is not listed",
+    "aren't listed",
+    "are not listed",
 )
 
 
@@ -378,6 +382,7 @@ def evaluate(
     limit: int | None = None,
     use_ragas: bool = True,
     agent_mode: str | None = None,
+    chat_model: str | None = None,
 ) -> dict:
     setup_tracing()
 
@@ -388,10 +393,15 @@ def evaluate(
 
     from chatbot import create_assistant
 
-    agent_mode = agent_mode or load_settings().agent_mode
-    graph = create_assistant(mode=agent_mode)
+    settings = load_settings()
+    agent_mode = agent_mode or settings.agent_mode
+    chat_model = chat_model or settings.chat_model
+    graph = create_assistant(mode=agent_mode, model=chat_model)
 
-    print(f"Running {len(golden)} questions through the graph (agent_mode={agent_mode})...")
+    print(
+        f"Running {len(golden)} questions through the graph "
+        f"(agent_mode={agent_mode}, chat_model={chat_model})..."
+    )
     rows = []
     for i, item in enumerate(golden, start=1):
         row = run_question(graph, item)
@@ -425,6 +435,7 @@ def evaluate(
         "data_sha": _data_fingerprint(),
         "chunker": CHUNKER_VERSION,
         "agent_mode": agent_mode,
+        "chat_model": chat_model,
         "retrieval_config": {
             "strategy": load_settings().retrieval_strategy,
             "top_n": load_settings().retrieval_top_n,
@@ -528,13 +539,25 @@ if __name__ == "__main__":
         help="Override AGENT_MODE for this run, to compare the two graphs directly",
     )
     parser.add_argument(
+        "--model",
+        choices=["gpt-4o-mini", "gpt-6-luna"],
+        default=None,
+        help="Override CHAT_MODEL for this run, to compare models directly",
+    )
+    parser.add_argument(
         "--fail-under-threshold",
         action="store_true",
         help="Exit non-zero when a RAGAS threshold is missed (for CI gating)",
     )
     args = parser.parse_args()
 
-    result = evaluate(args.output, limit=args.limit, use_ragas=not args.no_ragas, agent_mode=args.agent_mode)
+    result = evaluate(
+        args.output,
+        limit=args.limit,
+        use_ragas=not args.no_ragas,
+        agent_mode=args.agent_mode,
+        chat_model=args.model,
+    )
 
     if args.fail_under_threshold and result["thresholds_met"]:
         if not all(result["thresholds_met"].values()):

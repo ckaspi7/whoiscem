@@ -274,6 +274,65 @@ called* nondeterministic (routing moved 93.2%→91.5% between two runs of
 identical code), a worse property for an agent's decisions than it is for a
 chat reply's phrasing.
 
+### Cheaper and slightly better, measured: gpt-6-luna as a classifier-mode override
+
+`CHAT_MODEL` swaps the model behind routing, condensation, and generation in
+both graphs, independent of `AGENT_MODE`. `gpt-4o-mini` is the default; same
+golden set, same graph, only the model changed:
+
+| | gpt-4o-mini (default) | gpt-6-luna |
+|---|---|---|
+| Routing accuracy (classifier mode) | 98.3% | **100.0%** ↑ |
+| Faithfulness | 0.713 | **0.718** ↑ |
+| Answer relevancy | **0.873** | 0.862 ↓ |
+| Context recall | 0.745 | **0.771** ↑ |
+| Context precision | 0.646 | 0.647 — |
+| Retrieval recall@k / MRR | 100% / 0.566 | 100% / 0.566 — |
+| Correct refusals | 100% | 100% — |
+
+Matches or beats gpt-4o-mini on every gated metric in this run — plus ~87%
+cheaper cached input ($0.01 vs $0.075/1M) and a 1.05M-token context window
+against 128K. Retrieval numbers are identical, as expected: recall@k and MRR
+depend on the corpus and embeddings, not on which model answers.
+
+**Why the default didn't move despite a clean win.** `CHAT_MODEL` is
+orthogonal to `AGENT_MODE` — one setting, applied to both graphs. Under
+`tool_calling`, the *same* model, prompt, and addendum that scores this well
+under `classifier` misroutes basic questions to `get_linkedin_info` instead of
+`get_resume_info` (40% routing on a 5-question sample, reproduced twice — see
+`LIMITATIONS.md`). Flipping the global default would silently hand that
+regression to anyone who sets `AGENT_MODE=tool_calling` without also
+remembering to set `CHAT_MODEL` back. Same discipline as `retrieval_strategy`
+and `agent_mode`: a default only moves on an unqualified before/after, and
+this one only clears that bar for one of the two paths it would govern.
+Recommendation, not default: set `CHAT_MODEL=gpt-6-luna` explicitly for a
+`classifier`-mode deployment, which is the realistic production config anyway.
+
+**Two real API constraints, found by running it — not documented anywhere in
+advance:**
+- Tool/function calling only works via Chat Completions at
+  `reasoning_effort="none"`; anything else breaks tool selection silently.
+  `create_assistant` sets it automatically, only for the tool-bound agent —
+  `llm`/`llm_fast` never bind a tool, so it doesn't apply to them.
+- Any non-default `temperature` is rejected outright — a live 400: *"Unsupported
+  value: 'temperature' does not support 0.0 with this model. Only the default
+  (1) value is supported."* This includes the `temperature=0` this project
+  otherwise relies on for deterministic routing and tool selection.
+  `create_assistant` omits the override for this model rather than crash, so
+  whatever routing determinism it has at temperature=1 is what the table above
+  measures over a single run — not yet confirmed stable across repeats the way
+  gpt-4o-mini's temperature-driven nondeterminism was originally caught
+  (93.2%→91.5% between two identical runs, see above).
+
+**A refusal-rate scare that wasn't one.** The first full run showed gpt-6-luna
+at 90% correct refusals against gpt-4o-mini's 100%, with one salary question
+"answered anyway." The actual text: *"Cem's salary at TELUS isn't listed in
+the information I have"* — a correct decline, just phrased in a way the
+keyword heuristic hadn't seen yet, the same class of gap `_REFUSAL_MARKERS`
+has hit before with "wasn't able to find" and "without disclosing." Fixed the
+heuristic, not the narrative: both models refuse at 100% once the detector
+actually recognizes the phrasing.
+
 ### Known-broken, on purpose
 
 Measured first so the fix can be reported as a delta rather than asserted:

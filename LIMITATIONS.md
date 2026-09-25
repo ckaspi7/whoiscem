@@ -224,14 +224,65 @@ deployed app all draw from one pool. Reaching Tier 2 needs $50 of lifetime spend
 7-day-old account; deliberately spending toward that would contradict this project's own
 free-tier constraint, so the actual fix is pacing, not upgrading.
 
+The cap is a **rolling 24-hour window, not a fixed daily reset** — confirmed from the
+account's own `x-ratelimit-reset-requests` response header, not assumed from the "per
+day" name. Usage ages out gradually rather than zeroing at midnight, so "it'll reset
+overnight" is approximately, not exactly, right. A single minimal request shows the real
+number where guessing does not:
+
+```bash
+curl -s -D - -o /dev/null https://api.openai.com/v1/chat/completions \
+  -H "Authorization: Bearer $OPENAI_API_KEY" -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}],"max_tokens":1}' \
+  | grep -i ratelimit
+```
+
 A single question through the graph costs roughly 2 requests (route + generate). A full
-RAGAS pass costs far more than "49 questions × 4 metrics" suggests: `faithfulness` alone
-decomposes each answer into claims and verifies each one as a separate call, so one full
-evaluation run is plausibly 500-1,000+ requests. Running several of those back to back —
-which happened once, during active Phase 3 development — exhausted the daily cap outright;
-`eval/compare.py`'s gate then failed on a run that had produced no output at all, and a
-local run showed climbing per-question latency before hitting a wall.
+RAGAS pass costs more than "49 questions × 4 metrics" suggests, and more than this project
+first estimated: `faithfulness` alone decomposes each answer into claims and verifies each
+one as a separate call, and a measured full run — not a guess — costs roughly **2,700
+requests**, not the 500-1,000 originally estimated. Two such runs back to back still fit
+comfortably inside a 10,000 budget on their own; what exhausted the cap outright once,
+during active Phase 3 development, was several full runs compounding within one rolling
+window. `eval/compare.py`'s gate then failed on a run that had produced no output at all.
+
+RAGAS's own concurrency separately trips the *per-minute* RPM/TPM caps (500 requests/min,
+200K tokens/min) near the end of a scoring pass most of the time — a different, far more
+benign thing: the retry-after is milliseconds, RAGAS's own job runner recovers on its own
+without help, and it says nothing about the day's budget. Only a `requests per day (RPD)`
+429 is the wall worth stopping for.
 
 `python eval/run_eval.py --no-ragas` (routing and retrieval only, ~120 requests) is the
 correct tool for iterative verification. Full RAGAS runs are for confirming a baseline
 immediately before a commit, not for every intermediate check.
+
+---
+
+## `CHAT_MODEL=gpt-6-luna` Only Works Correctly Under `AGENT_MODE=classifier`
+
+Measured, not assumed (`eval/results/v10-gpt4o-mini-baseline.json` /
+`v11-gpt6-luna-comparison.json`): under `classifier` mode, gpt-6-luna matches or beats
+gpt-4o-mini on every gated metric — see the README comparison. Under `tool_calling` mode,
+the identical prompt and addendum that scores well under `classifier` misroutes basic
+career questions to `get_linkedin_info` instead of `get_resume_info` (40% routing on a
+5-question sample, reproduced identically twice). Not investigated further: `tool_calling`
+is not the default `AGENT_MODE`, and re-tuning `_TOOL_CALLING_ADDENDUM` specifically for
+one model's quirks would be prompt-overfitting to that model — the same mistake this
+project already avoided once with the golden set itself.
+
+`CHAT_MODEL` therefore stays at `gpt-4o-mini` by default: it is orthogonal to
+`AGENT_MODE`, so one global default cannot express "good under classifier, bad under
+tool_calling." Set `CHAT_MODEL=gpt-6-luna` explicitly for a `classifier`-mode deployment;
+leave it unset if `AGENT_MODE=tool_calling`.
+
+Two real API constraints, found by running it rather than documented anywhere in advance:
+
+- Tool/function calling only works at `reasoning_effort="none"` — silently breaks
+  otherwise. `create_assistant` sets it automatically, only for the tool-bound agent.
+- Any non-default `temperature` is rejected outright (a live 400: `'temperature' does not
+  support 0.0 with this model. Only the default (1) value is supported`), including the
+  `temperature=0` this project otherwise relies on for deterministic routing and tool
+  selection. `create_assistant` omits the override for this model instead of crashing —
+  its routing determinism at temperature=1 is therefore measured over one run, not yet
+  confirmed stable across repeats the way gpt-4o-mini's temperature-driven nondeterminism
+  was originally caught (93.2%→91.5% between two identical runs).

@@ -145,8 +145,9 @@ Key facts about Cem:
 {prior_block}"""
 
 
-def create_assistant(prior_context: str = "", mode: str | None = None) -> Any:
-    """Build the compiled graph. ``mode`` defaults to ``settings.agent_mode``.
+def create_assistant(prior_context: str = "", mode: str | None = None, model: str | None = None) -> Any:
+    """Build the compiled graph. ``mode`` defaults to ``settings.agent_mode``,
+    ``model`` to ``settings.chat_model``.
 
     Two independent graph shapes, chosen by configuration rather than one
     replacing the other on faith: "classifier" is the original design (an LLM
@@ -154,12 +155,29 @@ def create_assistant(prior_context: str = "", mode: str | None = None) -> Any:
     tool); "tool_calling" binds the tools to the LLM directly and lets it
     choose, call zero-to-many of them, and loop back with the results before
     answering. Both are measured (see eval/results/) so the choice of default
-    is evidence, not preference.
+    is evidence, not preference. Same discipline for ``model``: see README for
+    the gpt-4o-mini/gpt-6-luna comparison behind CHAT_MODEL's default.
     """
-    llm = ChatOpenAI(temperature=0.7, model="gpt-4o-mini", streaming=True)
-    llm_fast = ChatOpenAI(temperature=0, model="gpt-4o-mini", streaming=False)
+    settings = load_settings()
+    chat_model = model or settings.chat_model
+
+    # gpt-6-luna is a reasoning model: it rejects any non-default temperature
+    # outright — a live call returns 400 "Unsupported value: 'temperature'
+    # does not support 0.0 with this model. Only the default (1) value is
+    # supported," not just for 0. gpt-4o-mini has no such restriction, so the
+    # override is only skipped for the model that cannot accept it.
+    fixed_temperature = chat_model == "gpt-6-luna"
+
+    def _llm(temperature: float, streaming: bool, **extra: Any) -> ChatOpenAI:
+        kwargs: dict[str, Any] = {"model": chat_model, "streaming": streaming, **extra}
+        if not fixed_temperature:
+            kwargs["temperature"] = temperature
+        return ChatOpenAI(**kwargs)
+
+    llm = _llm(0.7, streaming=True)
+    llm_fast = _llm(0, streaming=False)
     system_prompt = _system_prompt(prior_context)
-    mode = mode or load_settings().agent_mode
+    mode = mode or settings.agent_mode
 
     if mode == "tool_calling":
         # Not llm: that call decides *and* eventually writes the final answer
@@ -169,8 +187,19 @@ def create_assistant(prior_context: str = "", mode: str | None = None) -> Any:
         # between two identical runs). The classifier avoids this by using a
         # separate temp=0 model for its own decision point; this does the
         # same, while keeping streaming=True so the final round still types
-        # live in the UI.
-        llm_agent = ChatOpenAI(temperature=0, model="gpt-4o-mini", streaming=True)
+        # live in the UI. gpt-6-luna cannot be pinned to temp=0 at all (see
+        # fixed_temperature above) — whatever determinism its tool selection
+        # has comes from the model itself, not from this project's usual fix,
+        # and is measured rather than assumed in the README comparison.
+        extra = {"reasoning_effort": "none"} if chat_model == "gpt-6-luna" else {}
+        # gpt-6-luna only supports function/tool calling via Chat Completions
+        # at reasoning_effort="none" — tool selection breaks silently
+        # otherwise. Irrelevant to llm/llm_fast above: neither ever has a tool
+        # bound to it (routing and condensation are plain prompt completions,
+        # not function calls). A top-level kwarg, not model_kwargs:
+        # langchain_openai warns that reasoning_effort has its own
+        # constructor parameter and should not be nested.
+        llm_agent = _llm(0, streaming=True, **extra)
         return _build_tool_calling_graph(llm_agent, system_prompt)
     return _build_classifier_graph(llm, llm_fast, system_prompt)
 

@@ -176,3 +176,36 @@ def test_a_non_rank_metric_still_gates_normally_when_agent_mode_changes(tmp_path
     before = dict(BASE, agent_mode="classifier", routing={"accuracy": 0.98})
     after = dict(BASE, agent_mode="tool_calling", routing={"accuracy": 0.70})
     assert compare(_write(tmp_path, "a.json", after), _write(tmp_path, "b.json", before)) == 1
+
+
+# ---------------------------------------------------------------------------
+# chat_model changes — a different model, not a different chunk boundary.
+# Reported like agent_mode, but never joins granularity_changed: switching
+# CHAT_MODEL does not touch how the corpus is cut or how many chunks come
+# back, so rank-sensitive metrics stay fully comparable across it.
+# ---------------------------------------------------------------------------
+
+
+def test_a_chat_model_change_is_reported(tmp_path, capsys):
+    before = dict(BASE, chat_model="gpt-4o-mini")
+    after = dict(BASE, chat_model="gpt-6-luna")
+    compare(_write(tmp_path, "a.json", after), _write(tmp_path, "b.json", before))
+
+    out = capsys.readouterr().out
+    assert "chat_model changed: gpt-4o-mini -> gpt-6-luna" in out
+
+
+def test_a_chat_model_change_still_gates_a_dropped_mrr(tmp_path):
+    """Unlike agent_mode, a model swap must not exempt rank metrics."""
+    before = dict(BASE, chat_model="gpt-4o-mini", retrieval={"recall_at_k": 0.85, "mrr": 0.70})
+    after = dict(BASE, chat_model="gpt-6-luna", retrieval={"recall_at_k": 0.85, "mrr": 0.30})
+    assert compare(_write(tmp_path, "a.json", after), _write(tmp_path, "b.json", before)) == 1
+
+
+def test_a_baseline_without_a_chat_model_reports_no_spurious_change(tmp_path, capsys):
+    """A baseline predating CHAT_MODEL has no such field — must not read as a change."""
+    old_style = dict(BASE)  # no chat_model
+    new_style = dict(BASE, chat_model="gpt-4o-mini")
+    compare(_write(tmp_path, "a.json", new_style), _write(tmp_path, "b.json", old_style))
+
+    assert "chat_model changed" not in capsys.readouterr().out
