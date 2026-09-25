@@ -69,6 +69,31 @@ backend is live so the deployed behaviour is never a guess.
 
 ---
 
+## Session Links Are Signed, Not Authenticated (Phase 4.5)
+
+`?sid=` used to be read straight off the URL and used directly as the Redis key,
+with no check that the server had ever issued it — editing the query param to
+any string, guessed or fabricated, was accepted outright as a previously-issued
+session. It is now signed (`chatbot._sign_session_id`/`_verify_session_id`, HMAC-
+SHA256): a fabricated or edited `sid` fails verification and a fresh session is
+issued instead, closing that specific IDOR.
+
+What this does not do: prevent someone who has a *legitimately issued, full*
+signed link from opening that session. Sharing a session via URL is a documented
+feature, not the bug being fixed, and the signature cannot distinguish "the
+owner shared this on purpose" from "this leaked." That would need binding a
+session to an authenticated identity, which this project deliberately has none
+of — no signup, no login, matching its zero-account-friction design.
+
+With no `SESSION_SECRET` configured, signing falls back to a secret generated
+once per process start: signed links keep working for that process's lifetime
+and stop verifying after a restart (a visitor silently gets a fresh session,
+losing their rolling summary — the same category of degradation as Redis being
+absent, not a crash). Set `SESSION_SECRET` for any deployment expected to survive
+a restart with existing links still valid.
+
+---
+
 ## Tracing
 
 **Status: not wired yet.** The README no longer lists tracing as a live

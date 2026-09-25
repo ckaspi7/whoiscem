@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
 import os
+import secrets
 import time
 import uuid
 from typing import Annotated, Any, TypedDict
@@ -675,14 +678,54 @@ def _accumulate_real_cost(*priced_usages: tuple[str, dict[str, int]]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Session ID management (for Redis memory)
+# Session ID management (for Redis memory) — Phase 4.5
 # ---------------------------------------------------------------------------
+# A process-lifetime fallback: with no SESSION_SECRET configured, signed
+# links still work (sharing a session's own URL is a deliberate feature, not
+# the vulnerability), but stop verifying after a restart — the same
+# degrade-rather-than-refuse pattern Redis absence already uses elsewhere in
+# this project. Set SESSION_SECRET for a deployment that should survive one.
+_EPHEMERAL_SESSION_SECRET = secrets.token_hex(32)
+
+
+def _session_secret() -> bytes:
+    return (os.environ.get("SESSION_SECRET") or _EPHEMERAL_SESSION_SECRET).encode()
+
+
+def _sign_session_id(sid: str) -> str:
+    mac = hmac.new(_session_secret(), sid.encode(), hashlib.sha256).hexdigest()[:16]
+    return f"{sid}.{mac}"
+
+
+def _verify_session_id(signed: str) -> str | None:
+    """The raw sid if `signed` carries a valid signature, else None.
+
+    Without this, chatbot.py read `sid` straight from the URL query param
+    with no validation and used it directly as the Redis key — editing
+    `?sid=` to any string, guessed or not, read that "session" (an empty one
+    for a fresh guess, but a real IDOR the moment two visitors' guesses
+    collide, or a leaked link is reused). A signature does not stop someone
+    who has a *legitimately issued* link from opening it — sharing a session
+    via URL is a documented feature, not this bug — it stops a fabricated or
+    edited sid from ever being accepted as one the server actually issued.
+    """
+    sid, _, mac = signed.rpartition(".")
+    if not sid or not mac:
+        return None
+    expected = hmac.new(_session_secret(), sid.encode(), hashlib.sha256).hexdigest()[:16]
+    return sid if hmac.compare_digest(mac, expected) else None
+
+
 def _get_or_create_session_id() -> str:
-    params = st.query_params
-    sid = params.get("sid")
-    if not sid:
+    raw = st.query_params.get("sid")
+    sid = _verify_session_id(raw) if raw else None
+    if sid is None:
         sid = str(uuid.uuid4())
-        st.query_params["sid"] = sid
+
+    signed = _sign_session_id(sid)
+    if st.query_params.get("sid") != signed:
+        st.query_params["sid"] = signed
+
     if "session_id" not in st.session_state:
         st.session_state.session_id = sid
     return st.session_state.session_id

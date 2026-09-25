@@ -129,6 +129,7 @@ Required: `OPENAI_API_KEY`
 Observability: `PHOENIX_COLLECTOR_ENDPOINT` (unset = local collector on :6006), `PHOENIX_API_KEY`, `PHOENIX_PROJECT_NAME`  
 Vector store: `QDRANT_MODE` = `embedded` (default; on-disk at `QDRANT_PATH`, no server) | `server` (`QDRANT_HOST`/`QDRANT_PORT`) | `cloud` (`QDRANT_URL`/`QDRANT_API_KEY`)  
 Session memory: `REDIS_URL` — unset means an in-process fallback, not a disabled feature  
+Session link signing: `SESSION_SECRET` — unset means a per-process-start secret, so signed links stop verifying after a restart (see LIMITATIONS.md)  
 Resume source: `RESUME_PATH` (defaults to `data/resume.md`)  
 Agent architecture: `AGENT_MODE` = `classifier` (default, measured best) | `tool_calling` (real agent; see README)  
 Chat model: `CHAT_MODEL` = `gpt-4o-mini` (default) | `gpt-6-luna` (measured better under `classifier` mode only, broken under `tool_calling` — see README/LIMITATIONS)  
@@ -145,7 +146,7 @@ See `.env.example` for the full template.
 - `chatbot.py` targets Python 3.11 — no f-string expression may contain a backslash (legal only from 3.12). `tests/unit/test_app_boot.py` guards this.
 - A tool's failure must never reach `tool_result`/`context_used` as text (see Typed tool results, above) — `ToolResult.as_context()` is the enforcement point. A handler that bypasses it and interpolates an exception into either field reintroduces the bug the faithfulness judge used to silently score against a stack trace.
 - Redis failure (session memory or the retrieval cache) is non-fatal: both fall back in-process via `redis_backend.connect()`, never raising just because a cache is unavailable.
-- The Streamlit app uses `st.query_params["sid"]` for session identity, making sessions shareable via URL.
+- The Streamlit app uses `st.query_params["sid"]` for session identity, making sessions shareable via URL. Phase 4.5: the value is HMAC-signed (`chatbot._sign_session_id`/`_verify_session_id`) — a `sid` that fails verification (fabricated, edited, or signed under a different `SESSION_SECRET`) is never trusted as a previously-issued session; a fresh one is minted instead. This closes fabrication, not leakage of a real signed link — see LIMITATIONS.md for that distinction.
 - Streamlit Cloud secrets override `.env` values — `_apply_streamlit_secrets()` in `chatbot.py` merges them into `os.environ`, called after `set_page_config()` (reading `st.secrets` is itself a Streamlit command and must not be first) and before `setup_tracing()`/`create_assistant()`.
 - The golden set (`eval/golden_set.json`) is generated, not hand-authored — edit `eval/build_golden_set.py` and rerun it. `tests/unit/test_golden_set.py` fails the build if the committed JSON drifts from what the generator produces, or if a `reference_snippet`/`reference_section` no longer appears in the indexed resume.
 - `GraphState.messages` is `Annotated[list[BaseMessage], add_messages]` — real LangChain messages, not dicts. A node that wants to add a message returns `{"messages": [new_message]}` (a single-element list); the reducer appends it. Returning the full accumulated list back (e.g. via `{**state, ...}` without overriding `"messages"`) is harmless — `add_messages` matches by id and replaces in place rather than duplicating — but only a single new message is ever actually being added anywhere in this graph today.

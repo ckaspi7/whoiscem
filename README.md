@@ -504,7 +504,6 @@ python scripts/refresh_cache.py
 - **Qdrant Cloud:** Replace the Docker instance with Qdrant Cloud for zero-cold-start Streamlit Cloud deploys
 - **FastAPI service layer:** headless `/chat` for load testing and trajectory eval, real auth, rate limiting, a daily spend cap
 - **Guardrails fully in the graph:** the self-correction score already lives there (Phase 3.3); the user-facing disclaimer/refusal banner still applies after streaming completes, not before
-- **Session ID signing:** `?sid=` is read from the URL with no ownership check today
 - **Multi-modal resume parsing:** Index embedded tables and charts from the PDF, not just raw text
 - **Feedback loop:** Thumbs up/down → logged as trace annotations → periodic retuning of the routing classifier
 
