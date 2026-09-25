@@ -440,8 +440,8 @@ python eval/run_eval.py --no-ragas      # routing only, no judge calls
 
 | Layer | Technology |
 |---|---|
-| LLM | GPT-4o-mini |
-| Agent framework | LangGraph |
+| LLM | GPT-4o-mini (default) or gpt-6-luna, via `CHAT_MODEL` |
+| Agent framework | LangGraph — classifier or tool-calling agent, via `AGENT_MODE` |
 | Vector store | Qdrant — embedded, self-hosted or cloud, selected by config |
 | Dense retrieval | OpenAI text-embedding-3-small |
 | Sparse retrieval | BM25 (rank-bm25) |
@@ -450,7 +450,7 @@ python eval/run_eval.py --no-ragas      # routing only, no judge calls
 | Chunking | Semantic chunker (LangChain Experimental) |
 | Observability | In-app latency panel; distributed tracing not currently active (see [Limitations](LIMITATIONS.md)) |
 | Session memory | Redis when configured, in-process fallback otherwise |
-| Hallucination guard | GPT-4o-mini faithfulness judge (post-generation) |
+| Hallucination guard | GPT-4o-mini faithfulness judge (post-generation), plus one bounded self-correction retry on the resume route |
 | UI | Streamlit |
 | Personal DB | SQLite |
 | CI | GitHub Actions (lint, format, unit + integration tests, image build, compose healthchecks) |
