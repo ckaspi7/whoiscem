@@ -31,8 +31,8 @@ User Query
   │    └─ Cross-encoder rerank → top-3 chunks        │
   │                                                  │
   │  personal → SQLite user database                 │
-  │  spotify  → Cached Spotify snapshot (monthly)   │
-  │  linkedin → Cached LinkedIn snapshot (monthly)  │
+  │  spotify  → Cached Spotify snapshot, real age reported │
+  │  linkedin → Cached LinkedIn snapshot, real age reported │
   └────┬────────────────────────────────────────────┘
        │
   ┌────▼──────────────┐
@@ -49,6 +49,33 @@ User Query
   │ Rolling 3-sentence summary stored per UUID   │
   │ Returning visitors get prior context injected │
   └───────────────────────────────────────────────┘
+```
+
+The diagram shows `AGENT_MODE=classifier`, the default — `generate_response`
+and the single-tool handler above become a real tool-calling agent under
+`AGENT_MODE=tool_calling`, and `faithfulness_check`'s score now drives one
+bounded retry on the resume route rather than only gating the banner shown
+above. Both are measured changes, detailed below, not shown here to keep this
+diagram to the shape most traffic actually takes.
+
+### Headless API (Phase 4.1)
+
+`api.py` is a second surface onto the same graph, independent of the
+Streamlit UI: `POST /chat` and a real `GET /healthz` (actual dependency
+checks — Qdrant, the OpenAI key — not just "the process is up"), with auth
+(`API_KEY`, optional — unset logs a loud warning rather than failing closed,
+for local dev), a sliding-window rate limit, and a daily spend cap tracked in
+`SpendTracker` (`spend_tracker.py`, Redis-backed like session memory) using
+the same real per-call usage `cost.py` computes for the Streamlit sidebar.
+Built for headless access — load testing and Phase 3.5's trajectory eval
+without driving a browser — not yet as what the deployed Streamlit app
+itself calls: see **What I'd build next** and `LIMITATIONS.md` for exactly
+what that split does and does not protect today.
+
+```bash
+uvicorn api:app --reload
+curl -X POST localhost:8000/chat -H "Content-Type: application/json" \
+  -d '{"message": "Where does Cem work?"}'
 ```
 
 ---
@@ -502,7 +529,7 @@ python scripts/refresh_cache.py
 ## What I'd build next
 
 - **Qdrant Cloud:** Replace the Docker instance with Qdrant Cloud for zero-cold-start Streamlit Cloud deploys
-- **FastAPI service layer:** headless `/chat` for load testing and trajectory eval, real auth, rate limiting, a daily spend cap
+- **Wire Streamlit as the API's client:** `api.py` exists — real auth, rate limiting, a daily spend cap — but the deployed Streamlit app still calls the graph directly and inherits none of it; making it a client is a deployment-topology decision, not made yet
 - **Guardrails fully in the graph:** the self-correction score already lives there (Phase 3.3); the user-facing disclaimer/refusal banner still applies after streaming completes, not before
 - **Multi-modal resume parsing:** Index embedded tables and charts from the PDF, not just raw text
 - **Feedback loop:** Thumbs up/down → logged as trace annotations → periodic retuning of the routing classifier

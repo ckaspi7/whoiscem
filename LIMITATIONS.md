@@ -191,6 +191,40 @@ that gets pulled back), not just a refactor, and not made yet.
 
 ---
 
+## The Headless API's Protections Do Not Yet Cover the Deployed Streamlit App
+
+**This is the most important scope boundary in Phase 4.1 — read this before
+assuming the app's cost-DoS exposure is closed.** `api.py` is a real,
+independently auth-gated, rate-limited, spend-capped `/chat` and `/healthz` —
+but it is a *separate, not-yet-deployed* service. The plan's own framing is
+"Streamlit becomes a client" of it; that rewiring is a genuine infrastructure
+decision (where does this run relative to Streamlit Cloud? how do the two
+processes talk?), not an implementation detail, and is deliberately deferred
+to Phase 4.6 rather than decided here. Until that happens:
+
+- The **currently deployed Streamlit app still has no auth, no rate limit,
+  and no daily spend cap of its own.** Its only cost protection is
+  `chatbot.MAX_INPUT_CHARS` (Phase 4.3). The unbounded-cost-DoS risk the plan
+  originally called out for the *deployed app specifically* is not resolved
+  by this work — only for traffic that goes through the new API instead.
+- The API's `SpendTracker` and the Streamlit sidebar's cost meter are **two
+  separate, unrelated running totals**, even if both point at the same Redis
+  instance — they use different keys and neither one's cap constrains the
+  other's spend. Running both surfaces against the same OpenAI account at
+  once means the account's *real* exposure is the sum of both, capped by
+  neither individually.
+- `RateLimiter` (`rate_limit.py`) is in-process only, with no Redis-backed
+  mode, unlike `SpendTracker` — a real multi-replica deployment of `api.py`
+  would need a shared backend for the limit to mean anything across
+  instances. Deliberate: a portfolio deployment's actual scale is one
+  instance, and building distributed correctness for a scale this project
+  does not operate at is effort spent on the wrong thing.
+- `API_KEY` and `DAILY_SPEND_CAP_USD` are both optional, defaulting to "auth
+  off" (loudly logged) and $5.00/day respectively — appropriate for local
+  dev, not for a real deployment, which must set both explicitly.
+
+---
+
 ## Personal Information
 
 The database behind the `personal` route stores no contact details, no date of

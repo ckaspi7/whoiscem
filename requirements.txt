@@ -17,8 +17,12 @@ redis==5.2.1
 fakeredis==2.27.0
 ragas==0.2.14
 pytest==8.3.5
-tiktoken==0.9.0
 pydantic==2.10.6
+
+# Headless service layer (Phase 4.1) — auth, rate limiting, and a daily spend
+# cap for a real /chat and /healthz, independent of the Streamlit UI.
+fastapi==0.141.1
+uvicorn==0.53.0
 
 # Observability — OpenTelemetry via OpenInference, exported to Arize Phoenix
 arize-phoenix-otel==0.17.1
