@@ -22,7 +22,7 @@ from config import load_settings
 from cost import estimate_cost, usage_from_response
 from guardrails.faithfulness_check import apply_faithfulness_tiering, score_faithfulness_with_usage
 from memory.session_memory import SessionMemory
-from observability import setup_tracing, tracing_status
+from observability import set_session_id, setup_logging, setup_tracing, tracing_status
 from router import classify_query
 from tools.linkedin_tool import get_linkedin_info, get_linkedin_info_result
 from tools.personal_tool import get_personal_info, get_personal_info_result
@@ -742,6 +742,7 @@ def main() -> None:
         initial_sidebar_state="expanded",
     )
     _apply_streamlit_secrets()
+    setup_logging()
     # After secrets (which may carry the Phoenix credentials) and before
     # create_assistant: the instrumentor patches LangChain's callback manager,
     # so objects built earlier would never be traced.
@@ -774,6 +775,7 @@ def main() -> None:
         st.session_state.total_cost = 0.0
 
     session_id = _get_or_create_session_id()
+    set_session_id(session_id)
     memory = SessionMemory()
     prior_context = memory.load_summary(session_id)
 
@@ -940,6 +942,20 @@ def main() -> None:
                 (chat_model, {"input": graph_input, "output": graph_output}),
                 ("gpt-4o-mini", judge_usage),
                 ("gpt-4o-mini", summary_usage),
+            )
+
+            # Structured, correlated by session_id (see observability.py):
+            # per-stage retrieval timing that the sidebar already shows
+            # interactively is also worth having in a deployed instance's
+            # actual logs, not just its UI.
+            logger.info(
+                "turn completed",
+                extra={
+                    "route": result_state.get("route"),
+                    "node_latencies": result_state.get("node_latencies", {}),
+                    "faithfulness_score": faithfulness_score,
+                    "self_correction_retried": result_state.get("retry_count", 0) > 0,
+                },
             )
 
         st.rerun()

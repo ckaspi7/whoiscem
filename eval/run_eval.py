@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import load_settings  # noqa: E402  (after sys.path setup)
 from cost import estimate_cost  # noqa: E402
-from observability import setup_tracing  # noqa: E402
+from observability import setup_logging, setup_tracing  # noqa: E402
 from retrieval.vectorstore import CHUNKER_VERSION  # noqa: E402
 
 THRESHOLDS = {
@@ -451,6 +451,7 @@ def evaluate(
     agent_mode: str | None = None,
     chat_model: str | None = None,
 ) -> dict:
+    setup_logging()
     setup_tracing()
 
     with open(GOLDEN_SET_PATH, encoding="utf-8") as f:

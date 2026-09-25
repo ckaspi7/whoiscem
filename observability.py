@@ -1,6 +1,7 @@
-"""OpenTelemetry tracing, exported to Arize Phoenix.
+"""Observability: OpenTelemetry tracing to Arize Phoenix, and structured
+logging with a session id correlation field (Phase 4.4).
 
-Instrumentation is vendor-neutral: OpenInference semantic conventions over
+Tracing is vendor-neutral: OpenInference semantic conventions over
 OpenTelemetry. Phoenix is the collector, chosen by configuration the same way
 the vector store and session memory are, and it runs locally with no account:
 
@@ -9,10 +10,23 @@ the vector store and session memory are, and it runs locally with no account:
 Set PHOENIX_COLLECTOR_ENDPOINT and PHOENIX_API_KEY to export to Phoenix Cloud
 instead. Tracing never blocks the app — if the collector is unreachable or the
 packages are missing, this degrades to a no-op and says so once.
+
+Logging: every module already does ``logger = logging.getLogger(__name__)``,
+but nothing ever called ``logging.basicConfig`` — Python's logging module
+silently falls back to WARNING-level, unstructured, uncorrelated output on
+stderr, so a deployed instance's `logger.warning("Tool %s failed: %s", ...)`
+calls (already scattered through tools/*.py and chatbot.py) went essentially
+nowhere useful. ``setup_logging`` fixes the handler; ``set_session_id`` is the
+correlation id the plan calls out as existing (chatbot.py resolves one every
+turn) and never logged — a context var, not a parameter threaded through
+every call site, so nothing outside chatbot.py's entry point needs to know it
+exists.
 """
 
 from __future__ import annotations
 
+import contextvars
+import json
 import logging
 import socket
 from urllib.parse import urlparse
@@ -23,6 +37,77 @@ logger = logging.getLogger(__name__)
 
 _configured = False
 _status = "not configured"
+
+_session_id: contextvars.ContextVar[str] = contextvars.ContextVar("session_id", default="")
+
+# Every attribute a bare logging.LogRecord already carries, plus the two this
+# module adds itself — anything else on a record came from a caller's own
+# `extra={...}` and should be surfaced, not silently dropped.
+_STANDARD_LOG_RECORD_ATTRS = frozenset(vars(logging.LogRecord("", 0, "", 0, "", (), None))) | {
+    "message",
+    "asctime",
+    "session_id",
+}
+
+
+def set_session_id(session_id: str) -> None:
+    """Attach `session_id` to every log record emitted from here on, in this
+    context. A context var rather than a global: Streamlit can run more than
+    one session's code in the same process, and each must log its own id."""
+    _session_id.set(session_id)
+
+
+class _SessionIdFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.session_id = _session_id.get()
+        return True
+
+
+class _JsonFormatter(logging.Formatter):
+    """One JSON object per line. Any `extra={...}` field a caller passes
+    (e.g. node_latencies) is included automatically, not just the fixed set
+    below — this is what lets a single `logger.info("turn complete", extra=
+    {"node_latencies": ..., "route": ...})` call carry per-stage retrieval
+    timing into the logs without a bespoke schema for it."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "timestamp": self.formatTime(record, "%Y-%m-%dT%H:%M:%S"),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        session_id = getattr(record, "session_id", "")
+        if session_id:
+            payload["session_id"] = session_id
+        for key, value in record.__dict__.items():
+            if key not in _STANDARD_LOG_RECORD_ATTRS:
+                payload[key] = value
+        if record.exc_info:
+            payload["exc_info"] = self.formatException(record.exc_info)
+        return json.dumps(payload, default=str)
+
+
+_logging_configured = False
+
+
+def setup_logging(level: int = logging.INFO) -> None:
+    """Attach a structured JSON handler to the root logger. Idempotent and
+    safe to call from more than one entry point (chatbot.py, eval/run_eval.py)
+    without doubling handlers or output. A separate flag from setup_tracing's
+    _configured: the two are independent, and sharing one would make either
+    call wrongly think it had already run the other's setup.
+    """
+    global _logging_configured
+    if _logging_configured:
+        return
+    handler = logging.StreamHandler()
+    handler.setFormatter(_JsonFormatter())
+    handler.addFilter(_SessionIdFilter())
+    root = logging.getLogger()
+    root.addHandler(handler)
+    root.setLevel(level)
+    _logging_configured = True
 
 
 def tracing_status() -> str:
