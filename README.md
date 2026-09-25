@@ -3,6 +3,8 @@
 A personal AI chatbot built to answer questions about Cem Kaspi — and to demonstrate production-grade AI engineering skills in RAG, agents, observability, and evaluation.
 
 [Limitations](LIMITATIONS.md) — what is cached, what is estimated, and what is not measured yet.
+[Changelog](CHANGELOG.md) — every phase, sourced entirely from committed eval results.
+[Architecture decisions](docs/adr/) — the real trade-offs, including the ones that didn't go the way the plan assumed they would.
 
 > **Live demo:** offline. It deployed from a repository that has been deleted, and
 > redeployment is pending the move to hosted Qdrant. Run it locally in the meantime —
@@ -476,6 +478,11 @@ streamlit run chatbot.py            # http://localhost:8501
 The resume index is built on first query from `data/resume.md` and cached on
 disk; the cross-encoder downloads ~90 MB the first time it runs. Point
 `RESUME_PATH` at any Markdown or PDF file to index your own.
+
+The sidebar's page picker also has an **Eval Dashboard** page — trends across
+every committed `eval/results/` file, per-category routing, and the
+retrieval ablation's cost-latency Pareto. It reads only those committed
+files, so it needs none of the above to work.
 
 Optionally, seed the personal-info database that backs the `personal` route
 (the file it reads from is git-ignored):
