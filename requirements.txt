@@ -24,6 +24,11 @@ pydantic==2.10.6
 fastapi==0.141.1
 uvicorn==0.53.0
 
+# Eval dashboard (Phase 5, pages/eval_dashboard.py) — already a transitive
+# dependency of streamlit's own charting; pinned directly now that this
+# project imports it itself, not just relies on it incidentally.
+pandas==2.3.3
+
 # Observability — OpenTelemetry via OpenInference, exported to Arize Phoenix
 arize-phoenix-otel==0.17.1
 openinference-instrumentation-langchain==0.1.76

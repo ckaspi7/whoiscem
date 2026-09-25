@@ -33,6 +33,17 @@ def test_app_boots_with_no_services_running():
 
     No Qdrant, no Redis, no Docker — if this needs a service to render, the
     zero-infrastructure quickstart in the README is not true.
+
+    Also the test that caught a real incident: the moment `pages/` (Phase 5's
+    eval dashboard) existed as a sibling of chatbot.py, Streamlit switched to
+    multi-page-app mode for the entry-point script, whose page runner does
+    not give chatbot.py the same module identity its single-page runner
+    does — breaking LangGraph's runtime `get_type_hints()` call on
+    `GraphState` (`NameError: name 'Annotated' is not defined`) and therefore
+    the whole app, for a reason unrelated to anything the dashboard itself
+    does. `graph_state.py` exists specifically because of this — see its own
+    docstring — and this test is what silently regresses if that fix is ever
+    undone.
     """
     from streamlit.testing.v1 import AppTest
 
