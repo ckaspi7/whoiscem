@@ -169,7 +169,11 @@ Chat model: `CHAT_MODEL` = `gpt-4o-mini` (default) | `gpt-6-luna` (measured bett
 Headless API only, read by `api.py`, not by `chatbot.py`/Streamlit: `API_KEY` (unset = no auth, logged loudly), `RATE_LIMIT_PER_MINUTE` (default 20), `DAILY_SPEND_CAP_USD` (default 5.00)  
 Spotify cache refresh only: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`
 
-See `.env.example` for the full template.
+See `.env.example` for the full template. On a host with no `.env` file
+(e.g. Streamlit Community Cloud), `_apply_streamlit_secrets()` in `chatbot.py`
+is the only bridge from `st.secrets` into these — `.streamlit/secrets.toml.example`
+lists exactly the subset it copies over (`_SECRET_KEYS`); anything else pasted
+into that UI is silently inert.
 
 ## Key design constraints
 
