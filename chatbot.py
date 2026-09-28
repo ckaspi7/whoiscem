@@ -50,6 +50,9 @@ _SECRET_KEYS = (
     "QDRANT_URL",
     "QDRANT_API_KEY",
     "RESUME_PATH",
+    "AGENT_MODE",
+    "CHAT_MODEL",
+    "SESSION_SECRET",
 )
 
 # Deliberately generous: legitimate questions about Cem are a sentence or

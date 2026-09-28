@@ -27,6 +27,36 @@ def test_chatbot_module_imports():
     assert callable(chatbot.main)
 
 
+def test_streamlit_secrets_reach_settings_only_a_secrets_ui_can_set():
+    """AGENT_MODE, CHAT_MODEL, and SESSION_SECRET all matter on a host with no
+    .env file, where Streamlit Community Cloud's secrets UI is the only place
+    left to set them. _SECRET_KEYS is the allowlist _apply_streamlit_secrets()
+    copies from st.secrets into os.environ — missing a key there means
+    setting it in that UI silently does nothing, which is exactly how
+    SESSION_SECRET and CHAT_MODEL=gpt-6-luna (ADR-0004's recommended
+    override) were unreachable on that specific host before this test.
+    """
+    import chatbot
+
+    fake_secrets = {
+        "AGENT_MODE": "tool_calling",
+        "CHAT_MODEL": "gpt-6-luna",
+        "SESSION_SECRET": "test-secret-value",
+    }
+    saved = {key: os.environ.get(key) for key in fake_secrets}
+    try:
+        with patch.object(chatbot.st, "secrets", fake_secrets):
+            chatbot._apply_streamlit_secrets()
+        for key, val in fake_secrets.items():
+            assert os.environ[key] == val
+    finally:
+        for key, original in saved.items():
+            if original is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = original
+
+
 @needs_openai
 def test_app_boots_with_no_services_running():
     """Boots against the default backends: embedded Qdrant, in-process memory.
