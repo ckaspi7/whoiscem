@@ -33,6 +33,28 @@ pandas==2.3.3
 arize-phoenix-otel==0.17.1
 openinference-instrumentation-langchain==0.1.76
 
+# arize-phoenix-otel reaches into a private (underscore-prefixed, not a public
+# contract) attribute of OTLPSpanExporter to inject Phoenix Cloud's auth
+# header. Neither it nor openinference-instrumentation-langchain pins the
+# opentelemetry-* packages underneath them, so an unpinned install can resolve
+# a newer exporter release that renamed or removed that attribute — this is
+# exactly what broke tracing on Streamlit Community Cloud's fresh install
+# ("'HTTPSpanExporter' object has no attribute '_headers'") while working
+# fine locally against this older, already-resolved combination. `pip check`
+# is clean at these versions; re-verify against arize-phoenix-otel's actual
+# exporter code, not just a version bump, before ever raising them.
+opentelemetry-api==1.44.0
+opentelemetry-sdk==1.44.0
+opentelemetry-proto==1.44.0
+opentelemetry-exporter-otlp==1.44.0
+opentelemetry-exporter-otlp-proto-common==1.44.0
+opentelemetry-exporter-otlp-proto-grpc==1.44.0
+opentelemetry-exporter-otlp-proto-http==1.44.0
+opentelemetry-semantic-conventions==0.65b0
+opentelemetry-instrumentation==0.65b0
+openinference-instrumentation==0.1.65
+openinference-semantic-conventions==0.1.38
+
 # Pinned to reconcile two transitive constraints, not because anything imports
 # them directly: qdrant-client pulls grpcio-tools, which requires protobuf<6,
 # while the OTLP gRPC exporter's default googleapis-common-protos requires
