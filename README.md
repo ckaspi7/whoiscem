@@ -1,4 +1,4 @@
-# HowToCem
+# WhoIsCem
 
 A personal AI chatbot built to answer questions about Cem Kaspi — and to demonstrate production-grade AI engineering skills in RAG, agents, observability, and evaluation.
 

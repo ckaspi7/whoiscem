@@ -85,15 +85,30 @@ Both graphs converge back into the shared tail:
 5. **`check_faithfulness`** (post-node, in `guardrails/faithfulness_check.py`, called by `chatbot.py:main()` only — not by `eval/run_eval.py`, so RAGAS scores the raw generation, not this banner) — a GPT-4o-mini judge scores the response 1–5 against `context_used`; scores ≤1 are refused, 2–3 get a disclaimer. Context is per-route, not per-answer, so this is only as good as the route it followed — see the faithfulness-by-route breakdown in the README. Distinct from classifier mode's in-graph `check_faithfulness` node above (Phase 3.3): that one only scores, to decide a retry; this one scores and applies the user-facing banner, and `eval/run_eval.py` deliberately never calls it so historical faithfulness numbers stay comparable.
 6. **Session memory** (`memory/session_memory.py`) — after every turn, the conversation is summarised to 3 sentences and stored under `session:{uuid}:summary`, TTL 30 days. Redis when `REDIS_URL` is set and reachable, an in-process fallback otherwise. Returning visitors get this injected into the system prompt.
 
-The caller (`chatbot.py:main()`, `eval/run_eval.py`) gets live token-by-token
-output via `graph.stream(state, stream_mode=["messages", "values"])` rather
-than a node returning a raw generator — the same call's streaming callbacks
-surface through LangGraph regardless of which method the node used
-(`.invoke()` still streams token deltas out), and the same pass yields the
-full final state, so nothing needs a second call or a checkpointer just to
-read the result back. `main()`'s node-name filter accepts both
-`generate_response` and `agent`, since the two modes name their final-answer
-node differently.
+Both callers (`chatbot.py:main()`, `eval/run_eval.py`) call `graph.invoke()`,
+not `graph.stream()` — nothing is ever displayed to a visitor until the whole
+turn, faithfulness check included, has finished. This was a deliberate change
+(previously `main()` streamed live tokens as `generate_response`/`agent`
+produced them): a warned or refused answer would visibly replace text the
+visitor had already read mid-stream, which looked like the app was broken
+even though the guardrail was working exactly as designed.
+
+`main()` ends every turn that just ran the graph with `st.rerun()` (so the
+sidebar's cost/latency numbers update this same turn instead of lagging one
+behind), which means anything rendered inside that turn's own `st.chat_message`
+block is superseded almost immediately by the rerun's redraw of chat history —
+a fact confirmed by testing, not assumed: an early version of this fix rendered
+the reveal into that now-discarded block and it never reached a visitor at
+all. The actual reveal happens in the "Display history" loop instead:
+`st.session_state.last_ai_message_index` names the one message (set right
+before that turn's `st.rerun()`) that gets `_fade_in_html`'s CSS-staggered
+per-word fade; every other message, including that same one once a later
+turn moves the index on, renders as plain markdown — otherwise old answers
+would replay their fade-in on every future redraw. The per-word stagger is
+CSS-timed rather than a Python-side reveal loop because Streamlit re-issues
+a placeholder's entire markdown content on every update, which would replay
+every earlier word's animation alongside each new one instead of only the
+newest word fading in.
 
 ### Typed tool results
 

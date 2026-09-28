@@ -58,6 +58,30 @@ def test_streamlit_secrets_reach_settings_only_a_secrets_ui_can_set():
 
 
 @needs_openai
+def test_the_displayed_answer_is_never_a_since_retracted_stream():
+    """Regression test for a real reported bug: the UI used to stream live
+    tokens as generate_response/agent produced them, so a warned or refused
+    answer visibly replaced text the visitor had already read once the
+    (post-hoc) faithfulness check ran — the guardrail was working exactly as
+    designed, but it looked broken. main() now waits for the whole turn,
+    faithfulness included, before displaying anything at all, then reveals
+    the final text once via _fade_in_html's CSS-staggered fade rather than a
+    live per-token feed.
+    """
+    from streamlit.testing.v1 import AppTest
+
+    app = AppTest.from_file(APP, default_timeout=120).run()
+    app.chat_input[0].set_value("Where did Cem work most recently?").run()
+
+    assert not app.exception, [e.message for e in app.exception]
+    ai_messages = [m for m in app.chat_message if m.name == "ai"]
+    assert ai_messages, "expected a rendered assistant message"
+    rendered = ai_messages[-1].markdown[0].value
+    assert "stream-word" in rendered, "expected the fade-in helper's markup, not raw text"
+    assert "▌" not in rendered, "the old live-cursor placeholder should be gone"
+
+
+@needs_openai
 def test_app_boots_with_no_services_running():
     """Boots against the default backends: embedded Qdrant, in-process memory.
 

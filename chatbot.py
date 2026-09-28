@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import html
 import logging
 import os
 import secrets
@@ -78,6 +79,51 @@ def _apply_streamlit_secrets() -> None:
         val = secrets.get(key)
         if val:
             os.environ[key] = str(val)
+
+
+def _fade_in_html(text: str, ms_per_word: int = 18) -> str:
+    """Render text as CSS-staggered fade-in spans, revealed in one render.
+
+    Streamlit re-issues a placeholder's entire markdown content on every
+    update, so a Python-side reveal loop (repeated .markdown() calls, like the
+    old token-by-token display) would replay every earlier word's animation
+    alongside each new one, not just animate the newest word in. Rendering
+    once with a per-word animation-delay lets CSS own the timing instead, so
+    the stagger plays exactly once, in order, with no Python-side sleep loop.
+    Lines are preserved as <br> so a multi-line answer doesn't collapse onto
+    one line; the word index (and so the delay) still counts continuously
+    across them.
+    """
+    rendered_lines = []
+    word_index = 0
+    for line in text.split("\n"):
+        spans = []
+        for word in line.split(" "):
+            if not word:
+                continue
+            delay = word_index * ms_per_word
+            escaped = html.escape(word)
+            spans.append(f'<span class="stream-word" style="animation-delay:{delay}ms">{escaped}</span>')
+            word_index += 1
+        rendered_lines.append(" ".join(spans))
+    return "<br>".join(rendered_lines)
+
+
+@st.cache_resource
+def _get_session_memory() -> SessionMemory:
+    """One shared SessionMemory (and its one Redis-or-fallback connection)
+    for the whole process, not one per script run.
+
+    SessionMemory() never raises — redis_backend.connect() falls back
+    in-process on any failure — so an uncached call was silently paying that
+    failure's full connect timeout again on every single rerun (measured:
+    ~4s against an unreachable Redis), not once per session. main() calls
+    this unconditionally near the top of every run, and a chat turn is at
+    least two runs (the turn itself, then the st.rerun() it ends with), so
+    that cost was being paid multiple times per turn, indefinitely, instead
+    of once. Caching bounds it to once per process.
+    """
+    return SessionMemory()
 
 
 # ---------------------------------------------------------------------------
@@ -182,8 +228,10 @@ def create_assistant(prior_context: str = "", mode: str | None = None, model: st
         # tool got called nondeterministic (routing moved 93.2% -> 91.5%
         # between two identical runs). The classifier avoids this by using a
         # separate temp=0 model for its own decision point; this does the
-        # same, while keeping streaming=True so the final round still types
-        # live in the UI. gpt-6-luna cannot be pinned to temp=0 at all (see
+        # same, while keeping streaming=True — stream_usage (see _llm above)
+        # only captures real token usage when it's set, independent of
+        # whether the UI ever displays anything live (it no longer does; see
+        # _fade_in_html). gpt-6-luna cannot be pinned to temp=0 at all (see
         # fixed_temperature above) — whatever determinism its tool selection
         # has comes from the model itself, not from this project's usual fix,
         # and is measured rather than assumed in the README comparison.
@@ -327,10 +375,12 @@ def _build_classifier_graph(llm: ChatOpenAI, llm_fast: ChatOpenAI, system_prompt
             lc_messages.extend(messages)
 
             # A blocking call, not .stream(): the node's own return value must
-            # be a plain, serializable message. The caller still gets live
-            # token-by-token output via graph.stream(..., stream_mode=
-            # "messages"), which surfaces this same call's streaming callbacks
-            # regardless of whether the node awaits .invoke() or .stream().
+            # be a plain, serializable message. Neither caller (chatbot.py's
+            # main(), eval/run_eval.py) streams live tokens from the graph —
+            # the UI deliberately waits for the full answer and its
+            # faithfulness check before displaying anything, then reveals it
+            # with a CSS-timed fade rather than a live per-token feed (see
+            # _fade_in_html in chatbot.py for why).
             response = llm.invoke(lc_messages)
             if state.get("retry_count", 0) > 0:
                 # This call is regenerating the same turn's answer after a
@@ -681,7 +731,7 @@ def _get_or_create_session_id() -> str:
 # ---------------------------------------------------------------------------
 def main() -> None:
     st.set_page_config(
-        page_title="HowToCem",
+        page_title="WhoIsCem",
         page_icon="😎",
         layout="centered",
         initial_sidebar_state="expanded",
@@ -699,11 +749,15 @@ def main() -> None:
         .app-title { font-size: 2.5rem; font-weight: bold; color: #1c1c1c;
                      text-align: center; margin-bottom: 10px; }
         .app-subtitle { font-size: 1rem; color: #555; text-align: center; margin-bottom: 20px; }
+        @keyframes fadeInWord { from { opacity: 0; transform: translateY(2px); }
+                                to { opacity: 1; transform: translateY(0); } }
+        .stream-word { display: inline-block; opacity: 0;
+                        animation: fadeInWord 0.4s ease-out forwards; }
         </style>
     """,
         unsafe_allow_html=True,
     )
-    st.markdown('<div class="app-title">HowToCem</div>', unsafe_allow_html=True)
+    st.markdown('<div class="app-title">WhoIsCem</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="app-subtitle">👋 Ask me anything about Cem — resume, career, '
         "music taste, or personal background.</div>",
@@ -718,10 +772,19 @@ def main() -> None:
     if "total_tokens" not in st.session_state:
         st.session_state.total_tokens = 0
         st.session_state.total_cost = 0.0
+    if "last_ai_message_index" not in st.session_state:
+        # Which message in st.session_state.messages gets the fade-in reveal
+        # (see _fade_in_html) on the history redraw below — set right after a
+        # turn completes, just before the st.rerun() that same turn ends
+        # with. Only that one message fades in; every other one, including
+        # this same message once a later turn moves the index on, renders
+        # as plain markdown so old answers don't replay their animation
+        # every time the page redraws for a new one.
+        st.session_state.last_ai_message_index = None
 
     session_id = _get_or_create_session_id()
     set_session_id(session_id)
-    memory = SessionMemory()
+    memory = _get_session_memory()
     prior_context = memory.load_summary(session_id)
 
     # --- Sidebar ---
@@ -763,6 +826,7 @@ def main() -> None:
             st.session_state.last_latencies = {}
             st.session_state.total_tokens = 0
             st.session_state.total_cost = 0.0
+            st.session_state.last_ai_message_index = None
             st.rerun()
 
     # --- Build graph ---
@@ -773,10 +837,23 @@ def main() -> None:
     graph = st.session_state.assistant_graph
 
     # --- Display history ---
-    for msg in st.session_state.messages:
+    # generate_response/agent's answer is only ever rendered here, never live:
+    # the turn that creates it ends with st.rerun() (below, so the sidebar's
+    # cost/latency numbers update immediately instead of lagging a turn
+    # behind), which means whatever a placeholder showed mid-turn is already
+    # superseded by the time a visitor's browser settles. Only the single
+    # most-recently-completed answer (last_ai_message_index) gets the
+    # fade-in reveal; everything else — including that same message once a
+    # later turn moves the index on — is plain, so old answers don't replay
+    # their animation on every future redraw.
+    for i, msg in enumerate(st.session_state.messages):
         avatar = "😎" if msg.type == "ai" else "🧐"
         with st.chat_message(msg.type, avatar=avatar):
-            if isinstance(msg.content, str):
+            if not isinstance(msg.content, str):
+                continue
+            if i == st.session_state.last_ai_message_index:
+                st.markdown(_fade_in_html(msg.content), unsafe_allow_html=True)
+            else:
                 st.markdown(msg.content)
 
     # --- Chat input ---
@@ -802,7 +879,6 @@ def main() -> None:
 
         chat_model = load_settings().chat_model
         with st.chat_message("ai", avatar="😎"):
-            placeholder = st.empty()
             state: GraphState = {
                 "messages": list(st.session_state.messages),
                 "next_step": "",
@@ -820,30 +896,16 @@ def main() -> None:
                 "token_usage": {},
             }
 
-            # Two stream modes in one pass: "messages" gives live token deltas
-            # for the placeholder below — LangGraph surfaces a streaming-
-            # enabled model's callbacks regardless of which method the node
-            # used. "values" gives the full state after each step; the last
-            # one is the graph's result, same as graph.invoke() would return,
-            # with no separate call. Node names differ by mode:
-            # generate_response (classifier) vs agent (tool_calling, possibly
-            # invoked more than once per turn — a round that decides to call a
-            # tool typically emits little or no text, so its chunks simply add
-            # nothing rather than needing to be filtered out separately).
-            full_response = ""
-            result_state: GraphState | None = None
+            # Nothing about this answer is shown here at all — see the
+            # comment on last_ai_message_index above the history loop for
+            # where and how it's actually displayed. This turn used to stream
+            # live tokens into a placeholder as generate_response/agent
+            # produced them, so a warned or refused answer would visibly
+            # replace text the visitor had already read once the (post-hoc)
+            # faithfulness check ran below — the guardrail was working
+            # exactly as designed, but it looked like the app was broken.
             with st.spinner("Thinking..."):
-                for mode, payload in graph.stream(state, stream_mode=["messages", "values"]):
-                    if mode == "messages":
-                        chunk, meta = payload
-                        if meta.get("langgraph_node") in ("generate_response", "agent") and chunk.content:
-                            full_response += chunk.content
-                            placeholder.markdown(full_response + "▌")
-                    elif mode == "values":
-                        result_state = payload
-
-            assert result_state is not None  # "values" mode always yields at least once
-            placeholder.markdown(full_response)
+                result_state: GraphState = graph.invoke(state)
 
             st.session_state.last_latencies = result_state.get("node_latencies", {})
             context_used = result_state.get("context_used", "")
@@ -855,8 +917,6 @@ def main() -> None:
                     "Tool failure on route=%s: %s", result_state.get("route"), result_state["tool_error"]
                 )
 
-            # The streamed tokens are for the live placeholder only; the
-            # authoritative text is whatever the node actually returned.
             full_response = result_state["messages"][-1].content
 
             # Faithfulness check. classifier mode already scored this exact
@@ -869,11 +929,15 @@ def main() -> None:
             if judge_usage is None:
                 faithfulness_score, judge_usage = score_faithfulness_with_usage(full_response, context_used)
             final_response = apply_faithfulness_tiering(full_response, faithfulness_score)
-            if final_response != full_response:
-                placeholder.markdown(final_response)
 
             result_state["messages"][-1].content = final_response
             st.session_state.messages = result_state["messages"]
+            # st.rerun() below redraws chat history immediately (so the
+            # sidebar's cost/latency numbers update this same turn instead of
+            # lagging one behind) — that redraw is what actually displays
+            # this answer, via the history loop's fade-in for whichever
+            # index this is.
+            st.session_state.last_ai_message_index = len(st.session_state.messages) - 1
 
             # Update session memory summary in background
             openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
