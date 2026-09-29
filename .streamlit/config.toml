@@ -6,8 +6,66 @@
 showErrorDetails = false
 
 [theme]
-primaryColor = "#7b8472"
-backgroundColor = "#fff4e9"
-secondaryBackgroundColor = "#e7d8c9"
-textColor = "#1c1c1c"
-font = "sans serif"
+# Design revamp: adapted from the developing-with-streamlit skill's
+# "one-dark-pro" template (assets/templates/themes/configs/one-dark-pro.toml).
+# Kept: dark base, an azure-blue accent, IBM Plex Sans + JetBrains Mono.
+# Changed from the template: backgroundColor/secondaryBackgroundColor/
+# codeBackgroundColor are re-tuned darker (a near-black "product" surface
+# closer to ChatGPT/Claude/Gemini's own chat UIs than the template's
+# lighter blue-gray "code editor" canvas), and primaryColor is a shade
+# deeper than the template's #61afef so white button text clears WCAG AA
+# (~5:1; the template's own value is ~2.4:1 on white). linkColor is a
+# brighter tint of the same hue, chosen separately because a link's own
+# text needs to contrast against the dark background instead (~7.4:1) —
+# one hue, two tuned shades for two different contrast jobs, not two colors.
+base = "dark"
+primaryColor = "#2f6fbf"
+backgroundColor = "#14161b"
+secondaryBackgroundColor = "#1c1f27"
+codeBackgroundColor = "#101216"
+textColor = "#dfe2e8"
+linkColor = "#6fa8f5"
+codeTextColor = "#c9cdd6"
+borderColor = "#2a2e37"
+showWidgetBorder = true
+showSidebarBorder = true
+baseRadius = "10px"
+buttonRadius = "8px"
+linkUnderline = false
+
+font = "'IBM Plex Sans':https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap"
+codeFont = "'JetBrains Mono':https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
+baseFontSize = 16
+baseFontWeight = 400
+codeFontSize = "0.875rem"
+codeFontWeight = 400
+headingFontSizes = ["30px", "24px", "20px", "16px", "14px", "12px"]
+headingFontWeights = [600, 600, 500, 500, 500, 500]
+
+# Semantic + chart colors, carried over from one-dark-pro's own proven
+# dark-mode palette (only the primary brand blue above was re-tuned) so
+# st.success/warning/error, colored markdown, and the Eval Dashboard's
+# charts all read clearly against the darker background.
+blueColor = "#6fa8f5"
+greenColor = "#98c379"
+yellowColor = "#e5c07b"
+orangeColor = "#d19a66"
+redColor = "#e06c75"
+violetColor = "#c678dd"
+grayColor = "#8a93a6"
+
+chartCategoricalColors = ["#6fa8f5", "#98c379", "#e5c07b", "#e06c75", "#c678dd", "#8a93a6", "#d19a66"]
+
+dataframeBorderColor = "#2a2e37"
+dataframeHeaderBackgroundColor = "#1c1f27"
+
+[theme.sidebar]
+# One step lighter than the main canvas, and widgets one step lighter again —
+# a deliberate elevation ladder (14161b < 191c23 < 20242c) instead of a flat
+# sidebar, so the sidebar reads as its own panel next to the chat.
+backgroundColor = "#191c23"
+secondaryBackgroundColor = "#20242c"
+codeBackgroundColor = "#101216"
+textColor = "#dfe2e8"
+borderColor = "#2a2e37"
+primaryColor = "#2f6fbf"

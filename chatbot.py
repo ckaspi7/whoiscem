@@ -743,16 +743,22 @@ def main() -> None:
     # so objects built earlier would never be traced.
     setup_tracing()
 
+    # Restyled for the dark theme in .streamlit/config.toml (design revamp) —
+    # the mechanism itself (per-word staggered fade via the stream-word class)
+    # is unchanged; see _fade_in_html's docstring for why it exists, and
+    # tests/unit/test_app_boot.py::test_the_displayed_answer_is_never_a_since_retracted_stream
+    # for the regression test that depends on the class name surviving.
     st.markdown(
         """
         <style>
-        .app-title { font-size: 2.5rem; font-weight: bold; color: #1c1c1c;
-                     text-align: center; margin-bottom: 10px; }
-        .app-subtitle { font-size: 1rem; color: #555; text-align: center; margin-bottom: 20px; }
-        @keyframes fadeInWord { from { opacity: 0; transform: translateY(2px); }
+        .app-title { font-size: 2.75rem; font-weight: 600; letter-spacing: -0.02em;
+                     color: #eef1f6; text-align: center; margin-bottom: 0.2rem; }
+        .app-subtitle { font-size: 1.05rem; color: #9aa4b2;
+                        text-align: center; margin-bottom: 1.5rem; }
+        @keyframes fadeInWord { from { opacity: 0; transform: translateY(3px); }
                                 to { opacity: 1; transform: translateY(0); } }
         .stream-word { display: inline-block; opacity: 0;
-                        animation: fadeInWord 0.4s ease-out forwards; }
+                        animation: fadeInWord 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
         </style>
     """,
         unsafe_allow_html=True,
@@ -789,39 +795,44 @@ def main() -> None:
 
     # --- Sidebar ---
     with st.sidebar:
-        st.markdown("### Session Info")
+        st.subheader("Session info", icon=":material/query_stats:")
         cost = st.session_state.total_cost
         tokens = st.session_state.total_tokens
         st.metric(
             "Session cost",
             f"${cost:.5f}",
+            border=True,
             help=(
                 "Real token usage from the API's own usage object, priced at each model's "
                 "published rate — not an estimate from text length. Excludes embedding calls "
                 "(a few tokens per query, ~$0.02/1M — negligible next to either chat model)."
             ),
         )
-        st.metric("Tokens used", f"{tokens:,}")
+        st.metric("Tokens used", f"{tokens:,}", border=True)
 
         if st.session_state.last_latencies:
-            with st.expander("⏱ Last query latency"):
+            # No icon= here: st.expander's icon parameter isn't picked up by
+            # AppTest's .expander introspection on this pinned Streamlit
+            # version (confirmed directly), unlike title/header/subheader/
+            # button/metric, which all render their icon fine either way.
+            with st.expander("Last query latency"):
                 for node, ms in st.session_state.last_latencies.items():
                     st.text(f"{node}: {ms:.3f}s")
             total_lat = sum(st.session_state.last_latencies.values())
             st.caption(f"Total: {total_lat:.3f}s")
 
         if prior_context:
-            with st.expander("🧠 Prior session context"):
+            with st.expander("Prior session context"):
                 st.caption(prior_context)
 
-        st.divider()
-        st.markdown("### Backends")
+        # No st.divider(): default widget spacing is enough (design.md), and
+        # each subheader above already reads as its own section.
+        st.subheader("Backends", icon=":material/database:")
         st.caption(f"Vector store: Qdrant ({load_settings().qdrant_mode})")
         st.caption(f"Session memory: {memory.backend}")
         st.caption(f"Tracing: {tracing_status()}")
 
-        st.divider()
-        if st.button("🗑️ Clear Chat"):
+        if st.button("Clear chat", icon=":material/delete:"):
             st.session_state.messages = []
             st.session_state.last_latencies = {}
             st.session_state.total_tokens = 0
