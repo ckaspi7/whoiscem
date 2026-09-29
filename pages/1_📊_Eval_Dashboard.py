@@ -28,7 +28,37 @@ from config import DEFAULT_AGENT_MODE, DEFAULT_CHAT_MODEL
 
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "eval" / "results"
 
-st.set_page_config(page_title="Eval Dashboard", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Eval Dashboard", page_icon=":material/analytics:", layout="wide")
+
+# Human-readable labels and one-line definitions for the raw metric keys these
+# result files store. This page's audience isn't only the person who wrote
+# eval/run_eval.py, so "context_precision" gets spelled out rather than assumed
+# — see the "What these metrics mean" expander below, where METRIC_GLOSSARY is
+# rendered as a key-value table.
+METRIC_LABELS: dict[str, str] = {
+    "routing_accuracy": "Routing accuracy",
+    "faithfulness": "Faithfulness",
+    "answer_relevancy": "Answer relevancy",
+    "context_recall": "Context recall",
+    "context_precision": "Context precision",
+}
+METRIC_GLOSSARY: dict[str, str] = {
+    "Routing accuracy": (
+        "Share of questions sent to the correct tool — resume, personal info, Spotify, "
+        "LinkedIn, or plain conversation."
+    ),
+    "Faithfulness": (
+        "Does the answer stick to what was actually retrieved, or invent details? "
+        "An LLM judge scores this 0-1 (RAGAS)."
+    ),
+    "Answer relevancy": (
+        "Does the answer actually address the question asked? Scored 0-1 by an LLM judge (RAGAS)."
+    ),
+    "Context recall": (
+        "Of the facts needed to answer, how many did retrieval actually surface? Scored 0-1 (RAGAS)."
+    ),
+    "Context precision": ("Of what retrieval surfaced, how much was actually relevant? Scored 0-1 (RAGAS)."),
+}
 
 
 @st.cache_data
@@ -58,13 +88,15 @@ def is_mainline(run: dict) -> bool:
     return agent_ok and model_ok
 
 
-st.title("📊 Eval Dashboard")
+st.title("Eval dashboard", icon=":material/analytics:")
 st.caption(
     "Every number below is read directly from a committed file in `eval/results/` — "
     "nothing here is recomputed, estimated, or remembered. See "
     "[CHANGELOG.md](https://github.com/ckaspi7/whoiscem/blob/main/CHANGELOG.md) "
     "for the narrative behind each point."
 )
+with st.expander("What these metrics mean"):
+    st.table(METRIC_GLOSSARY, border="horizontal")
 
 runs = load_results()
 if not runs:
@@ -110,8 +142,10 @@ if mainline:
         "context_precision",
     ]
     chart_columns = [c for c in candidate_columns if c in trend_df.columns]
-    st.line_chart(trend_df[chart_columns])
-    st.dataframe(trend_df, use_container_width=True)
+    display_df = trend_df.rename(columns=METRIC_LABELS)
+    chart_labels = [METRIC_LABELS[c] for c in chart_columns]
+    st.line_chart(display_df[chart_labels], x_label="Evaluation run (commit order)", y_label="Score")
+    st.dataframe(display_df)
 else:
     st.info("No mainline runs with RAGAS scores committed yet.")
 
@@ -120,7 +154,8 @@ else:
 # ---------------------------------------------------------------------------
 if mainline:
     latest = mainline[-1]
-    st.header(f"Per-category routing — latest mainline run (`{latest['_file']}`)")
+    st.header(f"Per-category routing — latest mainline run (`{latest['_file']}`)", icon=":material/route:")
+    st.caption("Share of questions correctly routed to the right tool, broken down by question category.")
     by_category = (latest.get("routing") or {}).get("by_category") or {}
     if by_category:
         cat_df = pd.DataFrame(
@@ -129,17 +164,19 @@ if mainline:
                 for k, v in sorted(by_category.items())
             ]
         ).set_index("category")
-        st.bar_chart(cat_df["accuracy"])
-        st.dataframe(cat_df, use_container_width=True)
+        st.bar_chart(cat_df["accuracy"], x_label="Category", y_label="Accuracy")
+        st.dataframe(cat_df.rename(columns={"accuracy": "Accuracy", "correct": "Correct", "total": "Total"}))
 
 # ---------------------------------------------------------------------------
 # Deliberate comparisons — never blended into the trend above
 # ---------------------------------------------------------------------------
-st.header("Deliberate comparisons")
+st.header("Deliberate comparisons", icon=":material/compare_arrows:")
 st.caption(
-    "Each of these changes exactly one axis (agent architecture or chat model) against a "
-    "mainline baseline from the same day — paired, not chronological, the same way the "
-    "README presents them."
+    "Each of these changes exactly one axis against a mainline baseline from the same day — "
+    "paired, not chronological, the same way the README presents them. **agent_mode** swaps the "
+    "LangGraph architecture (a classifier that calls one fixed tool vs. a tool-calling agent); "
+    "**chat_model** swaps the underlying LLM. Both default to the shipping configuration "
+    f"(`{DEFAULT_AGENT_MODE}` / `{DEFAULT_CHAT_MODEL}`) unless named in a comparison below."
 )
 
 comparisons = sorted((r for r in question_runs if not is_mainline(r)), key=lambda r: r.get("run_at", ""))
@@ -155,13 +192,27 @@ for run in comparisons:
         axis.append(f"chat_model={run['chat_model']}")
     label = ", ".join(axis) or "non-mainline configuration"
 
+    # No icon= on this expander (unlike the rest of this page's headers):
+    # st.expander's icon parameter isn't picked up by AppTest's .expander
+    # introspection on this pinned Streamlit version, and
+    # test_dashboard_separates_comparisons_from_the_mainline_trend reads
+    # this exact label through app.expander.
     with st.expander(f"{run['_file']} — {label}"):
         scores = run.get("scores") or {}
         cols = st.columns(max(1, 1 + len(scores)))
         accuracy = (run.get("routing") or {}).get("accuracy")
-        cols[0].metric("Routing accuracy", f"{accuracy:.1%}" if accuracy is not None else "n/a")
+        cols[0].metric(
+            "Routing accuracy",
+            f"{accuracy:.1%}" if accuracy is not None else "n/a",
+            help=METRIC_GLOSSARY["Routing accuracy"],
+        )
         for i, (metric, value) in enumerate(scores.items(), start=1):
-            cols[i].metric(metric, f"{value:.3f}" if value is not None else "n/a")
+            metric_label = METRIC_LABELS.get(metric, metric)
+            cols[i].metric(
+                metric_label,
+                f"{value:.3f}" if value is not None else "n/a",
+                help=METRIC_GLOSSARY.get(metric_label),
+            )
         if not scores:
             st.caption("No RAGAS scores in this run (a `--no-ragas` pass).")
 
@@ -180,7 +231,7 @@ for run in comparisons:
 # Retrieval ablation — the cost/latency Pareto
 # ---------------------------------------------------------------------------
 if ablation_runs:
-    st.header("Retrieval ablation")
+    st.header("Retrieval ablation", icon=":material/tune:")
     st.caption(
         "Which parts of the hybrid pipeline earn their place, measured with routing excluded "
         "so a variant is never penalised for a question the router misdirected. See the README "
@@ -188,5 +239,25 @@ if ablation_runs:
     )
     ablation = ablation_runs[-1]
     variants_df = pd.DataFrame(ablation["variants"]).set_index("variant")
-    st.scatter_chart(variants_df, x="mean_latency_ms", y="recall_at_k", size="mean_context_chars")
-    st.dataframe(variants_df, use_container_width=True)
+    st.caption(
+        "Each point is one retrieval strategy; bigger points returned more context text per query "
+        "(mean characters retrieved)."
+    )
+    st.scatter_chart(
+        variants_df,
+        x="mean_latency_ms",
+        y="recall_at_k",
+        size="mean_context_chars",
+        x_label="Mean latency (ms)",
+        y_label="Recall@k",
+    )
+    st.dataframe(
+        variants_df.rename(
+            columns={
+                "recall_at_k": "Recall@k",
+                "mrr": "MRR",
+                "mean_context_chars": "Mean context (chars)",
+                "mean_latency_ms": "Mean latency (ms)",
+            }
+        )
+    )
