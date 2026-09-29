@@ -142,9 +142,10 @@ def _timed(name: str, fn, state: GraphState) -> GraphState:
 def _add_usage(token_usage: dict[str, dict[str, int]] | None, node: str, usage: dict[str, int]) -> dict:
     """Merge one call's real usage into a node-keyed running total (Phase 4.2).
 
-    Per node, not one grand total: check_faithfulness stays pinned to
-    gpt-4o-mini regardless of CHAT_MODEL, so it must be priced separately from
-    everything else in state — see main()'s cost accounting below.
+    Per node, not one grand total: check_faithfulness now runs a local
+    classifier (ADR-0008) with zero token usage regardless of CHAT_MODEL, so
+    it must be priced separately from everything else in state — see main()'s
+    cost accounting below.
     """
     merged = dict(token_usage or {})
     existing = merged.get(node, {"input": 0, "output": 0})
@@ -659,9 +660,10 @@ def _accumulate_real_cost(*priced_usages: tuple[str, dict[str, int]]) -> None:
     output rate — which counted only the final answer's characters, missing
     every other call a turn makes (router, judge, summariser) and mispricing
     the one call it did count. `priced_usages` is (model, usage) pairs, not a
-    single model, because the judge and summariser stay pinned to gpt-4o-mini
-    regardless of CHAT_MODEL while the graph's own calls use whichever model
-    is actually configured — each needs its own rate, not one applied to all.
+    single model: the summariser stays pinned to gpt-4o-mini regardless of
+    CHAT_MODEL, the graph's own calls use whichever model is actually
+    configured, and the judge (ADR-0008) now runs a local classifier with
+    zero usage — each needs its own rate (or none), not one applied to all.
     """
     if "total_tokens" not in st.session_state:
         st.session_state.total_tokens = 0
@@ -951,9 +953,10 @@ def main() -> None:
             # Real usage from every call this turn: every graph node captures
             # its own response's usage_metadata directly (see _add_usage and
             # cost.usage_from_response) rather than a callback, priced at
-            # whichever CHAT_MODEL is actually configured — except
-            # check_faithfulness and the summariser, which stay pinned to
-            # gpt-4o-mini regardless of it (see cost.py and
+            # whichever CHAT_MODEL is actually configured — except the
+            # summariser, which stays pinned to gpt-4o-mini regardless of it,
+            # and check_faithfulness, which runs a local classifier (ADR-0008)
+            # with no API cost at all (see cost.py and
             # guardrails/faithfulness_check.py for why).
             graph_usage = {
                 node: usage

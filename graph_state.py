@@ -84,6 +84,8 @@ class GraphState(TypedDict):
     # directly that it does not propagate through LangGraph's node execution
     # (a real graph turn showed 0 tokens captured that way despite a real
     # model call happening), so each call site captures its own instead.
-    # check_faithfulness stays a separate key because it is always
-    # gpt-4o-mini regardless of CHAT_MODEL — see main()'s cost accounting.
+    # check_faithfulness stays a separate key because it's priced differently
+    # from everything else: zero, always, regardless of CHAT_MODEL — it runs
+    # a local classifier now, not an OpenAI call at all (ADR-0008). See
+    # main()'s cost accounting.
     token_usage: dict[str, dict[str, int]]

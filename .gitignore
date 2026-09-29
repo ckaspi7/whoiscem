@@ -188,3 +188,6 @@ data/*unredacted*
 
 # Embedded Qdrant storage (QDRANT_MODE=embedded)
 .qdrant/
+
+# Claude Code local tool state (e.g. isolated worktrees for parallel agents)
+.claude/

@@ -17,3 +17,4 @@ behind each one and [README.md](../../README.md) for the full narrative.
 | [0005](0005-self-correction-scoped-to-resume-route.md) | The self-correction retry is scoped to the resume route only |
 | [0006](0006-fail-open-judge-fail-closed-tool-errors.md) | The faithfulness judge fails open; a tool error must never reach context |
 | [0007](0007-rate-limiting-and-spend-cap-live-in-a-new-api-layer.md) | Rate limiting and the spend cap live in a new API layer, not in Streamlit directly |
+| [0008](0008-local-classifier-replaces-llm-judge-for-faithfulness.md) | A local classifier (HHEM) replaces the LLM judge for the faithfulness guardrail |
