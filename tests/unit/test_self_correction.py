@@ -112,9 +112,12 @@ def test_retry_replaces_the_first_answer_rather_than_appending_a_second_message(
 
 
 def test_token_usage_from_the_judge_accumulates_across_a_retry():
-    """Phase 4.2: check_faithfulness_node calls the raw OpenAI client, so its
-    real usage has to be threaded through state explicitly rather than caught
-    by get_openai_callback like the graph's own ChatOpenAI calls are."""
+    """Phase 4.2: check_faithfulness_node's usage isn't captured by
+    get_openai_callback like the graph's own ChatOpenAI calls are — it never
+    went through a LangChain chat model even before the guardrail's own
+    mechanism changed (previously the raw OpenAI client, now a local
+    classifier with no API usage at all) — so it has to be threaded through
+    state explicitly either way. This test only asserts the threading."""
     with (
         patch("chatbot.ChatOpenAI") as llm_cls,
         patch("chatbot.classify_query", return_value=("resume", dict(_NO_USAGE))),

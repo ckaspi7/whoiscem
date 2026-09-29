@@ -1,64 +1,85 @@
 from __future__ import annotations
 
-import json
 import logging
-import os
-
-from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
-_client: OpenAI | None = None
+_hhem = None  # lazy-loaded local classifier; see _get_hhem()
 _LOW_SCORE_RESPONSE = "I don't have reliable information about that in my knowledge base."
 _WARN_PREFIX = "⚠️ *Note: I'm not fully confident in this answer — please verify independently.*\n\n"
 _NO_USAGE = {"input": 0, "output": 0}
 
+# vectara/hallucination_evaluation_model (HHEM-2.1-Open) replaced an
+# LLM-as-judge (gpt-4o-mini) here after eval/ablate_faithfulness.py measured
+# it more accurate (87.5% vs 62.5% on 32 real production-context pairs) and
+# faster (1.9x — smaller than a first hand-built pilot suggested, since real
+# multi-paragraph context costs HHEM more compute than that pilot's one-line
+# examples did) with no per-call API cost. See eval/results/ablation-
+# faithfulness.json and docs/adr/0008-local-classifier-replaces-llm-judge.md.
+#
+# trust_remote_code=True means this also runs Vectara's own Python code, not
+# just weights — pinned to a specific reviewed revision so an upstream change
+# to their repo can never silently change what runs here.
+_HHEM_MODEL_ID = "vectara/hallucination_evaluation_model"
+_HHEM_REVISION = "8e4a2e6e96c708cc76c2344f7e4757df2515292c"
 
-def _get_client() -> OpenAI:
-    global _client
-    if _client is None:
-        _client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    return _client
+# Where a continuous 0-1 consistency score lands on the 1-5 scale every
+# existing caller (apply_faithfulness_tiering, chatbot.py's in-graph retry
+# check, eval/run_eval.py) already gates on — kept as 1-5 specifically so
+# nothing downstream needed to change. Only the binary faithful/unfaithful
+# split at 0.20 was actually measured; these two boundaries are a reasoned
+# margin either side of it, not an independently validated 3-way split —
+# revisit if the warn tier turns out to fire far more or less than expected.
+_HHEM_REFUSE_BELOW = 0.15
+_HHEM_PASS_ABOVE = 0.40
+
+
+def _get_hhem():
+    """Lazily load and cache the local hallucination classifier.
+
+    Committed to the module global only after a successful load — same
+    discipline as tools/resume_tool.py's retrieval singletons — so a
+    transient failure (HF Hub briefly unreachable) is retried on the next
+    call rather than permanently cached as broken.
+    """
+    global _hhem
+    if _hhem is None:
+        from transformers import AutoModelForSequenceClassification
+
+        _hhem = AutoModelForSequenceClassification.from_pretrained(
+            _HHEM_MODEL_ID, revision=_HHEM_REVISION, trust_remote_code=True
+        )
+    return _hhem
+
+
+def _hhem_to_five_scale(raw_score: float) -> int:
+    if raw_score < _HHEM_REFUSE_BELOW:
+        return 1
+    if raw_score < _HHEM_PASS_ABOVE:
+        return 3
+    return 5
 
 
 def _judge(answer: str, context: str) -> tuple[int | None, dict[str, int]]:
-    """The real judge call: score plus the real token usage it cost.
+    """The real check: score plus token usage (always zero now — HHEM is a
+    local model, not a priced API call; the return shape is unchanged so
+    every existing cost-accounting caller keeps working unmodified).
 
     None means "nothing to act on" — either there is no context to check
-    against, or the judge call itself failed — never a low score. A caller
-    driving a retry must treat None as "don't retry", not as "score is bad".
-    A failure is logged rather than silently swallowed (Phase 4.3): a
-    guardrail that can go quietly inert is worse than no guardrail, and this
-    is the one place that ever finds out it just did.
+    against, or the model itself failed to load or predict — never a low
+    score. A caller driving a retry must treat None as "don't retry", not as
+    "score is bad". A failure is logged rather than silently swallowed
+    (Phase 4.3): a guardrail that can go quietly inert is worse than no
+    guardrail, and this is the one place that ever finds out it just did.
     """
     if not context.strip():
         return None, dict(_NO_USAGE)
 
-    prompt = (
-        "You are a faithfulness judge. Given a context and an answer, "
-        "score how much of the answer is grounded in the context on a scale of 1-5. "
-        "1 = mostly hallucinated, 5 = fully grounded. "
-        'Respond with valid JSON only: {"score": <int>, "reason": "<str>"}'
-    )
     try:
-        response = _get_client().chat.completions.create(
-            model="gpt-4o-mini",
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": f"Context:\n{context}\n\nAnswer:\n{answer}"},
-            ],
-            temperature=0,
-            max_tokens=100,
-        )
-        usage = response.usage
-        tokens = (
-            {"input": usage.prompt_tokens, "output": usage.completion_tokens} if usage else dict(_NO_USAGE)
-        )
-        result = json.loads(response.choices[0].message.content)
-        return int(result.get("score", 1)), tokens
+        raw_score = float(_get_hhem().predict([(context, answer)])[0])
+        return _hhem_to_five_scale(raw_score), dict(_NO_USAGE)
     except Exception as exc:
-        logger.warning("Faithfulness judge call failed, failing open (no check applied): %s", exc)
+        logger.warning("Faithfulness check failed, failing open (no check applied): %s", exc)
         return None, dict(_NO_USAGE)
 
 
@@ -73,8 +94,10 @@ def score_faithfulness(answer: str, context: str) -> int | None:
 
 
 def score_faithfulness_with_usage(answer: str, context: str) -> tuple[int | None, dict[str, int]]:
-    """Same as `score_faithfulness`, plus the real token usage the call cost —
-    for callers doing honest cost accounting (Phase 4.2), not just scoring."""
+    """Same as `score_faithfulness`, plus token usage for cost accounting
+    (Phase 4.2) — always zero now that this runs a local model rather than a
+    priced API call, which honest cost accounting should show as zero, not
+    omit. Kept as a tuple so no caller's shape assumptions had to change."""
     return _judge(answer, context)
 
 

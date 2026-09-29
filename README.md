@@ -394,13 +394,15 @@ User Query
   └────┬────────────────────────────────────────────┘
        │
   ┌────▼──────────────┐
-  │ generate_response │  GPT-4o-mini streams the answer
+  │ generate_response │  GPT-4o-mini generates the answer
   └────┬──────────────┘
        │
   ┌────▼─────────────────┐
-  │ faithfulness_check   │  GPT-4o-mini judges answer grounding (score 1–5)
+  │ faithfulness_check   │  Local classifier (HHEM) scores answer grounding (1–5)
   │                      │  ≥4 → pass  |  2–3 → warn  |  1 → refuse
   └────┬─────────────────┘
+       │  Nothing reaches the visitor until this clears — then the answer
+       │  reveals via a CSS-staggered fade, not a live token-by-token feed
        │
   ┌────▼──────────────────────────────────────────┐
   │ Redis session memory                          │
@@ -450,9 +452,9 @@ curl -X POST localhost:8000/chat -H "Content-Type: application/json" \
 | Score fusion | Reciprocal Rank Fusion (RRF) |
 | Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2 (local, free) |
 | Chunking | Semantic chunker (LangChain Experimental) |
-| Observability | In-app latency panel; distributed tracing not currently active (see [Limitations](LIMITATIONS.md)) |
+| Observability | In-app latency panel; distributed tracing to Arize Phoenix (OpenTelemetry/OpenInference) |
 | Session memory | Redis when configured, in-process fallback otherwise |
-| Hallucination guard | GPT-4o-mini faithfulness judge (post-generation), plus one bounded self-correction retry on the resume route |
+| Hallucination guard | Local classifier (HHEM-2.1-Open, post-generation — see [ADR-0008](docs/adr/0008-local-classifier-replaces-llm-judge-for-faithfulness.md)), plus one bounded self-correction retry on the resume route |
 | UI | Streamlit |
 | Personal DB | SQLite |
 | CI | GitHub Actions (lint, format, unit + integration tests, image build, compose healthchecks) |

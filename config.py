@@ -63,10 +63,12 @@ AGENT_MODES: tuple[str, ...] = ("classifier", "tool_calling")
 DEFAULT_AGENT_MODE = "classifier"
 
 # Which OpenAI chat model powers routing, condensation, and generation in both
-# graphs. The faithfulness judge (guardrails/faithfulness_check.py) and RAGAS's
-# own judge are deliberately not parameterised by this — they stay pinned to
-# gpt-4o-mini so a model swap changes exactly the thing being measured, not
-# the thing measuring it.
+# graphs. RAGAS's own judge is deliberately not parameterised by this — it
+# stays pinned to gpt-4o-mini so a model swap changes exactly the thing being
+# measured, not the thing measuring it. The faithfulness judge
+# (guardrails/faithfulness_check.py) is unaffected by CHAT_MODEL for a
+# stronger reason now (ADR-0008): it isn't an OpenAI call at all anymore, so
+# there is nothing here for it to be parameterised by.
 CHAT_MODELS: tuple[str, ...] = ("gpt-4o-mini", "gpt-6-luna")
 # Defaults to the incumbent until a real before/after says otherwise — same
 # discipline as retrieval_strategy and agent_mode.

@@ -10,7 +10,7 @@ langsmith==0.3.13  # transitive: required by langchain-core; not used as a backe
 qdrant-client==1.13.3
 rank-bm25==0.2.2
 sentence-transformers==3.4.1
-transformers==4.57.6  # directly imported by eval/ablate_faithfulness.py (HHEM); was previously only transitive
+transformers==4.57.6  # HHEM (guardrails/faithfulness_check.py, ADR-0008) and eval/ablate_faithfulness.py; was previously only transitive
 pdfplumber==0.11.5
 spotipy==2.25.1
 python-dotenv==1.0.1

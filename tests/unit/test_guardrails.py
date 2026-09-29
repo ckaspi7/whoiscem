@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-import json
 from unittest.mock import MagicMock, patch
 
 
-def _mock_openai_response(score: int, reason: str = "test") -> MagicMock:
-    client = MagicMock()
-    client.chat.completions.create.return_value = MagicMock(
-        choices=[MagicMock(message=MagicMock(content=json.dumps({"score": score, "reason": reason})))]
-    )
-    return client
+def _mock_hhem(raw_score: float) -> MagicMock:
+    model = MagicMock()
+    model.predict.return_value = [raw_score]
+    return model
 
 
 def test_high_score_returns_answer_unchanged():
-    with patch("guardrails.faithfulness_check._get_client", return_value=_mock_openai_response(5)):
+    with patch("guardrails.faithfulness_check._get_hhem", return_value=_mock_hhem(0.9)):
         from guardrails.faithfulness_check import check_faithfulness
 
         result = check_faithfulness("Cem works at TELUS.", "Cem is an AI/ML Engineer at TELUS.")
@@ -22,7 +19,7 @@ def test_high_score_returns_answer_unchanged():
 
 
 def test_mid_score_prepends_warning():
-    with patch("guardrails.faithfulness_check._get_client", return_value=_mock_openai_response(3)):
+    with patch("guardrails.faithfulness_check._get_hhem", return_value=_mock_hhem(0.25)):
         from guardrails.faithfulness_check import check_faithfulness
 
         result = check_faithfulness("Some answer.", "Some context.")
@@ -32,7 +29,7 @@ def test_mid_score_prepends_warning():
 
 
 def test_low_score_replaces_answer():
-    with patch("guardrails.faithfulness_check._get_client", return_value=_mock_openai_response(1)):
+    with patch("guardrails.faithfulness_check._get_hhem", return_value=_mock_hhem(0.02)):
         from guardrails.faithfulness_check import check_faithfulness
 
         result = check_faithfulness("Made up answer.", "Unrelated context.")
@@ -41,12 +38,19 @@ def test_low_score_replaces_answer():
     assert "Made up answer." not in result
 
 
-def test_malformed_json_fails_open():
-    client = MagicMock()
-    client.chat.completions.create.return_value = MagicMock(
-        choices=[MagicMock(message=MagicMock(content="not valid json {{}"))]
-    )
-    with patch("guardrails.faithfulness_check._get_client", return_value=client):
+def test_model_load_failure_fails_open():
+    with patch("guardrails.faithfulness_check._get_hhem", side_effect=RuntimeError("model unavailable")):
+        from guardrails.faithfulness_check import check_faithfulness
+
+        result = check_faithfulness("original answer", "some context")
+
+    assert result == "original answer"
+
+
+def test_prediction_failure_fails_open():
+    model = MagicMock()
+    model.predict.side_effect = RuntimeError("boom")
+    with patch("guardrails.faithfulness_check._get_hhem", return_value=model):
         from guardrails.faithfulness_check import check_faithfulness
 
         result = check_faithfulness("original answer", "some context")
@@ -55,47 +59,19 @@ def test_malformed_json_fails_open():
 
 
 def test_empty_context_skips_check():
-    with patch("guardrails.faithfulness_check._get_client") as mock_client:
+    with patch("guardrails.faithfulness_check._get_hhem") as mock_get_hhem:
         from guardrails.faithfulness_check import check_faithfulness
 
         result = check_faithfulness("answer text", "")
 
-    mock_client.assert_not_called()
+    mock_get_hhem.assert_not_called()
     assert result == "answer text"
 
 
-def test_judge_uses_gpt4o_mini():
-    client = _mock_openai_response(5)
-    with patch("guardrails.faithfulness_check._get_client", return_value=client):
-        from guardrails.faithfulness_check import check_faithfulness
-
-        check_faithfulness("answer", "context")
-
-    call_kwargs = client.chat.completions.create.call_args
-    assert call_kwargs.kwargs.get("model") == "gpt-4o-mini"
-
-
-def test_judge_requests_json_object_response_format():
-    """Phase 4.3: without this, a ```json fence around the reply breaks
-    json.loads and the guard fails open silently — this is the fix, not just
-    the fail-open path that made the symptom survivable."""
-    client = _mock_openai_response(5)
-    with patch("guardrails.faithfulness_check._get_client", return_value=client):
-        from guardrails.faithfulness_check import check_faithfulness
-
-        check_faithfulness("answer", "context")
-
-    call_kwargs = client.chat.completions.create.call_args
-    assert call_kwargs.kwargs.get("response_format") == {"type": "json_object"}
-
-
-def test_a_failed_judge_call_is_logged(caplog):
+def test_a_failed_check_is_logged(caplog):
     """Phase 4.3: a guardrail that can go silently inert is worse than none —
-    this is what makes the fail-open path in test_malformed_json_fails_open
-    visible instead of mute."""
-    client = MagicMock()
-    client.chat.completions.create.side_effect = RuntimeError("connection reset")
-    with patch("guardrails.faithfulness_check._get_client", return_value=client):
+    this is what makes the fail-open path visible instead of mute."""
+    with patch("guardrails.faithfulness_check._get_hhem", side_effect=RuntimeError("connection reset")):
         from guardrails.faithfulness_check import check_faithfulness
 
         with caplog.at_level("WARNING"):
@@ -105,31 +81,43 @@ def test_a_failed_judge_call_is_logged(caplog):
 
 
 # ---------------------------------------------------------------------------
+# _hhem_to_five_scale — the mapping from HHEM's continuous 0-1 score onto the
+# 1-5 scale every other caller (tiering, chatbot.py's in-graph retry check,
+# eval/run_eval.py) already gates on. Boundaries from
+# guardrails/faithfulness_check.py's own module comment: refuse below 0.15,
+# warn in [0.15, 0.40), pass at 0.40 and above.
+# ---------------------------------------------------------------------------
+
+
+def test_hhem_scale_boundaries():
+    from guardrails.faithfulness_check import _hhem_to_five_scale
+
+    assert _hhem_to_five_scale(0.0) == 1
+    assert _hhem_to_five_scale(0.14) == 1
+    assert _hhem_to_five_scale(0.15) == 3  # boundary is inclusive on the warn side
+    assert _hhem_to_five_scale(0.39) == 3
+    assert _hhem_to_five_scale(0.40) == 5  # boundary is inclusive on the pass side
+    assert _hhem_to_five_scale(1.0) == 5
+
+
+# ---------------------------------------------------------------------------
 # score_faithfulness_with_usage / apply_faithfulness_tiering (Phase 4.2) —
 # the split that lets a caller which already scored an answer (chatbot.py's
-# in-graph retry check) apply the same tiering without a second judge call,
+# in-graph retry check) apply the same tiering without a second model call,
 # and lets a caller doing cost accounting see what the call actually cost.
 # ---------------------------------------------------------------------------
 
 
-def _mock_openai_response_with_usage(score: int, prompt_tokens: int, completion_tokens: int) -> MagicMock:
-    client = MagicMock()
-    client.chat.completions.create.return_value = MagicMock(
-        choices=[MagicMock(message=MagicMock(content=json.dumps({"score": score, "reason": "test"})))],
-        usage=MagicMock(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens),
-    )
-    return client
-
-
-def test_score_faithfulness_with_usage_returns_the_real_token_counts():
-    client = _mock_openai_response_with_usage(5, prompt_tokens=142, completion_tokens=18)
-    with patch("guardrails.faithfulness_check._get_client", return_value=client):
+def test_score_faithfulness_with_usage_reports_zero_usage_on_a_successful_call():
+    """HHEM is a local model, not a priced API call — real cost accounting
+    should show $0 for this line item now, not omit it or fake a token count."""
+    with patch("guardrails.faithfulness_check._get_hhem", return_value=_mock_hhem(0.9)):
         from guardrails.faithfulness_check import score_faithfulness_with_usage
 
         score, usage = score_faithfulness_with_usage("answer", "context")
 
     assert score == 5
-    assert usage == {"input": 142, "output": 18}
+    assert usage == {"input": 0, "output": 0}
 
 
 def test_score_faithfulness_with_usage_reports_zero_usage_on_empty_context():
@@ -140,10 +128,8 @@ def test_score_faithfulness_with_usage_reports_zero_usage_on_empty_context():
     assert usage == {"input": 0, "output": 0}
 
 
-def test_score_faithfulness_with_usage_reports_zero_usage_on_judge_failure():
-    client = MagicMock()
-    client.chat.completions.create.side_effect = RuntimeError("boom")
-    with patch("guardrails.faithfulness_check._get_client", return_value=client):
+def test_score_faithfulness_with_usage_reports_zero_usage_on_failure():
+    with patch("guardrails.faithfulness_check._get_hhem", side_effect=RuntimeError("boom")):
         from guardrails.faithfulness_check import score_faithfulness_with_usage
 
         score, usage = score_faithfulness_with_usage("answer", "context")

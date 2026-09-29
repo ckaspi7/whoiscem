@@ -54,9 +54,11 @@ embedded on-disk store (the default — no server), a Qdrant reached over HTTP, 
 Qdrant Cloud. Embedded mode takes an exclusive lock on its directory, so exactly
 one process may use a given `QDRANT_PATH` at a time.
 
-**Not yet done:** the deployed Streamlit Cloud app has no persistent volume, so
-embedded storage there is rebuilt on every cold start. Pointing it at Qdrant Cloud
-(`QDRANT_MODE=cloud`) is the fix and is not yet in place.
+**Done, Phase 4.6:** the deployed Streamlit Cloud app has no persistent volume,
+so embedded storage there would have rebuilt on every cold start. It's pointed
+at a real Qdrant Cloud cluster (`QDRANT_MODE=cloud`) instead, confirmed live in
+the deployed app's own sidebar. Session memory is likewise pointed at a real
+Upstash Redis instance rather than the in-process fallback.
 
 ---
 
@@ -153,14 +155,18 @@ it doesn't have.
 
 ## Guardrails: Three of Four Phase 4.3 Items Done
 
-The judge call now sets `response_format={"type": "json_object"}` — previously
-absent, so a ```` ```json ```` fence around the reply broke `json.loads` and the
-guard disabled itself with no signal anywhere.
-`tests/unit/test_guardrails.py::test_malformed_json_fails_open` still asserts
-the fail-open *behaviour* is correct (the app must not break), but a failure
-there is now logged (`guardrails.faithfulness_check`, level WARNING) instead
-of vanishing — a safety gate that can go silently inert is worse than no
-gate, and this is what makes that visible instead of mute.
+Phase 4.3 made the judge call set `response_format={"type": "json_object"}` —
+previously absent, so a ```` ```json ```` fence around the reply broke
+`json.loads` and the guard disabled itself with no signal anywhere. That fix
+is now moot for a different reason: ADR-0008 replaced the LLM judge with a
+local classifier (HHEM-2.1-Open) that never returns JSON to parse in the
+first place. The behavior Phase 4.3 was actually protecting — a guardrail
+that can go silently inert is worse than no guardrail — still holds under the
+new mechanism: a model load or prediction failure is logged
+(`guardrails.faithfulness_check`, level WARNING) and fails open rather than
+vanishing, covered by `tests/unit/test_guardrails.py::test_model_load_failure_fails_open`
+and `test_prediction_failure_fails_open` now instead of the old JSON-parsing
+test.
 
 An input length cap (`chatbot.MAX_INPUT_CHARS`, 1000) now rejects an
 oversized message before it reaches session state or the graph — no API call
