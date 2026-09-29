@@ -1,0 +1,322 @@
+{
+  "run_at": "2026-09-29T18:56:17.932195+00:00",
+  "pairs": 32,
+  "routes_covered": [
+    "linkedin",
+    "personal",
+    "spotify"
+  ],
+  "hhem": {
+    "best_threshold": 0.2,
+    "accuracy": 0.875,
+    "mean_latency_ms": 520.4
+  },
+  "judge": {
+    "accuracy": 0.625,
+    "mean_latency_ms": 989.2
+  },
+  "judge_misses": [
+    "l003-faithful",
+    "l004-unfaithful",
+    "l005-faithful",
+    "p001-unfaithful",
+    "p002-unfaithful",
+    "p003-unfaithful",
+    "p005-unfaithful",
+    "s002-unfaithful",
+    "s003-unfaithful",
+    "s005-unfaithful",
+    "s006-unfaithful",
+    "m003-unfaithful"
+  ],
+  "rows": [
+    {
+      "id": "l001-faithful",
+      "route": "linkedin",
+      "faithful": true,
+      "hhem_score": 0.9512572884559631,
+      "hhem_ms": 541.3841002155095,
+      "judge_score": 5,
+      "judge_ms": 2605.8318000286818
+    },
+    {
+      "id": "l001-unfaithful",
+      "route": "linkedin",
+      "faithful": false,
+      "hhem_score": 0.1897982954978943,
+      "hhem_ms": 1379.0289999451488,
+      "judge_score": 2,
+      "judge_ms": 926.5332000795752
+    },
+    {
+      "id": "l002-faithful",
+      "route": "linkedin",
+      "faithful": true,
+      "hhem_score": 0.7544803023338318,
+      "hhem_ms": 708.9595999568701,
+      "judge_score": 5,
+      "judge_ms": 1110.748999984935
+    },
+    {
+      "id": "l002-unfaithful",
+      "route": "linkedin",
+      "faithful": false,
+      "hhem_score": 0.017911134287714958,
+      "hhem_ms": 613.3757999632508,
+      "judge_score": 3,
+      "judge_ms": 1072.4927000701427
+    },
+    {
+      "id": "l003-faithful",
+      "route": "linkedin",
+      "faithful": true,
+      "hhem_score": 0.8279370069503784,
+      "hhem_ms": 475.14820005744696,
+      "judge_score": 1,
+      "judge_ms": 1038.7283000163734
+    },
+    {
+      "id": "l003-unfaithful",
+      "route": "linkedin",
+      "faithful": false,
+      "hhem_score": 0.4973454773426056,
+      "hhem_ms": 627.5975999888033,
+      "judge_score": 1,
+      "judge_ms": 1009.8826999310404
+    },
+    {
+      "id": "l004-faithful",
+      "route": "linkedin",
+      "faithful": true,
+      "hhem_score": 0.9879043698310852,
+      "hhem_ms": 527.005200041458,
+      "judge_score": 5,
+      "judge_ms": 983.2464999053627
+    },
+    {
+      "id": "l004-unfaithful",
+      "route": "linkedin",
+      "faithful": false,
+      "hhem_score": 0.339199036359787,
+      "hhem_ms": 1095.11740016751,
+      "judge_score": 4,
+      "judge_ms": 1077.8234999161214
+    },
+    {
+      "id": "l005-faithful",
+      "route": "linkedin",
+      "faithful": true,
+      "hhem_score": 0.33291658759117126,
+      "hhem_ms": 1264.097400009632,
+      "judge_score": 2,
+      "judge_ms": 1410.9428999945521
+    },
+    {
+      "id": "l005-unfaithful",
+      "route": "linkedin",
+      "faithful": false,
+      "hhem_score": 0.19865764677524567,
+      "hhem_ms": 1037.3390999156982,
+      "judge_score": 2,
+      "judge_ms": 1067.1339998953044
+    },
+    {
+      "id": "p001-faithful",
+      "route": "personal",
+      "faithful": true,
+      "hhem_score": 0.9163480401039124,
+      "hhem_ms": 581.8163000512868,
+      "judge_score": 5,
+      "judge_ms": 811.5244000218809
+    },
+    {
+      "id": "p001-unfaithful",
+      "route": "personal",
+      "faithful": false,
+      "hhem_score": 0.013953347690403461,
+      "hhem_ms": 272.51779986545444,
+      "judge_score": 5,
+      "judge_ms": 838.1652000825852
+    },
+    {
+      "id": "p002-faithful",
+      "route": "personal",
+      "faithful": true,
+      "hhem_score": 0.06531083583831787,
+      "hhem_ms": 176.70100019313395,
+      "judge_score": 5,
+      "judge_ms": 981.6371998749673
+    },
+    {
+      "id": "p002-unfaithful",
+      "route": "personal",
+      "faithful": false,
+      "hhem_score": 0.05653335526585579,
+      "hhem_ms": 158.04790006950498,
+      "judge_score": 4,
+      "judge_ms": 941.4816999342293
+    },
+    {
+      "id": "p003-faithful",
+      "route": "personal",
+      "faithful": true,
+      "hhem_score": 0.4144969582557678,
+      "hhem_ms": 151.23129985295236,
+      "judge_score": 4,
+      "judge_ms": 849.0385999903083
+    },
+    {
+      "id": "p003-unfaithful",
+      "route": "personal",
+      "faithful": false,
+      "hhem_score": 0.010195475071668625,
+      "hhem_ms": 168.63570013083518,
+      "judge_score": 4,
+      "judge_ms": 1209.4818998593837
+    },
+    {
+      "id": "p005-faithful",
+      "route": "personal",
+      "faithful": true,
+      "hhem_score": 0.6743285059928894,
+      "hhem_ms": 153.22329988703132,
+      "judge_score": 5,
+      "judge_ms": 789.393600076437
+    },
+    {
+      "id": "p005-unfaithful",
+      "route": "personal",
+      "faithful": false,
+      "hhem_score": 0.012160681188106537,
+      "hhem_ms": 159.70589988864958,
+      "judge_score": 4,
+      "judge_ms": 999.866500031203
+    },
+    {
+      "id": "s001-faithful",
+      "route": "spotify",
+      "faithful": true,
+      "hhem_score": 0.9385127425193787,
+      "hhem_ms": 430.62959983944893,
+      "judge_score": 5,
+      "judge_ms": 857.5659999623895
+    },
+    {
+      "id": "s001-unfaithful",
+      "route": "spotify",
+      "faithful": false,
+      "hhem_score": 0.006550227291882038,
+      "hhem_ms": 813.8122998643667,
+      "judge_score": 3,
+      "judge_ms": 973.4557999763638
+    },
+    {
+      "id": "s002-faithful",
+      "route": "spotify",
+      "faithful": true,
+      "hhem_score": 0.7745382189750671,
+      "hhem_ms": 471.66769998148084,
+      "judge_score": 5,
+      "judge_ms": 789.0831001568586
+    },
+    {
+      "id": "s002-unfaithful",
+      "route": "spotify",
+      "faithful": false,
+      "hhem_score": 0.4825340509414673,
+      "hhem_ms": 490.25749997235835,
+      "judge_score": 5,
+      "judge_ms": 907.524700043723
+    },
+    {
+      "id": "s003-faithful",
+      "route": "spotify",
+      "faithful": true,
+      "hhem_score": 0.8144674897193909,
+      "hhem_ms": 453.00760003738105,
+      "judge_score": 5,
+      "judge_ms": 656.5457000397146
+    },
+    {
+      "id": "s003-unfaithful",
+      "route": "spotify",
+      "faithful": false,
+      "hhem_score": 0.08621712028980255,
+      "hhem_ms": 487.9075000062585,
+      "judge_score": 4,
+      "judge_ms": 947.1076000481844
+    },
+    {
+      "id": "s004-faithful",
+      "route": "spotify",
+      "faithful": true,
+      "hhem_score": 0.9299257397651672,
+      "hhem_ms": 461.6948999464512,
+      "judge_score": 5,
+      "judge_ms": 802.2439999040216
+    },
+    {
+      "id": "s004-unfaithful",
+      "route": "spotify",
+      "faithful": false,
+      "hhem_score": 0.012309225276112556,
+      "hhem_ms": 460.32269997522235,
+      "judge_score": 3,
+      "judge_ms": 974.9556998722255
+    },
+    {
+      "id": "s005-faithful",
+      "route": "spotify",
+      "faithful": true,
+      "hhem_score": 0.9542152881622314,
+      "hhem_ms": 717.5710999872535,
+      "judge_score": 5,
+      "judge_ms": 741.1519999150187
+    },
+    {
+      "id": "s005-unfaithful",
+      "route": "spotify",
+      "faithful": false,
+      "hhem_score": 0.029063032940030098,
+      "hhem_ms": 534.0560998301953,
+      "judge_score": 4,
+      "judge_ms": 933.143800124526
+    },
+    {
+      "id": "s006-faithful",
+      "route": "spotify",
+      "faithful": true,
+      "hhem_score": 0.8660762906074524,
+      "hhem_ms": 448.9716999232769,
+      "judge_score": 5,
+      "judge_ms": 889.9830000009388
+    },
+    {
+      "id": "s006-unfaithful",
+      "route": "spotify",
+      "faithful": false,
+      "hhem_score": 0.05188652500510216,
+      "hhem_ms": 484.8439998459071,
+      "judge_score": 5,
+      "judge_ms": 731.031000148505
+    },
+    {
+      "id": "m003-faithful",
+      "route": "personal",
+      "faithful": true,
+      "hhem_score": 0.23959767818450928,
+      "hhem_ms": 152.49800006859004,
+      "judge_score": 4,
+      "judge_ms": 836.791800102219
+    },
+    {
+      "id": "m003-unfaithful",
+      "route": "personal",
+      "faithful": false,
+      "hhem_score": 0.06703536212444305,
+      "hhem_ms": 155.8968999888748,
+      "judge_score": 4,
+      "judge_ms": 891.26310008578
+    }
+  ]
+}

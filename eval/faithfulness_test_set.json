@@ -1,0 +1,258 @@
+[
+  {
+    "id": "l001-faithful",
+    "source_id": "l001",
+    "route": "linkedin",
+    "context": "LinkedIn profile, last updated September 2026 (this month):\n\nHeadline: AI/ML Engineer at TELUS\nAbout: Passionate about Generative AI, LLMs, and building intelligent systems that solve real-world problems. Currently working at TELUS as an AI/ML Engineer, developing GenAI-powered chatbots, automations, and data pipelines. I enjoy bridging the gap between cutting-edge AI research and production-ready engineering.\n\nCareer History:\n\nAI/ML Engineer at TELUS Communications Inc. (2022-01 – Present)\n  Building GenAI-powered products and automations for TELUS, including internal chatbots, LLM pipelines, and data-driven solutions.\n  └ AI/ML Engineer (2024-09 – Present)\n  └ Software Developer (GenAI & Chatbot Development) (2024-04 – 2024-09)\n  └ Engineer-in-Training (GenAI and Automations) (2022-01 – 2024-04)\n\nCo-Founder at NeoWise (2019-09 – 2021-05)\n  Co-founded a wearable thermal-device startup. Led the prototype from concept to MVP across product R&D, hardware design, and supplier negotiation (±5 °C skin-temperature regulation).\n\nManufacturing Engineer, Co-op at Mercedes-Benz Canada (2018-01 – 2019-08)\n  Two co-op terms with a study term between them. Led data-driven initiatives that cut material scrap loss by over $100K/year and raised production yield 3%; improved station efficiency 25% through Lean Six Sigma value-stream mapping.",
+    "answer": "Yes — from Engineer-in-Training to Software Developer to AI/ML Engineer.",
+    "faithful": true
+  },
+  {
+    "id": "l001-unfaithful",
+    "source_id": "l001",
+    "route": "linkedin",
+    "context": "LinkedIn profile, last updated September 2026 (this month):\n\nHeadline: AI/ML Engineer at TELUS\nAbout: Passionate about Generative AI, LLMs, and building intelligent systems that solve real-world problems. Currently working at TELUS as an AI/ML Engineer, developing GenAI-powered chatbots, automations, and data pipelines. I enjoy bridging the gap between cutting-edge AI research and production-ready engineering.\n\nCareer History:\n\nAI/ML Engineer at TELUS Communications Inc. (2022-01 – Present)\n  Building GenAI-powered products and automations for TELUS, including internal chatbots, LLM pipelines, and data-driven solutions.\n  └ AI/ML Engineer (2024-09 – Present)\n  └ Software Developer (GenAI & Chatbot Development) (2024-04 – 2024-09)\n  └ Engineer-in-Training (GenAI and Automations) (2022-01 – 2024-04)\n\nCo-Founder at NeoWise (2019-09 – 2021-05)\n  Co-founded a wearable thermal-device startup. Led the prototype from concept to MVP across product R&D, hardware design, and supplier negotiation (±5 °C skin-temperature regulation).\n\nManufacturing Engineer, Co-op at Mercedes-Benz Canada (2018-01 – 2019-08)\n  Two co-op terms with a study term between them. Led data-driven initiatives that cut material scrap loss by over $100K/year and raised production yield 3%; improved station efficiency 25% through Lean Six Sigma value-stream mapping.",
+    "answer": "Yes — from Engineer-in-Training to Software Developer to AI/ML Engineer, a progression that typically takes about 18 months.",
+    "faithful": false
+  },
+  {
+    "id": "l002-faithful",
+    "source_id": "l002",
+    "route": "linkedin",
+    "context": "LinkedIn profile, last updated September 2026 (this month):\n\nHeadline: AI/ML Engineer at TELUS\nAbout: Passionate about Generative AI, LLMs, and building intelligent systems that solve real-world problems. Currently working at TELUS as an AI/ML Engineer, developing GenAI-powered chatbots, automations, and data pipelines. I enjoy bridging the gap between cutting-edge AI research and production-ready engineering.\n\nCareer History:\n\nAI/ML Engineer at TELUS Communications Inc. (2022-01 – Present)\n  Building GenAI-powered products and automations for TELUS, including internal chatbots, LLM pipelines, and data-driven solutions.\n  └ AI/ML Engineer (2024-09 – Present)\n  └ Software Developer (GenAI & Chatbot Development) (2024-04 – 2024-09)\n  └ Engineer-in-Training (GenAI and Automations) (2022-01 – 2024-04)\n\nCo-Founder at NeoWise (2019-09 – 2021-05)\n  Co-founded a wearable thermal-device startup. Led the prototype from concept to MVP across product R&D, hardware design, and supplier negotiation (±5 °C skin-temperature regulation).\n\nManufacturing Engineer, Co-op at Mercedes-Benz Canada (2018-01 – 2019-08)\n  Two co-op terms with a study term between them. Led data-driven initiatives that cut material scrap loss by over $100K/year and raised production yield 3%; improved station efficiency 25% through Lean Six Sigma value-stream mapping.",
+    "answer": "Engineer-in-Training in GenAI and Automations, then Software Developer in GenAI and Chatbot Development, then AI/ML Engineer.",
+    "faithful": true
+  },
+  {
+    "id": "l002-unfaithful",
+    "source_id": "l002",
+    "route": "linkedin",
+    "context": "LinkedIn profile, last updated September 2026 (this month):\n\nHeadline: AI/ML Engineer at TELUS\nAbout: Passionate about Generative AI, LLMs, and building intelligent systems that solve real-world problems. Currently working at TELUS as an AI/ML Engineer, developing GenAI-powered chatbots, automations, and data pipelines. I enjoy bridging the gap between cutting-edge AI research and production-ready engineering.\n\nCareer History:\n\nAI/ML Engineer at TELUS Communications Inc. (2022-01 – Present)\n  Building GenAI-powered products and automations for TELUS, including internal chatbots, LLM pipelines, and data-driven solutions.\n  └ AI/ML Engineer (2024-09 – Present)\n  └ Software Developer (GenAI & Chatbot Development) (2024-04 – 2024-09)\n  └ Engineer-in-Training (GenAI and Automations) (2022-01 – 2024-04)\n\nCo-Founder at NeoWise (2019-09 – 2021-05)\n  Co-founded a wearable thermal-device startup. Led the prototype from concept to MVP across product R&D, hardware design, and supplier negotiation (±5 °C skin-temperature regulation).\n\nManufacturing Engineer, Co-op at Mercedes-Benz Canada (2018-01 – 2019-08)\n  Two co-op terms with a study term between them. Led data-driven initiatives that cut material scrap loss by over $100K/year and raised production yield 3%; improved station efficiency 25% through Lean Six Sigma value-stream mapping.",
+    "answer": "Engineer-in-Training in GenAI and Automations, then Software Developer in GenAI and Chatbot Development, then AI/ML Engineer, where he is currently leading a team of five in developing new algorithms.",
+    "faithful": false
+  },
+  {
+    "id": "l003-faithful",
+    "source_id": "l003",
+    "route": "linkedin",
+    "context": "LinkedIn profile, last updated September 2026 (this month):\n\nHeadline: AI/ML Engineer at TELUS\nAbout: Passionate about Generative AI, LLMs, and building intelligent systems that solve real-world problems. Currently working at TELUS as an AI/ML Engineer, developing GenAI-powered chatbots, automations, and data pipelines. I enjoy bridging the gap between cutting-edge AI research and production-ready engineering.\n\nCareer History:\n\nAI/ML Engineer at TELUS Communications Inc. (2022-01 – Present)\n  Building GenAI-powered products and automations for TELUS, including internal chatbots, LLM pipelines, and data-driven solutions.\n  └ AI/ML Engineer (2024-09 – Present)\n  └ Software Developer (GenAI & Chatbot Development) (2024-04 – 2024-09)\n  └ Engineer-in-Training (GenAI and Automations) (2022-01 – 2024-04)\n\nCo-Founder at NeoWise (2019-09 – 2021-05)\n  Co-founded a wearable thermal-device startup. Led the prototype from concept to MVP across product R&D, hardware design, and supplier negotiation (±5 °C skin-temperature regulation).\n\nManufacturing Engineer, Co-op at Mercedes-Benz Canada (2018-01 – 2019-08)\n  Two co-op terms with a study term between them. Led data-driven initiatives that cut material scrap loss by over $100K/year and raised production yield 3%; improved station efficiency 25% through Lean Six Sigma value-stream mapping.",
+    "answer": "September 2024.",
+    "faithful": true
+  },
+  {
+    "id": "l003-unfaithful",
+    "source_id": "l003",
+    "route": "linkedin",
+    "context": "LinkedIn profile, last updated September 2026 (this month):\n\nHeadline: AI/ML Engineer at TELUS\nAbout: Passionate about Generative AI, LLMs, and building intelligent systems that solve real-world problems. Currently working at TELUS as an AI/ML Engineer, developing GenAI-powered chatbots, automations, and data pipelines. I enjoy bridging the gap between cutting-edge AI research and production-ready engineering.\n\nCareer History:\n\nAI/ML Engineer at TELUS Communications Inc. (2022-01 – Present)\n  Building GenAI-powered products and automations for TELUS, including internal chatbots, LLM pipelines, and data-driven solutions.\n  └ AI/ML Engineer (2024-09 – Present)\n  └ Software Developer (GenAI & Chatbot Development) (2024-04 – 2024-09)\n  └ Engineer-in-Training (GenAI and Automations) (2022-01 – 2024-04)\n\nCo-Founder at NeoWise (2019-09 – 2021-05)\n  Co-founded a wearable thermal-device startup. Led the prototype from concept to MVP across product R&D, hardware design, and supplier negotiation (±5 °C skin-temperature regulation).\n\nManufacturing Engineer, Co-op at Mercedes-Benz Canada (2018-01 – 2019-08)\n  Two co-op terms with a study term between them. Led data-driven initiatives that cut material scrap loss by over $100K/year and raised production yield 3%; improved station efficiency 25% through Lean Six Sigma value-stream mapping.",
+    "answer": "September 2024, shortly after he completed a significant project on optimizing chatbot interactions.",
+    "faithful": false
+  },
+  {
+    "id": "l004-faithful",
+    "source_id": "l004",
+    "route": "linkedin",
+    "context": "LinkedIn profile, last updated September 2026 (this month):\n\nHeadline: AI/ML Engineer at TELUS\nAbout: Passionate about Generative AI, LLMs, and building intelligent systems that solve real-world problems. Currently working at TELUS as an AI/ML Engineer, developing GenAI-powered chatbots, automations, and data pipelines. I enjoy bridging the gap between cutting-edge AI research and production-ready engineering.\n\nCareer History:\n\nAI/ML Engineer at TELUS Communications Inc. (2022-01 – Present)\n  Building GenAI-powered products and automations for TELUS, including internal chatbots, LLM pipelines, and data-driven solutions.\n  └ AI/ML Engineer (2024-09 – Present)\n  └ Software Developer (GenAI & Chatbot Development) (2024-04 – 2024-09)\n  └ Engineer-in-Training (GenAI and Automations) (2022-01 – 2024-04)\n\nCo-Founder at NeoWise (2019-09 – 2021-05)\n  Co-founded a wearable thermal-device startup. Led the prototype from concept to MVP across product R&D, hardware design, and supplier negotiation (±5 °C skin-temperature regulation).\n\nManufacturing Engineer, Co-op at Mercedes-Benz Canada (2018-01 – 2019-08)\n  Two co-op terms with a study term between them. Led data-driven initiatives that cut material scrap loss by over $100K/year and raised production yield 3%; improved station efficiency 25% through Lean Six Sigma value-stream mapping.",
+    "answer": "AI/ML Engineer at TELUS.",
+    "faithful": true
+  },
+  {
+    "id": "l004-unfaithful",
+    "source_id": "l004",
+    "route": "linkedin",
+    "context": "LinkedIn profile, last updated September 2026 (this month):\n\nHeadline: AI/ML Engineer at TELUS\nAbout: Passionate about Generative AI, LLMs, and building intelligent systems that solve real-world problems. Currently working at TELUS as an AI/ML Engineer, developing GenAI-powered chatbots, automations, and data pipelines. I enjoy bridging the gap between cutting-edge AI research and production-ready engineering.\n\nCareer History:\n\nAI/ML Engineer at TELUS Communications Inc. (2022-01 – Present)\n  Building GenAI-powered products and automations for TELUS, including internal chatbots, LLM pipelines, and data-driven solutions.\n  └ AI/ML Engineer (2024-09 – Present)\n  └ Software Developer (GenAI & Chatbot Development) (2024-04 – 2024-09)\n  └ Engineer-in-Training (GenAI and Automations) (2022-01 – 2024-04)\n\nCo-Founder at NeoWise (2019-09 – 2021-05)\n  Co-founded a wearable thermal-device startup. Led the prototype from concept to MVP across product R&D, hardware design, and supplier negotiation (±5 °C skin-temperature regulation).\n\nManufacturing Engineer, Co-op at Mercedes-Benz Canada (2018-01 – 2019-08)\n  Two co-op terms with a study term between them. Led data-driven initiatives that cut material scrap loss by over $100K/year and raised production yield 3%; improved station efficiency 25% through Lean Six Sigma value-stream mapping.",
+    "answer": "AI/ML Engineer at TELUS, specializing in projects that enhance customer experience and operational efficiency.",
+    "faithful": false
+  },
+  {
+    "id": "l005-faithful",
+    "source_id": "l005",
+    "route": "linkedin",
+    "context": "LinkedIn profile, last updated September 2026 (this month):\n\nHeadline: AI/ML Engineer at TELUS\nAbout: Passionate about Generative AI, LLMs, and building intelligent systems that solve real-world problems. Currently working at TELUS as an AI/ML Engineer, developing GenAI-powered chatbots, automations, and data pipelines. I enjoy bridging the gap between cutting-edge AI research and production-ready engineering.\n\nCareer History:\n\nAI/ML Engineer at TELUS Communications Inc. (2022-01 – Present)\n  Building GenAI-powered products and automations for TELUS, including internal chatbots, LLM pipelines, and data-driven solutions.\n  └ AI/ML Engineer (2024-09 – Present)\n  └ Software Developer (GenAI & Chatbot Development) (2024-04 – 2024-09)\n  └ Engineer-in-Training (GenAI and Automations) (2022-01 – 2024-04)\n\nCo-Founder at NeoWise (2019-09 – 2021-05)\n  Co-founded a wearable thermal-device startup. Led the prototype from concept to MVP across product R&D, hardware design, and supplier negotiation (±5 °C skin-temperature regulation).\n\nManufacturing Engineer, Co-op at Mercedes-Benz Canada (2018-01 – 2019-08)\n  Two co-op terms with a study term between them. Led data-driven initiatives that cut material scrap loss by over $100K/year and raised production yield 3%; improved station efficiency 25% through Lean Six Sigma value-stream mapping.",
+    "answer": "Twice — Engineer-in-Training to Software Developer in April 2024, then to AI/ML Engineer in September 2024.",
+    "faithful": true
+  },
+  {
+    "id": "l005-unfaithful",
+    "source_id": "l005",
+    "route": "linkedin",
+    "context": "LinkedIn profile, last updated September 2026 (this month):\n\nHeadline: AI/ML Engineer at TELUS\nAbout: Passionate about Generative AI, LLMs, and building intelligent systems that solve real-world problems. Currently working at TELUS as an AI/ML Engineer, developing GenAI-powered chatbots, automations, and data pipelines. I enjoy bridging the gap between cutting-edge AI research and production-ready engineering.\n\nCareer History:\n\nAI/ML Engineer at TELUS Communications Inc. (2022-01 – Present)\n  Building GenAI-powered products and automations for TELUS, including internal chatbots, LLM pipelines, and data-driven solutions.\n  └ AI/ML Engineer (2024-09 – Present)\n  └ Software Developer (GenAI & Chatbot Development) (2024-04 – 2024-09)\n  └ Engineer-in-Training (GenAI and Automations) (2022-01 – 2024-04)\n\nCo-Founder at NeoWise (2019-09 – 2021-05)\n  Co-founded a wearable thermal-device startup. Led the prototype from concept to MVP across product R&D, hardware design, and supplier negotiation (±5 °C skin-temperature regulation).\n\nManufacturing Engineer, Co-op at Mercedes-Benz Canada (2018-01 – 2019-08)\n  Two co-op terms with a study term between them. Led data-driven initiatives that cut material scrap loss by over $100K/year and raised production yield 3%; improved station efficiency 25% through Lean Six Sigma value-stream mapping.",
+    "answer": "Twice — Engineer-in-Training to Software Developer in April 2024, then to AI/ML Engineer in September 2024, following an intensive internal training program.",
+    "faithful": false
+  },
+  {
+    "id": "p001-faithful",
+    "source_id": "p001",
+    "route": "personal",
+    "context": "Full name: Cem Kaspi\nGender: male\nPlace of birth: Istanbul\nHometown: Istanbul\nCity: Vancouver\nMarital status: single\nLanguages spoken: Turkish, English, Spanish\nFavorite cuisines: Turkish, Indian, Thai, Italian, Japanese\nHobbies: Football, basketball, swimming, gaming, guitar, cooking, working out\nEye color: Brown\nHair color: Brown",
+    "answer": "Istanbul, Turkey.",
+    "faithful": true
+  },
+  {
+    "id": "p001-unfaithful",
+    "source_id": "p001",
+    "route": "personal",
+    "context": "Full name: Cem Kaspi\nGender: male\nPlace of birth: Istanbul\nHometown: Istanbul\nCity: Vancouver\nMarital status: single\nLanguages spoken: Turkish, English, Spanish\nFavorite cuisines: Turkish, Indian, Thai, Italian, Japanese\nHobbies: Football, basketball, swimming, gaming, guitar, cooking, working out\nEye color: Brown\nHair color: Brown",
+    "answer": "Istanbul, Turkey, where he lived until he was 18 years old.",
+    "faithful": false
+  },
+  {
+    "id": "p002-faithful",
+    "source_id": "p002",
+    "route": "personal",
+    "context": "Full name: Cem Kaspi\nGender: male\nPlace of birth: Istanbul\nHometown: Istanbul\nCity: Vancouver\nMarital status: single\nLanguages spoken: Turkish, English, Spanish\nFavorite cuisines: Turkish, Indian, Thai, Italian, Japanese\nHobbies: Football, basketball, swimming, gaming, guitar, cooking, working out\nEye color: Brown\nHair color: Brown",
+    "answer": "Vancouver, British Columbia.",
+    "faithful": true
+  },
+  {
+    "id": "p002-unfaithful",
+    "source_id": "p002",
+    "route": "personal",
+    "context": "Full name: Cem Kaspi\nGender: male\nPlace of birth: Istanbul\nHometown: Istanbul\nCity: Vancouver\nMarital status: single\nLanguages spoken: Turkish, English, Spanish\nFavorite cuisines: Turkish, Indian, Thai, Italian, Japanese\nHobbies: Football, basketball, swimming, gaming, guitar, cooking, working out\nEye color: Brown\nHair color: Brown",
+    "answer": "Vancouver, British Columbia, where he has lived for over three years.",
+    "faithful": false
+  },
+  {
+    "id": "p003-faithful",
+    "source_id": "p003",
+    "route": "personal",
+    "context": "Full name: Cem Kaspi\nGender: male\nPlace of birth: Istanbul\nHometown: Istanbul\nCity: Vancouver\nMarital status: single\nLanguages spoken: Turkish, English, Spanish\nFavorite cuisines: Turkish, Indian, Thai, Italian, Japanese\nHobbies: Football, basketball, swimming, gaming, guitar, cooking, working out\nEye color: Brown\nHair color: Brown",
+    "answer": "Turkish, English, and beginner Spanish.",
+    "faithful": true
+  },
+  {
+    "id": "p003-unfaithful",
+    "source_id": "p003",
+    "route": "personal",
+    "context": "Full name: Cem Kaspi\nGender: male\nPlace of birth: Istanbul\nHometown: Istanbul\nCity: Vancouver\nMarital status: single\nLanguages spoken: Turkish, English, Spanish\nFavorite cuisines: Turkish, Indian, Thai, Italian, Japanese\nHobbies: Football, basketball, swimming, gaming, guitar, cooking, working out\nEye color: Brown\nHair color: Brown",
+    "answer": "Turkish, English, and beginner Spanish, which he has been learning for about six months.",
+    "faithful": false
+  },
+  {
+    "id": "p005-faithful",
+    "source_id": "p005",
+    "route": "personal",
+    "context": "Full name: Cem Kaspi\nGender: male\nPlace of birth: Istanbul\nHometown: Istanbul\nCity: Vancouver\nMarital status: single\nLanguages spoken: Turkish, English, Spanish\nFavorite cuisines: Turkish, Indian, Thai, Italian, Japanese\nHobbies: Football, basketball, swimming, gaming, guitar, cooking, working out\nEye color: Brown\nHair color: Brown",
+    "answer": "The cuisines listed in his personal profile.",
+    "faithful": true
+  },
+  {
+    "id": "p005-unfaithful",
+    "source_id": "p005",
+    "route": "personal",
+    "context": "Full name: Cem Kaspi\nGender: male\nPlace of birth: Istanbul\nHometown: Istanbul\nCity: Vancouver\nMarital status: single\nLanguages spoken: Turkish, English, Spanish\nFavorite cuisines: Turkish, Indian, Thai, Italian, Japanese\nHobbies: Football, basketball, swimming, gaming, guitar, cooking, working out\nEye color: Brown\nHair color: Brown",
+    "answer": "The cuisines listed in his personal profile, which he enjoys cooking for friends on weekends.",
+    "faithful": false
+  },
+  {
+    "id": "s001-faithful",
+    "source_id": "s001",
+    "route": "spotify",
+    "context": "Spotify snapshot exported March 2025 (18 months ago). Manual export, not live data, so it reflects listening at that time:\n\nTop Artists:\n1. The Weeknd — canadian contemporary r&b, canadian pop, pop\n2. Drake — canadian hip hop, canadian pop, hip hop, rap\n3. Eminem — detroit hip hop, hip hop, rap\n4. Kanye West — chicago rap, hip hop, rap\n5. Chris Brown — pop, r&b, urban contemporary\n6. 50 Cent — east coast hip hop, gangster rap, hip hop, rap\n7. Future — atl hip hop, hip hop, rap, trap\n8. Kendrick Lamar — conscious hip hop, hip hop, rap, west coast rap\n9. Travis Scott — hip hop, rap, slap house\n10. Meek Mill — east coast hip hop, hip hop, philly rap, rap\n\nTop Tracks:\n1. Digital Dash — Drake, Future\n2. Know Yourself — Drake\n3. Thinkin Bout You — Frank Ocean\n4. Crew — GoldLink, Brent Faiyaz, Shy Glizzy\n5. Hotline Bling — Drake\n6. Way Too Cold — Kanye West\n7. Starboy — The Weeknd, Daft Punk\n8. Lucid Dreams — Juice WRLD\n9. God's Plan — Drake\n10. SICKO MODE — Travis Scott, Drake",
+    "answer": "The Weeknd.",
+    "faithful": true
+  },
+  {
+    "id": "s001-unfaithful",
+    "source_id": "s001",
+    "route": "spotify",
+    "context": "Spotify snapshot exported March 2025 (18 months ago). Manual export, not live data, so it reflects listening at that time:\n\nTop Artists:\n1. The Weeknd — canadian contemporary r&b, canadian pop, pop\n2. Drake — canadian hip hop, canadian pop, hip hop, rap\n3. Eminem — detroit hip hop, hip hop, rap\n4. Kanye West — chicago rap, hip hop, rap\n5. Chris Brown — pop, r&b, urban contemporary\n6. 50 Cent — east coast hip hop, gangster rap, hip hop, rap\n7. Future — atl hip hop, hip hop, rap, trap\n8. Kendrick Lamar — conscious hip hop, hip hop, rap, west coast rap\n9. Travis Scott — hip hop, rap, slap house\n10. Meek Mill — east coast hip hop, hip hop, philly rap, rap\n\nTop Tracks:\n1. Digital Dash — Drake, Future\n2. Know Yourself — Drake\n3. Thinkin Bout You — Frank Ocean\n4. Crew — GoldLink, Brent Faiyaz, Shy Glizzy\n5. Hotline Bling — Drake\n6. Way Too Cold — Kanye West\n7. Starboy — The Weeknd, Daft Punk\n8. Lucid Dreams — Juice WRLD\n9. God's Plan — Drake\n10. SICKO MODE — Travis Scott, Drake",
+    "answer": "The Weeknd, who has consistently topped the charts with his hits since 2016.",
+    "faithful": false
+  },
+  {
+    "id": "s002-faithful",
+    "source_id": "s002",
+    "route": "spotify",
+    "context": "Spotify snapshot exported March 2025 (18 months ago). Manual export, not live data, so it reflects listening at that time:\n\nTop Artists:\n1. The Weeknd — canadian contemporary r&b, canadian pop, pop\n2. Drake — canadian hip hop, canadian pop, hip hop, rap\n3. Eminem — detroit hip hop, hip hop, rap\n4. Kanye West — chicago rap, hip hop, rap\n5. Chris Brown — pop, r&b, urban contemporary\n6. 50 Cent — east coast hip hop, gangster rap, hip hop, rap\n7. Future — atl hip hop, hip hop, rap, trap\n8. Kendrick Lamar — conscious hip hop, hip hop, rap, west coast rap\n9. Travis Scott — hip hop, rap, slap house\n10. Meek Mill — east coast hip hop, hip hop, philly rap, rap\n\nTop Tracks:\n1. Digital Dash — Drake, Future\n2. Know Yourself — Drake\n3. Thinkin Bout You — Frank Ocean\n4. Crew — GoldLink, Brent Faiyaz, Shy Glizzy\n5. Hotline Bling — Drake\n6. Way Too Cold — Kanye West\n7. Starboy — The Weeknd, Daft Punk\n8. Lucid Dreams — Juice WRLD\n9. God's Plan — Drake\n10. SICKO MODE — Travis Scott, Drake",
+    "answer": "Hip-hop, rap and R&B.",
+    "faithful": true
+  },
+  {
+    "id": "s002-unfaithful",
+    "source_id": "s002",
+    "route": "spotify",
+    "context": "Spotify snapshot exported March 2025 (18 months ago). Manual export, not live data, so it reflects listening at that time:\n\nTop Artists:\n1. The Weeknd — canadian contemporary r&b, canadian pop, pop\n2. Drake — canadian hip hop, canadian pop, hip hop, rap\n3. Eminem — detroit hip hop, hip hop, rap\n4. Kanye West — chicago rap, hip hop, rap\n5. Chris Brown — pop, r&b, urban contemporary\n6. 50 Cent — east coast hip hop, gangster rap, hip hop, rap\n7. Future — atl hip hop, hip hop, rap, trap\n8. Kendrick Lamar — conscious hip hop, hip hop, rap, west coast rap\n9. Travis Scott — hip hop, rap, slap house\n10. Meek Mill — east coast hip hop, hip hop, philly rap, rap\n\nTop Tracks:\n1. Digital Dash — Drake, Future\n2. Know Yourself — Drake\n3. Thinkin Bout You — Frank Ocean\n4. Crew — GoldLink, Brent Faiyaz, Shy Glizzy\n5. Hotline Bling — Drake\n6. Way Too Cold — Kanye West\n7. Starboy — The Weeknd, Daft Punk\n8. Lucid Dreams — Juice WRLD\n9. God's Plan — Drake\n10. SICKO MODE — Travis Scott, Drake",
+    "answer": "Hip-hop, rap, and R&B, with a particular emphasis on contemporary artists from the last decade.",
+    "faithful": false
+  },
+  {
+    "id": "s003-faithful",
+    "source_id": "s003",
+    "route": "spotify",
+    "context": "Spotify snapshot exported March 2025 (18 months ago). Manual export, not live data, so it reflects listening at that time:\n\nTop Artists:\n1. The Weeknd — canadian contemporary r&b, canadian pop, pop\n2. Drake — canadian hip hop, canadian pop, hip hop, rap\n3. Eminem — detroit hip hop, hip hop, rap\n4. Kanye West — chicago rap, hip hop, rap\n5. Chris Brown — pop, r&b, urban contemporary\n6. 50 Cent — east coast hip hop, gangster rap, hip hop, rap\n7. Future — atl hip hop, hip hop, rap, trap\n8. Kendrick Lamar — conscious hip hop, hip hop, rap, west coast rap\n9. Travis Scott — hip hop, rap, slap house\n10. Meek Mill — east coast hip hop, hip hop, philly rap, rap\n\nTop Tracks:\n1. Digital Dash — Drake, Future\n2. Know Yourself — Drake\n3. Thinkin Bout You — Frank Ocean\n4. Crew — GoldLink, Brent Faiyaz, Shy Glizzy\n5. Hotline Bling — Drake\n6. Way Too Cold — Kanye West\n7. Starboy — The Weeknd, Daft Punk\n8. Lucid Dreams — Juice WRLD\n9. God's Plan — Drake\n10. SICKO MODE — Travis Scott, Drake",
+    "answer": "Yes — Drake is among his top artists.",
+    "faithful": true
+  },
+  {
+    "id": "s003-unfaithful",
+    "source_id": "s003",
+    "route": "spotify",
+    "context": "Spotify snapshot exported March 2025 (18 months ago). Manual export, not live data, so it reflects listening at that time:\n\nTop Artists:\n1. The Weeknd — canadian contemporary r&b, canadian pop, pop\n2. Drake — canadian hip hop, canadian pop, hip hop, rap\n3. Eminem — detroit hip hop, hip hop, rap\n4. Kanye West — chicago rap, hip hop, rap\n5. Chris Brown — pop, r&b, urban contemporary\n6. 50 Cent — east coast hip hop, gangster rap, hip hop, rap\n7. Future — atl hip hop, hip hop, rap, trap\n8. Kendrick Lamar — conscious hip hop, hip hop, rap, west coast rap\n9. Travis Scott — hip hop, rap, slap house\n10. Meek Mill — east coast hip hop, hip hop, philly rap, rap\n\nTop Tracks:\n1. Digital Dash — Drake, Future\n2. Know Yourself — Drake\n3. Thinkin Bout You — Frank Ocean\n4. Crew — GoldLink, Brent Faiyaz, Shy Glizzy\n5. Hotline Bling — Drake\n6. Way Too Cold — Kanye West\n7. Starboy — The Weeknd, Daft Punk\n8. Lucid Dreams — Juice WRLD\n9. God's Plan — Drake\n10. SICKO MODE — Travis Scott, Drake",
+    "answer": "Yes — Drake is among his top artists and he was particularly popular with Cem during the first half of 2024.",
+    "faithful": false
+  },
+  {
+    "id": "s004-faithful",
+    "source_id": "s004",
+    "route": "spotify",
+    "context": "Spotify snapshot exported March 2025 (18 months ago). Manual export, not live data, so it reflects listening at that time:\n\nTop Artists:\n1. The Weeknd — canadian contemporary r&b, canadian pop, pop\n2. Drake — canadian hip hop, canadian pop, hip hop, rap\n3. Eminem — detroit hip hop, hip hop, rap\n4. Kanye West — chicago rap, hip hop, rap\n5. Chris Brown — pop, r&b, urban contemporary\n6. 50 Cent — east coast hip hop, gangster rap, hip hop, rap\n7. Future — atl hip hop, hip hop, rap, trap\n8. Kendrick Lamar — conscious hip hop, hip hop, rap, west coast rap\n9. Travis Scott — hip hop, rap, slap house\n10. Meek Mill — east coast hip hop, hip hop, philly rap, rap\n\nTop Tracks:\n1. Digital Dash — Drake, Future\n2. Know Yourself — Drake\n3. Thinkin Bout You — Frank Ocean\n4. Crew — GoldLink, Brent Faiyaz, Shy Glizzy\n5. Hotline Bling — Drake\n6. Way Too Cold — Kanye West\n7. Starboy — The Weeknd, Daft Punk\n8. Lucid Dreams — Juice WRLD\n9. God's Plan — Drake\n10. SICKO MODE — Travis Scott, Drake",
+    "answer": "Digital Dash.",
+    "faithful": true
+  },
+  {
+    "id": "s004-unfaithful",
+    "source_id": "s004",
+    "route": "spotify",
+    "context": "Spotify snapshot exported March 2025 (18 months ago). Manual export, not live data, so it reflects listening at that time:\n\nTop Artists:\n1. The Weeknd — canadian contemporary r&b, canadian pop, pop\n2. Drake — canadian hip hop, canadian pop, hip hop, rap\n3. Eminem — detroit hip hop, hip hop, rap\n4. Kanye West — chicago rap, hip hop, rap\n5. Chris Brown — pop, r&b, urban contemporary\n6. 50 Cent — east coast hip hop, gangster rap, hip hop, rap\n7. Future — atl hip hop, hip hop, rap, trap\n8. Kendrick Lamar — conscious hip hop, hip hop, rap, west coast rap\n9. Travis Scott — hip hop, rap, slap house\n10. Meek Mill — east coast hip hop, hip hop, philly rap, rap\n\nTop Tracks:\n1. Digital Dash — Drake, Future\n2. Know Yourself — Drake\n3. Thinkin Bout You — Frank Ocean\n4. Crew — GoldLink, Brent Faiyaz, Shy Glizzy\n5. Hotline Bling — Drake\n6. Way Too Cold — Kanye West\n7. Starboy — The Weeknd, Daft Punk\n8. Lucid Dreams — Juice WRLD\n9. God's Plan — Drake\n10. SICKO MODE — Travis Scott, Drake",
+    "answer": "Digital Dash, which Cem reportedly played over 250 times in the past year.",
+    "faithful": false
+  },
+  {
+    "id": "s005-faithful",
+    "source_id": "s005",
+    "route": "spotify",
+    "context": "Spotify snapshot exported March 2025 (18 months ago). Manual export, not live data, so it reflects listening at that time:\n\nTop Artists:\n1. The Weeknd — canadian contemporary r&b, canadian pop, pop\n2. Drake — canadian hip hop, canadian pop, hip hop, rap\n3. Eminem — detroit hip hop, hip hop, rap\n4. Kanye West — chicago rap, hip hop, rap\n5. Chris Brown — pop, r&b, urban contemporary\n6. 50 Cent — east coast hip hop, gangster rap, hip hop, rap\n7. Future — atl hip hop, hip hop, rap, trap\n8. Kendrick Lamar — conscious hip hop, hip hop, rap, west coast rap\n9. Travis Scott — hip hop, rap, slap house\n10. Meek Mill — east coast hip hop, hip hop, philly rap, rap\n\nTop Tracks:\n1. Digital Dash — Drake, Future\n2. Know Yourself — Drake\n3. Thinkin Bout You — Frank Ocean\n4. Crew — GoldLink, Brent Faiyaz, Shy Glizzy\n5. Hotline Bling — Drake\n6. Way Too Cold — Kanye West\n7. Starboy — The Weeknd, Daft Punk\n8. Lucid Dreams — Juice WRLD\n9. God's Plan — Drake\n10. SICKO MODE — Travis Scott, Drake",
+    "answer": "The Weeknd, Drake and Eminem.",
+    "faithful": true
+  },
+  {
+    "id": "s005-unfaithful",
+    "source_id": "s005",
+    "route": "spotify",
+    "context": "Spotify snapshot exported March 2025 (18 months ago). Manual export, not live data, so it reflects listening at that time:\n\nTop Artists:\n1. The Weeknd — canadian contemporary r&b, canadian pop, pop\n2. Drake — canadian hip hop, canadian pop, hip hop, rap\n3. Eminem — detroit hip hop, hip hop, rap\n4. Kanye West — chicago rap, hip hop, rap\n5. Chris Brown — pop, r&b, urban contemporary\n6. 50 Cent — east coast hip hop, gangster rap, hip hop, rap\n7. Future — atl hip hop, hip hop, rap, trap\n8. Kendrick Lamar — conscious hip hop, hip hop, rap, west coast rap\n9. Travis Scott — hip hop, rap, slap house\n10. Meek Mill — east coast hip hop, hip hop, philly rap, rap\n\nTop Tracks:\n1. Digital Dash — Drake, Future\n2. Know Yourself — Drake\n3. Thinkin Bout You — Frank Ocean\n4. Crew — GoldLink, Brent Faiyaz, Shy Glizzy\n5. Hotline Bling — Drake\n6. Way Too Cold — Kanye West\n7. Starboy — The Weeknd, Daft Punk\n8. Lucid Dreams — Juice WRLD\n9. God's Plan — Drake\n10. SICKO MODE — Travis Scott, Drake",
+    "answer": "The Weeknd, Drake and Eminem, with Cem often listening to their music during his late-night drives.",
+    "faithful": false
+  },
+  {
+    "id": "s006-faithful",
+    "source_id": "s006",
+    "route": "spotify",
+    "context": "Spotify snapshot exported March 2025 (18 months ago). Manual export, not live data, so it reflects listening at that time:\n\nTop Artists:\n1. The Weeknd — canadian contemporary r&b, canadian pop, pop\n2. Drake — canadian hip hop, canadian pop, hip hop, rap\n3. Eminem — detroit hip hop, hip hop, rap\n4. Kanye West — chicago rap, hip hop, rap\n5. Chris Brown — pop, r&b, urban contemporary\n6. 50 Cent — east coast hip hop, gangster rap, hip hop, rap\n7. Future — atl hip hop, hip hop, rap, trap\n8. Kendrick Lamar — conscious hip hop, hip hop, rap, west coast rap\n9. Travis Scott — hip hop, rap, slap house\n10. Meek Mill — east coast hip hop, hip hop, philly rap, rap\n\nTop Tracks:\n1. Digital Dash — Drake, Future\n2. Know Yourself — Drake\n3. Thinkin Bout You — Frank Ocean\n4. Crew — GoldLink, Brent Faiyaz, Shy Glizzy\n5. Hotline Bling — Drake\n6. Way Too Cold — Kanye West\n7. Starboy — The Weeknd, Daft Punk\n8. Lucid Dreams — Juice WRLD\n9. God's Plan — Drake\n10. SICKO MODE — Travis Scott, Drake",
+    "answer": "Yes — Kendrick Lamar is in his top artists.",
+    "faithful": true
+  },
+  {
+    "id": "s006-unfaithful",
+    "source_id": "s006",
+    "route": "spotify",
+    "context": "Spotify snapshot exported March 2025 (18 months ago). Manual export, not live data, so it reflects listening at that time:\n\nTop Artists:\n1. The Weeknd — canadian contemporary r&b, canadian pop, pop\n2. Drake — canadian hip hop, canadian pop, hip hop, rap\n3. Eminem — detroit hip hop, hip hop, rap\n4. Kanye West — chicago rap, hip hop, rap\n5. Chris Brown — pop, r&b, urban contemporary\n6. 50 Cent — east coast hip hop, gangster rap, hip hop, rap\n7. Future — atl hip hop, hip hop, rap, trap\n8. Kendrick Lamar — conscious hip hop, hip hop, rap, west coast rap\n9. Travis Scott — hip hop, rap, slap house\n10. Meek Mill — east coast hip hop, hip hop, philly rap, rap\n\nTop Tracks:\n1. Digital Dash — Drake, Future\n2. Know Yourself — Drake\n3. Thinkin Bout You — Frank Ocean\n4. Crew — GoldLink, Brent Faiyaz, Shy Glizzy\n5. Hotline Bling — Drake\n6. Way Too Cold — Kanye West\n7. Starboy — The Weeknd, Daft Punk\n8. Lucid Dreams — Juice WRLD\n9. God's Plan — Drake\n10. SICKO MODE — Travis Scott, Drake",
+    "answer": "Yes — Kendrick Lamar is in his top artists and he listened to his music regularly during his daily commute.",
+    "faithful": false
+  },
+  {
+    "id": "m003-faithful",
+    "source_id": "m003",
+    "route": "personal",
+    "context": "Full name: Cem Kaspi\nGender: male\nPlace of birth: Istanbul\nHometown: Istanbul\nCity: Vancouver\nMarital status: single\nLanguages spoken: Turkish, English, Spanish\nFavorite cuisines: Turkish, Indian, Thai, Italian, Japanese\nHobbies: Football, basketball, swimming, gaming, guitar, cooking, working out\nEye color: Brown\nHair color: Brown",
+    "answer": "Originally Istanbul, Turkey; now at TELUS Communications in Vancouver.",
+    "faithful": true
+  },
+  {
+    "id": "m003-unfaithful",
+    "source_id": "m003",
+    "route": "personal",
+    "context": "Full name: Cem Kaspi\nGender: male\nPlace of birth: Istanbul\nHometown: Istanbul\nCity: Vancouver\nMarital status: single\nLanguages spoken: Turkish, English, Spanish\nFavorite cuisines: Turkish, Indian, Thai, Italian, Japanese\nHobbies: Football, basketball, swimming, gaming, guitar, cooking, working out\nEye color: Brown\nHair color: Brown",
+    "answer": "Originally Istanbul, Turkey; now at TELUS Communications in Vancouver, where he has been working for over three years.",
+    "faithful": false
+  }
+]
