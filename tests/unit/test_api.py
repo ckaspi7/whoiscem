@@ -200,12 +200,44 @@ def test_requests_beyond_the_limit_are_rejected_with_retry_after(client, monkeyp
     assert "Retry-After" in second.headers
 
 
-def test_different_api_keys_have_independent_rate_limit_buckets(client, monkeypatch):
+def test_different_visitor_ips_have_independent_rate_limit_buckets(client, monkeypatch):
     monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "1")
     api._rate_limiter = RateLimiter(limit=1, window_seconds=60)
 
-    first = client.post("/chat", json={"message": "Where does Cem work?"}, headers={"X-API-Key": "client-a"})
-    second = client.post("/chat", json={"message": "Where does Cem work?"}, headers={"X-API-Key": "client-b"})
+    first = client.post("/chat", json={"message": "Where does Cem work?"}, headers={"X-Forwarded-For": "1.1.1.1"})
+    second = client.post("/chat", json={"message": "Where does Cem work?"}, headers={"X-Forwarded-For": "2.2.2.2"})
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+
+
+def test_the_same_ip_shares_a_bucket_regardless_of_api_key(client, monkeypatch):
+    """The actual fix: bucketing must key on the visitor, not the key."""
+    monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "1")
+    api._rate_limiter = RateLimiter(limit=1, window_seconds=60)
+
+    first = client.post("/chat", json={"message": "Where does Cem work?"}, headers={"X-Forwarded-For": "9.9.9.9"})
+    second = client.post("/chat", json={"message": "Where does Cem work?"}, headers={"X-Forwarded-For": "9.9.9.9"})
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+
+
+def test_a_shared_api_key_from_two_ips_does_not_share_a_bucket(client, monkeypatch):
+    """Guards the bug the deployment plan found: this project has exactly one
+    shared API key (the frontend proxy's), so the old key-based bucketing
+    would collapse every real visitor into one global rate limit."""
+    monkeypatch.setenv("API_KEY", "shared-proxy-key")
+    monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "1")
+    api._rate_limiter = RateLimiter(limit=1, window_seconds=60)
+    headers = {"X-API-Key": "shared-proxy-key"}
+
+    first = client.post(
+        "/chat", json={"message": "Where does Cem work?"}, headers={**headers, "X-Forwarded-For": "1.1.1.1"}
+    )
+    second = client.post(
+        "/chat", json={"message": "Where does Cem work?"}, headers={**headers, "X-Forwarded-For": "2.2.2.2"}
+    )
 
     assert first.status_code == 200
     assert second.status_code == 200
@@ -234,3 +266,67 @@ def test_spend_accumulates_across_requests_within_the_cap(client, monkeypatch):
 
     assert first.status_code == 200
     assert second.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Faithfulness tiering — previously /chat returned the raw answer regardless
+# of score; this is what makes it match what a Streamlit visitor already gets.
+# ---------------------------------------------------------------------------
+
+
+def test_a_low_faithfulness_score_replaces_the_answer_with_a_refusal():
+    graph = _mock_graph(faithfulness_score=None, context_used="unrelated context")
+    with patch("chatbot.create_assistant", return_value=graph), patch("api.score_faithfulness", return_value=1):
+        with TestClient(api.app) as client:
+            response = client.post("/chat", json={"message": "Where does Cem work?"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["response"] == "I don't have reliable information about that in my knowledge base."
+    assert body["faithfulness_score"] == 1
+
+
+def test_a_mid_faithfulness_score_prepends_a_warning():
+    graph = _mock_graph(faithfulness_score=None, context_used="unrelated context")
+    with patch("chatbot.create_assistant", return_value=graph), patch("api.score_faithfulness", return_value=3):
+        with TestClient(api.app) as client:
+            response = client.post("/chat", json={"message": "Where does Cem work?"})
+
+    body = response.json()
+    assert body["response"].startswith("⚠️")
+    assert "Cem works at TELUS." in body["response"]
+
+
+def test_a_score_already_computed_in_graph_is_reused_not_rejudged(client):
+    """Classifier mode's resume-route retry (Phase 3.3) already scores the
+    final answer in-graph; /chat must not pay for a second judge call on it."""
+    with patch("api.score_faithfulness") as mock_score:
+        response = client.post("/chat", json={"message": "Where does Cem work?"})
+
+    assert response.status_code == 200
+    mock_score.assert_not_called()
+    assert response.json()["faithfulness_score"] == 5
+
+
+# ---------------------------------------------------------------------------
+# CORS — defense-in-depth for a stray direct browser call; the real gate is
+# the API key, and the intended frontend never calls this cross-origin at all
+# (it goes through its own same-origin proxy). FRONTEND_ORIGIN is read once at
+# import time like every other api.py env var, so these exercise the default.
+# ---------------------------------------------------------------------------
+
+
+def test_cors_preflight_allows_the_configured_frontend_origin(client):
+    response = client.options(
+        "/chat",
+        headers={"Origin": api.DEFAULT_FRONTEND_ORIGIN, "Access-Control-Request-Method": "POST"},
+    )
+    assert response.headers.get("access-control-allow-origin") == api.DEFAULT_FRONTEND_ORIGIN
+
+
+def test_cors_preflight_rejects_an_unrecognized_origin(client):
+    response = client.options(
+        "/chat",
+        headers={"Origin": "https://some-other-site.example", "Access-Control-Request-Method": "POST"},
+    )
+    assert "access-control-allow-origin" not in response.headers

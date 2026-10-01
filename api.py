@@ -31,6 +31,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel, Field
@@ -38,6 +39,7 @@ from pydantic import BaseModel, Field
 from chatbot import MAX_INPUT_CHARS
 from config import load_settings
 from cost import estimate_cost
+from guardrails.faithfulness_check import apply_faithfulness_tiering, score_faithfulness
 from observability import set_session_id, setup_logging, setup_tracing
 from rate_limit import RateLimiter
 from retrieval.backends import create_qdrant_client
@@ -47,6 +49,10 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_RATE_LIMIT_PER_MINUTE = 20
 DEFAULT_DAILY_SPEND_CAP_USD = 5.0
+# The Next.js dev server's default port, so local frontend development works
+# against a local `uvicorn api:app --reload` with no env var required. A real
+# deployment must override this to its actual Netlify origin — see .env.example.
+DEFAULT_FRONTEND_ORIGIN = "http://localhost:3000"
 
 _rate_limiter = RateLimiter(
     limit=int(os.environ.get("RATE_LIMIT_PER_MINUTE", DEFAULT_RATE_LIMIT_PER_MINUTE)),
@@ -77,6 +83,20 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="whoiscem headless API", lifespan=lifespan)
+
+# CORS is defense-in-depth here, not the primary gate: the real protection
+# against an unauthenticated caller is `_require_api_key` below, and the
+# intended frontend never calls this API from a browser at all — it calls
+# through its own same-origin server-side proxy, which isn't subject to CORS
+# in the first place (CORS only governs browser-originated requests). This
+# still stops a browser from attempting a direct cross-origin call and
+# getting a confusing error instead of a clean preflight rejection.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[os.environ.get("FRONTEND_ORIGIN", DEFAULT_FRONTEND_ORIGIN)],
+    allow_methods=["POST"],
+    allow_headers=["Content-Type", "X-Api-Key"],
+)
 
 
 class ChatTurn(BaseModel):
@@ -109,11 +129,23 @@ def _require_api_key(x_api_key: str | None = Header(default=None)) -> None:
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
-def _client_key(request: Request, x_api_key: str | None) -> str:
-    """Rate limit by API key when one is configured, so a client keeps its
-    own bucket even if its IP changes; by client IP otherwise."""
-    if x_api_key:
-        return f"key:{x_api_key}"
+def _client_key(request: Request) -> str:
+    """Rate limit by the real visitor IP, always — never by the API key.
+
+    This deployment has exactly one shared API key (the frontend's own
+    server-side proxy holds it; see the plan's auth section), so keying by
+    the key would merge every visitor into a single bucket, the opposite of
+    what a per-visitor rate limit is for. `X-Forwarded-For` is read first
+    because this app sits behind at least one proxy in every real deployment
+    (Render's own front door, and — once the frontend is live — the Next.js
+    proxy relaying each visitor's real IP on their behalf); `request.client.host`
+    would otherwise report only the nearest proxy's address for every caller.
+    """
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        ip = forwarded.split(",")[0].strip()
+        if ip:
+            return f"ip:{ip}"
     return f"ip:{request.client.host if request.client else 'unknown'}"
 
 
@@ -172,10 +204,9 @@ def healthz() -> JSONResponse:
 def chat(
     body: ChatRequest,
     request: Request,
-    x_api_key: str | None = Header(default=None),
     _auth: None = Depends(_require_api_key),
 ) -> ChatResponse:
-    key = _client_key(request, x_api_key)
+    key = _client_key(request)
     if not _rate_limiter.allow(key):
         retry_after = _rate_limiter.retry_after(key)
         raise HTTPException(
@@ -206,6 +237,17 @@ def chat(
 
     result_state = request.app.state.graph.invoke(_initial_state(messages))
 
+    # Classifier mode's resume-route retry (Phase 3.3) already scored this
+    # exact answer in-graph; reuse it instead of judging twice. Every other
+    # route/mode leaves this unset, so it's computed here for the first time —
+    # the one place other than chatbot.py's Streamlit tail that a /chat caller
+    # actually gets a tiered answer rather than a raw, unguarded one.
+    raw_answer = result_state["messages"][-1].content
+    score = result_state.get("faithfulness_score")
+    if score is None:
+        score = score_faithfulness(raw_answer, result_state.get("context_used", ""))
+    answer = apply_faithfulness_tiering(raw_answer, score)
+
     token_usage = result_state.get("token_usage") or {}
     judge_usage = token_usage.get("check_faithfulness", {"input": 0, "output": 0})
     graph_input = sum(u["input"] for k, u in token_usage.items() if k != "check_faithfulness")
@@ -217,8 +259,8 @@ def chat(
     spend_tracker.add(cost_usd)
 
     return ChatResponse(
-        response=result_state["messages"][-1].content,
+        response=answer,
         route=result_state.get("route", ""),
-        faithfulness_score=result_state.get("faithfulness_score"),
+        faithfulness_score=score,
         cost_usd=round(cost_usd, 6),
     )
