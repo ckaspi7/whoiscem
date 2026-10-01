@@ -1,0 +1,11 @@
+# Builds the standalone frontend (web/) from this same repo/git history.
+# BACKEND_API_URL and BACKEND_API_KEY are real secrets and are configured in
+# the Netlify UI's environment variables, never committed here - see
+# web/.env.example for what they need to be.
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
