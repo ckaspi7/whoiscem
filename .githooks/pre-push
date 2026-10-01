@@ -1,0 +1,61 @@
+#!/bin/sh
+# Blocks a real incident from happening again: a new branch was created
+# without explicitly pinning its base, so a stale checkout in this shared
+# working directory (another branch left checked out from earlier testing)
+# became its silent parent. The branch's first push then carried a whole
+# other feature's commit along with it, unreviewed, into the PR that merged.
+#
+# For any brand-new branch (no existing remote ref), this checks every
+# commit it is about to introduce beyond origin/main against every OTHER
+# remote branch. A commit that already belongs to a different branch is
+# exactly the signature of that incident — not a branch merely being behind
+# main, which is normal and not flagged. Blocks the push if found.
+#
+# Installed via: git config core.hooksPath .githooks
+
+zero="0000000000000000000000000000000000000000"
+blocked=0
+
+git fetch origin main --quiet 2>/dev/null
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+    [ "$local_sha" = "$zero" ] && continue # a delete, nothing to check
+
+    if [ "$remote_sha" = "$zero" ]; then
+        branch_name=${local_ref#refs/heads/}
+        commits=$(git log --format=%H "origin/main..$local_sha" 2>/dev/null)
+
+        if [ -z "$commits" ]; then
+            continue
+        fi
+
+        echo ""
+        echo "=== pre-push: '$branch_name' introduces these commits beyond origin/main ==="
+        git log --oneline "origin/main..$local_sha" 2>/dev/null
+        echo "==="
+
+        for commit in $commits; do
+            for remote_branch in $(git branch -r --format='%(refname:short)' | grep -v '^origin/HEAD$' | grep -v "^origin/$branch_name$" | grep -v '^origin/main$'); do
+                if git merge-base --is-ancestor "$commit" "$remote_branch" 2>/dev/null; then
+                    short=$(git rev-parse --short "$commit")
+                    subject=$(git log -1 --format=%s "$commit")
+                    echo ""
+                    echo "BLOCKED: commit $short (\"$subject\") on '$branch_name' already belongs to '$remote_branch'."
+                    echo "This is the exact failure mode from the feat/design-revamp incident: a branch"
+                    echo "silently inherited another branch's commit because of a stale checkout instead"
+                    echo "of an explicitly pinned base."
+                    echo ""
+                    echo "Fix: confirm you meant to branch from main, then recreate it with the base pinned:"
+                    echo "  git fetch origin"
+                    echo "  git checkout -b $branch_name origin/main"
+                    echo ""
+                    echo "If this was deliberate (intentionally stacking on another branch), use:"
+                    echo "  git push --no-verify"
+                    blocked=1
+                fi
+            done
+        done
+    fi
+done
+
+exit $blocked

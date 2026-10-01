@@ -37,6 +37,37 @@ python scripts/setup_user_data_db.py
 python scripts/refresh_cache.py
 ```
 
+One-time setup after cloning: `git config core.hooksPath .githooks` — enables the
+branch-safety hook below. `pre-commit install` separately enables the existing
+lint/format/PII hooks (`.pre-commit-config.yaml`).
+
+## Git workflow
+
+Branches: `feat/`, `fix/`, `chore/`, `docs/` prefixes, one unit of work per branch,
+merged via PR rather than committed straight to `main`.
+
+**Always create a branch with an explicit base, never bare `git checkout -b <name>`:**
+```bash
+git fetch origin
+git checkout -b feat/whatever origin/main
+git log origin/main..HEAD --oneline   # must print nothing before any work starts
+```
+This is a real, incident-driven rule, not caution for its own sake: a branch was
+once created with a bare `git checkout -b`, silently inheriting a *different*
+feature's commit as its base because another branch happened to be checked out
+in this same working directory at the time (from earlier testing). That commit
+rode along, unreviewed, into the PR that merged it. `git log origin/main..HEAD`
+on a freshly created branch must always be empty — if it isn't, stop and
+recreate the branch from `origin/main` explicitly before doing anything else.
+
+**`.githooks/pre-push`** is the backstop for the same failure mode: for any new
+branch, it checks every commit the push would introduce against every *other*
+remote branch, and blocks the push if one already belongs to a different
+branch — the exact signature of the incident above, not a false positive on a
+branch that's merely behind `main`. Deliberate stacking of one branch on
+another is the one legitimate case this would block; use `git push --no-verify`
+for that, consciously, not as a routine workaround.
+
 ## Architecture
 
 ### Request flow (LangGraph)

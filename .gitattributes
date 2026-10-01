@@ -1,0 +1,5 @@
+# Git hooks must keep LF line endings on every platform, including
+# Windows with core.autocrlf enabled — a shebang line with a trailing \r
+# is not recognized, which would silently stop the hook from running at
+# all on a fresh checkout. Found the hard way while adding .githooks/pre-push.
+.githooks/* text eol=lf
