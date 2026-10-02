@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import streamlit
+
 import chatbot
 
 
@@ -30,9 +32,10 @@ class _FakeSessionState(dict):
 def _run(query_params: dict) -> tuple[str, dict, _FakeSessionState]:
     """Call _get_or_create_session_id with query_params/session_state faked out."""
     session_state = _FakeSessionState()
-    with patch("chatbot.st") as st_mock:
-        st_mock.query_params = query_params
-        st_mock.session_state = session_state
+    with (
+        patch.object(streamlit, "query_params", query_params),
+        patch.object(streamlit, "session_state", session_state),
+    ):
         sid = chatbot._get_or_create_session_id()
     return sid, query_params, session_state
 
@@ -128,9 +131,10 @@ def test_a_forged_id_with_a_stolen_signature_is_rejected():
 def test_session_state_is_only_set_once_per_session():
     session_state = _FakeSessionState()
     query_params = {}
-    with patch("chatbot.st") as st_mock:
-        st_mock.query_params = query_params
-        st_mock.session_state = session_state
+    with (
+        patch.object(streamlit, "query_params", query_params),
+        patch.object(streamlit, "session_state", session_state),
+    ):
         first = chatbot._get_or_create_session_id()
         # A second call in the same "session" (session_state persists,
         # query_params now carries the signed link from the first call).

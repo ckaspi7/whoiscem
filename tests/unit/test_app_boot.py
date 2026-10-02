@@ -36,6 +36,8 @@ def test_streamlit_secrets_reach_settings_only_a_secrets_ui_can_set():
     SESSION_SECRET and CHAT_MODEL=gpt-6-luna (ADR-0004's recommended
     override) were unreachable on that specific host before this test.
     """
+    import streamlit
+
     import chatbot
 
     fake_secrets = {
@@ -45,7 +47,7 @@ def test_streamlit_secrets_reach_settings_only_a_secrets_ui_can_set():
     }
     saved = {key: os.environ.get(key) for key in fake_secrets}
     try:
-        with patch.object(chatbot.st, "secrets", fake_secrets):
+        with patch.object(streamlit, "secrets", fake_secrets):
             chatbot._apply_streamlit_secrets()
         for key, val in fake_secrets.items():
             assert os.environ[key] == val

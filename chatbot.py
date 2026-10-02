@@ -10,7 +10,6 @@ import time
 import uuid
 from typing import Any
 
-import streamlit as st
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
@@ -68,7 +67,14 @@ def _apply_streamlit_secrets() -> None:
     Called from inside main(), after set_page_config: reading st.secrets counts
     as a Streamlit command, and set_page_config must be the first one. Missing
     secrets are normal outside Streamlit Cloud, so absence is not an error.
+
+    Imports streamlit locally rather than at module level: api.py imports
+    create_assistant from this module, and api.py's own process has no use
+    for Streamlit (or its dependency weight — it was a real contributor to
+    api.py's production OOM on a memory-constrained host) at all.
     """
+    import streamlit as st
+
     try:
         secrets = dict(st.secrets)
     except Exception as exc:  # no secrets.toml — the local and CI case
@@ -109,7 +115,9 @@ def _fade_in_html(text: str, ms_per_word: int = 18) -> str:
     return "<br>".join(rendered_lines)
 
 
-@st.cache_resource
+_session_memory: SessionMemory | None = None
+
+
 def _get_session_memory() -> SessionMemory:
     """One shared SessionMemory (and its one Redis-or-fallback connection)
     for the whole process, not one per script run.
@@ -122,8 +130,16 @@ def _get_session_memory() -> SessionMemory:
     least two runs (the turn itself, then the st.rerun() it ends with), so
     that cost was being paid multiple times per turn, indefinitely, instead
     of once. Caching bounds it to once per process.
+
+    A plain module-global singleton (same pattern as resume_tool.py's
+    retrieval singletons) rather than @st.cache_resource: that decorator
+    needs streamlit importable at module load time, which defeats pushing
+    the import down to only the functions that actually use it.
     """
-    return SessionMemory()
+    global _session_memory
+    if _session_memory is None:
+        _session_memory = SessionMemory()
+    return _session_memory
 
 
 # ---------------------------------------------------------------------------
@@ -669,6 +685,8 @@ def _accumulate_real_cost(*priced_usages: tuple[str, dict[str, int]]) -> None:
     configured, and the judge (ADR-0008) now runs a local classifier with
     zero usage — each needs its own rate (or none), not one applied to all.
     """
+    import streamlit as st
+
     if "total_tokens" not in st.session_state:
         st.session_state.total_tokens = 0
         st.session_state.total_cost = 0.0
@@ -718,6 +736,8 @@ def _verify_session_id(signed: str) -> str | None:
 
 
 def _get_or_create_session_id() -> str:
+    import streamlit as st
+
     raw = st.query_params.get("sid")
     sid = _verify_session_id(raw) if raw else None
     if sid is None:
@@ -736,6 +756,8 @@ def _get_or_create_session_id() -> str:
 # UI
 # ---------------------------------------------------------------------------
 def main() -> None:
+    import streamlit as st
+
     st.set_page_config(
         page_title="WhoIsCem",
         page_icon="😎",
