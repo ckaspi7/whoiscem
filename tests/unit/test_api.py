@@ -204,8 +204,12 @@ def test_different_visitor_ips_have_independent_rate_limit_buckets(client, monke
     monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "1")
     api._rate_limiter = RateLimiter(limit=1, window_seconds=60)
 
-    first = client.post("/chat", json={"message": "Where does Cem work?"}, headers={"X-Forwarded-For": "1.1.1.1"})
-    second = client.post("/chat", json={"message": "Where does Cem work?"}, headers={"X-Forwarded-For": "2.2.2.2"})
+    first = client.post(
+        "/chat", json={"message": "Where does Cem work?"}, headers={"X-Forwarded-For": "1.1.1.1"}
+    )
+    second = client.post(
+        "/chat", json={"message": "Where does Cem work?"}, headers={"X-Forwarded-For": "2.2.2.2"}
+    )
 
     assert first.status_code == 200
     assert second.status_code == 200
@@ -216,8 +220,12 @@ def test_the_same_ip_shares_a_bucket_regardless_of_api_key(client, monkeypatch):
     monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "1")
     api._rate_limiter = RateLimiter(limit=1, window_seconds=60)
 
-    first = client.post("/chat", json={"message": "Where does Cem work?"}, headers={"X-Forwarded-For": "9.9.9.9"})
-    second = client.post("/chat", json={"message": "Where does Cem work?"}, headers={"X-Forwarded-For": "9.9.9.9"})
+    first = client.post(
+        "/chat", json={"message": "Where does Cem work?"}, headers={"X-Forwarded-For": "9.9.9.9"}
+    )
+    second = client.post(
+        "/chat", json={"message": "Where does Cem work?"}, headers={"X-Forwarded-For": "9.9.9.9"}
+    )
 
     assert first.status_code == 200
     assert second.status_code == 429
@@ -276,7 +284,10 @@ def test_spend_accumulates_across_requests_within_the_cap(client, monkeypatch):
 
 def test_a_low_faithfulness_score_replaces_the_answer_with_a_refusal():
     graph = _mock_graph(faithfulness_score=None, context_used="unrelated context")
-    with patch("chatbot.create_assistant", return_value=graph), patch("api.score_faithfulness", return_value=1):
+    with (
+        patch("chatbot.create_assistant", return_value=graph),
+        patch("api.score_faithfulness", return_value=1),
+    ):
         with TestClient(api.app) as client:
             response = client.post("/chat", json={"message": "Where does Cem work?"})
 
@@ -288,7 +299,10 @@ def test_a_low_faithfulness_score_replaces_the_answer_with_a_refusal():
 
 def test_a_mid_faithfulness_score_prepends_a_warning():
     graph = _mock_graph(faithfulness_score=None, context_used="unrelated context")
-    with patch("chatbot.create_assistant", return_value=graph), patch("api.score_faithfulness", return_value=3):
+    with (
+        patch("chatbot.create_assistant", return_value=graph),
+        patch("api.score_faithfulness", return_value=3),
+    ):
         with TestClient(api.app) as client:
             response = client.post("/chat", json={"message": "Where does Cem work?"})
 
