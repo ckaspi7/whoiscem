@@ -176,22 +176,35 @@ Logging (Phase 4.4): `observability.setup_logging()` attaches a structured JSON 
 
 `api.py` — a second, independent surface onto the same graph (`uvicorn
 api:app`), built for headless access (load testing, Phase 3.5's trajectory
-eval) rather than as what the deployed Streamlit app calls. `lifespan()`
-builds the graph once at startup via `chatbot.create_assistant()`, not per
-request. `POST /chat` applies, in order: `_require_api_key` (a
-`Depends`, checked against `API_KEY` — unset logs a warning and allows the
-request through rather than failing closed), `RateLimiter.allow()`
-(`rate_limit.py`, in-process sliding window, keyed by API key or client IP),
-then `SpendTracker.today_total()` against `DAILY_SPEND_CAP_USD` (returns 402
-once reached) before invoking the graph at all. Real per-node
-`token_usage` from the resulting state — the same mechanism `chatbot.py`'s
-sidebar uses — prices the call via `cost.estimate_cost` and records it via
-`SpendTracker.add()`, which is Redis-backed like `SessionMemory` (unlike
-`RateLimiter`, which has no Redis-backed mode — see LIMITATIONS.md for why
-that asymmetry is deliberate). `GET /healthz` checks Qdrant reachability and
-`OPENAI_API_KEY` presence for real (not just "the process is up"); Redis is
-reported but never fails the check, matching Redis's optional status
-everywhere else in this project.
+eval) and, since the standalone-frontend work, a real public backend that
+only ever expects to be called through its frontend's own same-origin
+server-side proxy rather than directly by a browser — still not what the
+deployed Streamlit app calls. `lifespan()` builds the graph once at startup
+via `chatbot.create_assistant()`, not per request. A `CORSMiddleware` scoped
+to `FRONTEND_ORIGIN` wraps the whole app, but it is defense-in-depth, not the
+real gate: the intended caller is server-to-server (the proxy), which CORS
+does not govern at all, so this only stops a stray direct browser call.
+`POST /chat` applies, in order: `_require_api_key` (a `Depends`, checked
+against `API_KEY` — unset logs a warning and allows the request through
+rather than failing closed), `RateLimiter.allow()` (`rate_limit.py`,
+in-process sliding window, keyed by the real visitor IP — `X-Forwarded-For`
+first, then the connecting socket — and never by the API key, since this
+deployment has exactly one shared key and keying by it would merge every
+visitor into a single bucket), then `SpendTracker.today_total()` against
+`DAILY_SPEND_CAP_USD` (returns 402 once reached) before invoking the graph at
+all. The graph's raw answer is then scored and tiered via
+`guardrails.faithfulness_check` — reusing `state["faithfulness_score"]` when
+classifier mode's resume-route retry already computed one for this exact
+answer, scoring fresh otherwise — so a `/chat` caller gets the same
+unchanged/warned/refused guarantee a Streamlit visitor already gets, not a
+raw, unguarded answer. Real per-node `token_usage` from the resulting
+state — the same mechanism `chatbot.py`'s sidebar uses — prices the call via
+`cost.estimate_cost` and records it via `SpendTracker.add()`, which is
+Redis-backed like `SessionMemory` (unlike `RateLimiter`, which has no
+Redis-backed mode — see LIMITATIONS.md for why that asymmetry is deliberate).
+`GET /healthz` checks Qdrant reachability and `OPENAI_API_KEY` presence for
+real (not just "the process is up"); Redis is reported but never fails the
+check, matching Redis's optional status everywhere else in this project.
 
 **The deployed Streamlit app does not go through this file.** `chatbot.py`
 still calls `create_assistant()`/`graph.invoke()` directly and has its own,
@@ -212,7 +225,7 @@ Session link signing: `SESSION_SECRET` — unset means a per-process-start secre
 Resume source: `RESUME_PATH` (defaults to `data/resume.md`)  
 Agent architecture: `AGENT_MODE` = `classifier` (default, measured best) | `tool_calling` (real agent; see README)  
 Chat model: `CHAT_MODEL` = `gpt-4o-mini` (default) | `gpt-6-luna` (measured better under `classifier` mode only, broken under `tool_calling` — see README/LIMITATIONS)  
-Headless API only, read by `api.py`, not by `chatbot.py`/Streamlit: `API_KEY` (unset = no auth, logged loudly), `RATE_LIMIT_PER_MINUTE` (default 20), `DAILY_SPEND_CAP_USD` (default 5.00)  
+Headless API only, read by `api.py`, not by `chatbot.py`/Streamlit: `API_KEY` (unset = no auth, logged loudly; meant to be held only by the frontend's own server-side proxy, never shipped to a browser), `FRONTEND_ORIGIN` (CORS origin, defaults to the Next.js dev server at `http://localhost:3000`), `RATE_LIMIT_PER_MINUTE` (default 20, always per visitor IP — never per API key, since one shared key fronts every visitor), `DAILY_SPEND_CAP_USD` (default 5.00)  
 Spotify cache refresh only: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`
 
 See `.env.example` for the full template. On a host with no `.env` file
