@@ -1,0 +1,14 @@
+# Builds the headless API's image for Google Cloud Run deployment.
+#
+# Needed because `gcloud run deploy --source .` and `gcloud builds submit
+# --tag` both only auto-detect a file literally named `Dockerfile` — this
+# repo has two (the Streamlit app's `Dockerfile` and the API's
+# `Dockerfile.api`), so the build step has to name the right one explicitly.
+#
+# Usage: gcloud builds submit --config=cloudbuild.yaml \
+#          --substitutions=_IMAGE="REGION-docker.pkg.dev/PROJECT_ID/whoiscem/whoiscem-api:latest"
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["build", "-f", "Dockerfile.api", "-t", "${_IMAGE}", "."]
+images:
+  - "${_IMAGE}"
