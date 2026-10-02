@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/*
+ * One theme, locked: a warm dark base with a single ember accent (Section
+ * 4.11 / 4.2 of the taste-skill - page theme lock, one accent color used
+ * identically everywhere). No light mode toggle - the brief calls for a
+ * dark base specifically, so this overrides prefers-color-scheme rather
+ * than following it.
+ */
+@theme {
+  --color-ink: #0f0d0c;
+  --color-surface: #18130f;
+  --color-surface-raised: #221b16;
+  --color-paper: #f3ece2;
+  --color-ember: #e2652e;
+  --color-ember-bright: #ff9558;
+  --color-ember-dim: #5c3420;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-ink);
+}
+
+::selection {
+  background-color: var(--color-ember-dim);
+  color: var(--color-paper);
+}
+
+* {
+  scrollbar-color: var(--color-surface-raised) transparent;
+  scrollbar-width: thin;
+}
+
+/*
+ * Radix Collapsible exposes the real measured content height as a CSS
+ * variable, so the transparency caption's open/close animates to a real
+ * pixel value instead of the jump-cut "auto" produces.
+ */
+@keyframes collapsible-down {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+}
+
+@keyframes collapsible-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+.animate-collapsible-down {
+  animation: collapsible-down 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-collapsible-up {
+  animation: collapsible-up 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-collapsible-down,
+  .animate-collapsible-up {
+    animation: none;
+  }
+}

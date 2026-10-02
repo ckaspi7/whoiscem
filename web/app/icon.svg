@@ -1,0 +1,14 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" rx="16" fill="#0f0d0c" />
+  <text
+    x="50%"
+    y="54%"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    font-family="Georgia, 'Source Serif 4', serif"
+    font-style="italic"
+    font-weight="600"
+    font-size="38"
+    fill="#e2652e"
+  >C</text>
+</svg>
