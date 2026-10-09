@@ -20,8 +20,18 @@ personal/spotify/linkedin all return one fixed context blob regardless of the
 question (see tools/personal_tool.py's get_personal_info_result() called with
 no info_type, tools/spotify_tool.py, tools/linkedin_tool.py) - fetched once
 per route and reused, not re-fetched per question.
+
+Incremental by default: pairs already in the output file are kept as-is and
+only missing questions are added. The unfaithful variants come from a
+temperature-0.9 model call, so a full rebuild would replace every validated pair
+with different ones; pass --rebuild when the golden set or the underlying data
+changed. The first version of this file contained no resume-route pairs at all
+(retrieval was unreachable from the machine that built it), so every claim
+about the guardrail's accuracy covered only the short contexts of the other
+three routes.
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -52,6 +62,13 @@ OUTPUT_PATH = Path(__file__).parent / "faithfulness_test_set.json"
 # generator too, separately; excluded here so this test set isn't built on a
 # false premise in the meantime.
 _INVALID_GROUND_TRUTH_IDS = {"p004", "p006", "p007", "p008"}
+# Found the same way once resume-route pairs existed: a003's ground_truth
+# describes the behaviour wanted ("It should correct the premise") rather than
+# stating an answer, and m001/m002 are multi-source answers (they need Spotify
+# and LinkedIn context) paired here with the resume context alone. All three
+# scored as unfaithful under every judging strategy, correctly: none is entailed
+# by the context it was paired with.
+_INVALID_GROUND_TRUTH_IDS |= {"a003", "m001", "m002"}
 _PLACEHOLDER_PHRASES = ("as recorded in", "as listed there", "drawn from his")
 
 _CORRUPT_PROMPT = """You are creating test cases for a fact-checking system that catches AI \
@@ -92,6 +109,10 @@ def _route_context(route: str, question: str, cache: dict[str, str]) -> str | No
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--rebuild", action="store_true", help="regenerate every pair, not just missing ones")
+    args = parser.parse_args()
+
     golden = json.loads(GOLDEN_SET_PATH.read_text(encoding="utf-8"))
     candidates = [
         q
@@ -106,9 +127,15 @@ def main() -> None:
 
     corrupter = ChatOpenAI(model="gpt-4o-mini", temperature=0.9)
     route_context_cache: dict[str, str] = {}
-    pairs = []
+    keep_existing = OUTPUT_PATH.exists() and not args.rebuild
+    pairs = json.loads(OUTPUT_PATH.read_text(encoding="utf-8")) if keep_existing else []
+    # Pairs from a source that has since been ruled out are dropped, not regenerated.
+    pairs = [p for p in pairs if p["source_id"] not in _INVALID_GROUND_TRUTH_IDS]
+    done = {p["source_id"] for p in pairs}
 
     for q in candidates:
+        if q["id"] in done:
+            continue
         route = q["expected_route"]
         context = _route_context(route, q["question"], route_context_cache)
         if not context:
@@ -145,6 +172,10 @@ def main() -> None:
     OUTPUT_PATH.write_text(json.dumps(pairs, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     half = len(pairs) // 2
     print(f"\nWrote {len(pairs)} pairs ({half} faithful / {half} unfaithful) to {OUTPUT_PATH}")
+    by_route = {}
+    for p in pairs:
+        by_route[p["route"]] = by_route.get(p["route"], 0) + 1
+    print("pairs by route:", dict(sorted(by_route.items())))
 
 
 if __name__ == "__main__":
