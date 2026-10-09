@@ -18,6 +18,10 @@
  * Uses the Microsoft Edge already on the machine (BROWSER_CHANNEL=chrome for
  * Chrome), so no browser download is needed.
  *
+ * Runs are deterministic (reduced motion, fixed clock) so that two runs differ
+ * only where the design does. The consequence is that these screenshots show
+ * the settled end state; motion itself is something to see in a browser.
+ *
  * The contrast audit is the point. Token tests can only check the colours a
  * theme declares; glass, gradients and translucent layers change what text
  * actually sits on. So the audit hides every piece of text, screenshots the
@@ -41,6 +45,8 @@ const SCENARIO = {
 };
 const AUDITED = new Set(["empty", "answer", "refusal", "degraded", "rate-limit", "spend-cap"]);
 const EXPECTED_FAILURE_STATES = new Set(["rate-limit", "spend-cap", "network"]);
+const FIXED_NOW = new Date("2026-06-15T19:45:00Z");
+const SETTLE_MS = 1000;
 
 const LINKEDIN = [
   "Cem's LinkedIn profile includes:",
@@ -360,8 +366,12 @@ async function main() {
       const entry = { overflow: [], console: [], audit: {}, fonts: null };
       const sheet = [];
       for (const state of STATES) {
-        const context = await browser.newContext({ viewport });
+        // Deterministic on purpose, so two runs differ only where the design does:
+        // reduced motion (no entrance animations, no pulsing dot, no word reveal)
+        // and a fixed clock (the spend-cap panel prints the time until UTC midnight).
+        const context = await browser.newContext({ viewport, reducedMotion: "reduce" });
         const page = await context.newPage();
+        await page.clock.setFixedTime(FIXED_NOW);
         page.on("console", (m) => {
           if (!["error", "warning"].includes(m.type())) return;
           // The browser logs every deliberately mocked 429, 402 and refused
@@ -373,7 +383,11 @@ async function main() {
         if (SCENARIO[state]) await mockChat(page, SCENARIO[state]);
         await page.goto(`${args.base}/?theme=${theme}`, { waitUntil: "networkidle" });
         await page.addStyleTag({ content: '[aria-label="Theme"],nextjs-portal{display:none!important}' });
+        // Motion animates entrances in JavaScript, which reduced-motion emulation
+        // does not stop, so give them time to land before anything is captured.
+        await page.waitForTimeout(SETTLE_MS);
         await drive(page, state);
+        await page.waitForTimeout(SETTLE_MS);
 
         const file = path.join(args.out, theme, `${viewportName}-${state}.png`);
         const png = await page.screenshot({ path: file, fullPage: true });
