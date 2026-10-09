@@ -1,0 +1,190 @@
+/*
+ * Obsidian: dark glass in the manner of the Briefings dashboard Cem liked. A
+ * near-black indigo ground with a violet glow at the top, a hero card in place
+ * of a plain masthead (with résumé-backed stat chips, each its own hue), every
+ * answer a hairline card with a violet bar, prompts as a grid of cards, and one
+ * family, Plus Jakarta Sans, for everything but the mono captions.
+ *
+ * The two gradients text can sit on (the page glow and the hero card's corner)
+ * are declared as ground stops at their brightest. The chips' coloured text is
+ * outside the token contract, so the rendered audit in the design-review
+ * harness is what vouches for it.
+ */
+:root[data-theme="obsidian"] {
+  color-scheme: dark;
+
+  --color-ink: #0b0b10;
+  --color-surface: #12121a;
+  --color-surface-raised: #1a1a26;
+  --color-paper: #f2f2f7;
+  --color-paper-dim: #c9c9d8;
+  --color-paper-faint: #9d9db4;
+  --color-line: #23233a;
+  --color-line-strong: #34344f;
+  --color-accent: #8b6ef5;
+  --color-accent-bright: #b9a8ff;
+  --color-accent-dim: #2b2257;
+  --color-on-accent: #0b0820;
+  --color-ground-1: #1f1b35;
+  --color-ground-2: #2a2446;
+
+  --ff-sans: var(--font-plus-jakarta);
+  --ff-prose: var(--font-plus-jakarta);
+  --ff-display: var(--font-plus-jakarta);
+
+  --radius-field: 1rem;
+  --radius-bubble: 1.125rem;
+  --radius-bubble-tail: 0.375rem;
+  --radius-card: 1.25rem;
+  --bubble-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+  --field-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+
+:root[data-theme="obsidian"] body {
+  background-image: radial-gradient(1000px 440px at 50% -8%, rgb(139 110 245 / 0.16), transparent 62%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+/*
+ * The masthead becomes a hero card. "Clear chat" is pinned to its corner rather
+ * than sitting beside the text, so the tagline and chips get the card's full
+ * width: beside the text it squeezed the tagline to five lines on a phone, and
+ * a hero that tall crowds out the conversation once one has started.
+ */
+:root[data-theme="obsidian"] .masthead-inner {
+  position: relative;
+  display: block;
+  padding: 1.5rem 1.6rem;
+  border: 1px solid var(--color-line);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(135deg, rgb(139 110 245 / 0.2), rgb(139 110 245 / 0.03) 55%, rgb(139 110 245 / 0)),
+    var(--color-surface);
+  box-shadow:
+    0 28px 60px -36px rgb(139 110 245 / 0.6),
+    inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
+:root[data-theme="obsidian"] .masthead-inner > .pill {
+  position: absolute;
+  top: 1.15rem;
+  right: 1.15rem;
+  margin: 0;
+}
+
+:root[data-theme="obsidian"] .masthead-title {
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+@media (min-width: 640px) {
+  :root[data-theme="obsidian"] .masthead-title {
+    font-size: 2.5rem;
+  }
+}
+
+:root[data-theme="obsidian"] .masthead-sub {
+  max-width: 34rem;
+  font-size: 0.98rem;
+  font-style: normal;
+  color: var(--color-paper-dim);
+}
+
+:root[data-theme="obsidian"] .masthead-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
+  padding: 0;
+  list-style: none;
+}
+
+:root[data-theme="obsidian"] .masthead-facts li {
+  --chip: var(--color-accent);
+  --chip-text: var(--color-accent-bright);
+  padding: 0.3rem 0.7rem;
+  border: 1px solid color-mix(in oklab, var(--chip) 38%, transparent);
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--chip) 13%, transparent);
+  color: var(--chip-text);
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+:root[data-theme="obsidian"] .masthead-facts li:nth-child(2) {
+  --chip: #4fa3f7;
+  --chip-text: #8cc4ff;
+}
+
+:root[data-theme="obsidian"] .masthead-facts li:nth-child(3) {
+  --chip: #22c4b8;
+  --chip-text: #5eddd2;
+}
+
+/* On a phone the chips are one scrollable row instead of three stacked ones. */
+@media (max-width: 639px) {
+  :root[data-theme="obsidian"] .masthead-facts {
+    flex-wrap: nowrap;
+    margin-right: -1.6rem;
+    padding-right: 1.6rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  :root[data-theme="obsidian"] .masthead-facts li {
+    flex: none;
+    white-space: nowrap;
+  }
+}
+
+/* Plus Jakarta Sans is loaded upright only; an italic would be a faked slant. */
+:root[data-theme="obsidian"] .thinking p {
+  font-style: normal;
+}
+
+/* Every answer is a card with a violet bar. */
+:root[data-theme="obsidian"] .answer {
+  padding: 1.15rem 1.35rem 1rem;
+  border: 1px solid var(--color-line);
+  border-left: 3px solid var(--color-accent);
+  border-radius: 1.25rem;
+  background: var(--color-surface);
+  box-shadow:
+    0 20px 44px -32px rgb(0 0 0 / 0.9),
+    inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+
+:root[data-theme="obsidian"] .bubble {
+  border: 1px solid var(--color-line-strong);
+}
+
+/* The empty state's prompts become a grid of cards. */
+:root[data-theme="obsidian"] .quick-prompts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+}
+
+:root[data-theme="obsidian"] .quick-prompts .pill {
+  padding: 0.95rem 1.1rem;
+  border-color: var(--color-line);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  font-size: 0.86rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+:root[data-theme="obsidian"] .composer {
+  background: color-mix(in oklab, var(--color-ink) 80%, transparent);
+  backdrop-filter: blur(18px);
+  border-top-color: var(--color-line);
+}
+
+:root[data-theme="obsidian"] .field:focus {
+  box-shadow: var(--field-shadow), 0 0 0 3px rgb(139 110 245 / 0.22);
+}
