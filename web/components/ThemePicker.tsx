@@ -44,7 +44,7 @@ export function ThemePicker() {
     <div
       role="group"
       aria-label="Theme"
-      className="fixed bottom-3 left-3 z-50 flex gap-1 rounded-full border border-line-strong bg-surface p-1 font-mono text-[11px] shadow-lg max-sm:bottom-28"
+      className="fixed bottom-28 left-3 z-50 flex max-w-[calc(100vw-1.5rem)] gap-1 overflow-x-auto rounded-full border border-line-strong bg-surface p-1 font-mono text-[11px] shadow-lg [scrollbar-width:none] sm:bottom-auto sm:left-auto sm:right-3 sm:top-2"
     >
       {THEMES.map((theme) => (
         <button
