@@ -296,9 +296,15 @@ async function auditContrast(page, scratch) {
   const failures = measured
     .filter((m) => m.ratio < m.need)
     .map((m) => ({ text: m.text, ratio: Number(m.ratio.toFixed(2)), need: m.need, background: m.background }));
+  // The runs closest to their threshold, by margin: where a theme is tightest.
+  const tightest = [...measured]
+    .sort((a, b) => a.ratio / a.need - b.ratio / b.need)
+    .slice(0, 3)
+    .map((m) => ({ text: m.text, ratio: Number(m.ratio.toFixed(2)), need: m.need }));
   return {
     checked: measured.length,
     lowest: Number(Math.min(...measured.map((m) => m.ratio)).toFixed(2)),
+    tightest,
     failures,
     unparsed,
   };
@@ -435,6 +441,12 @@ async function main() {
           `console:${entry.console.length || "none"}  lowest contrast:${Number.isFinite(lowest) ? lowest : "n/a"}  ` +
           `title font:${entry.fonts.title}  fonts:${entry.fonts.loaded.join("+")}`,
       );
+      const tightest = Object.values(entry.audit)
+        .flatMap((a) => a.tightest)
+        .sort((a, b) => a.ratio / a.need - b.ratio / b.need)[0];
+      if (tightest) {
+        console.log(`   tightest margin: "${tightest.text}" ${tightest.ratio}:1 (needs ${tightest.need})`);
+      }
       for (const [state, a] of failed) {
         for (const f of a.failures.slice(0, 6)) {
           console.log(`   LOW CONTRAST in ${state}: "${f.text}" ${f.ratio}:1 (needs ${f.need}) on rgb(${f.background})`);
