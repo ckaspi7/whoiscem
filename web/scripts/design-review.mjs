@@ -377,6 +377,8 @@ async function main() {
           // The browser logs every deliberately mocked 429, 402 and refused
           // connection; those are the states under test, not problems.
           if (EXPECTED_FAILURE_STATES.has(state) && /Failed to load resource/.test(m.text())) return;
+          // Motion's development-only note about the reduced-motion emulation above.
+          if (/You have Reduced Motion enabled/.test(m.text())) return;
           entry.console.push(`${state}: ${m.text()}`);
         });
         page.on("pageerror", (e) => entry.console.push(`${state}: ${e.message}`));

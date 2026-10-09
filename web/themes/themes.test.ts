@@ -126,6 +126,21 @@ describe.each(THEMES.map((theme) => [theme.id, theme.scheme] as const))("theme %
   it.each(PAIRS)("%s on %s reaches %s:1 (%s)", (foreground, background, minimum) => {
     expect(contrastRatio(tokens[foreground], tokens[background])).toBeGreaterThanOrEqual(minimum);
   });
+
+  // A theme whose page ground is a gradient or a mesh declares each stop as
+  // --color-ground-N (the lightest or darkest colour it can reach, for the
+  // direction text runs the other way). Text sits straight on the ground, so
+  // every text colour must hold up against every stop, not just against --ink.
+  const groundStops = Object.keys(tokens).filter((key) => /^ground-\d+$/.test(key));
+  it.skipIf(groundStops.length === 0).each(["paper", "paper-dim", "paper-faint"])(
+    "%s stays at AA over every stop of the page ground",
+    (text) => {
+      for (const stop of groundStops) {
+        const ratio = contrastRatio(tokens[text], tokens[stop]);
+        expect(ratio, `${text} on ${stop} (${tokens[stop]}) is ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
 });
 
 describe("themeInitScript", () => {

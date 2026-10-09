@@ -1,13 +1,14 @@
 /*
  * Porcelain: a warm ivory ground, a terracotta accent, a sage tint for the
- * visitor's side of the conversation, and soft glossy pills and fields. The
- * look Cem picked out of the first round, rebuilt so that every text colour
- * clears WCAG AA (the first build's quick-prompt text sat near 2.3:1).
+ * visitor's side of the conversation, a serif title, and soft glossy pills and
+ * fields. The look Cem picked out of the first round, rebuilt so that every
+ * text colour clears WCAG AA (the first build's quick-prompt text sat near
+ * 2.3:1) and so that its type is the type it specifies.
  *
- * The gloss is a highlight that lightens a surface, so it only belongs in a
- * light theme, where the text on it is dark. Text never sits on the gradient
- * alone: the solid --color-surface is its bottom layer, and the contrast test
- * checks text against that.
+ * Gloss is a highlight that lightens a surface, so it belongs in a light theme
+ * where the text on it is dark. Text never sits on a gradient alone: the solid
+ * token is always the bottom layer, and the page's one gradient (the soft light
+ * at the top) is declared as a ground stop, so the contrast test covers it.
  */
 :root[data-theme="porcelain"] {
   color-scheme: light;
@@ -24,6 +25,9 @@
   --color-accent-bright: #9a4527;
   --color-accent-dim: #e9cdbd;
   --color-on-accent: #fffaf4;
+  --color-ground-1: #fffaf2;
+
+  --ff-display: var(--font-source-serif);
 
   --radius-field: 1.5rem;
   --radius-bubble: 1.5rem;
@@ -34,4 +38,37 @@
     0 1px 2px rgb(80 55 30 / 0.12), 0 6px 14px -8px rgb(80 55 30 / 0.28);
   --bubble-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 1px 2px rgb(80 55 30 / 0.1);
   --field-shadow: inset 0 1px 2px rgb(80 55 30 / 0.08);
+}
+
+/* A soft light at the top of the ivory. Fixed, so it stays put as the page scrolls. */
+:root[data-theme="porcelain"] body {
+  background-image: radial-gradient(110% 55% at 50% -12%, var(--color-ground-1) 0%, rgb(255 250 242 / 0) 62%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+:root[data-theme="porcelain"] .masthead-title {
+  font-size: 2.1rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+@media (min-width: 640px) {
+  :root[data-theme="porcelain"] .masthead-title {
+    font-size: 2.4rem;
+  }
+}
+
+:root[data-theme="porcelain"] .composer {
+  background: color-mix(in oklab, var(--color-ink) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(1.25);
+  border-top-color: color-mix(in oklab, var(--color-line) 60%, white);
+}
+
+:root[data-theme="porcelain"] .bubble {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0) 62%), var(--color-surface-raised);
+}
+
+:root[data-theme="porcelain"] .btn-accent {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0) 55%), var(--color-accent);
 }
