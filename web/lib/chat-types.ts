@@ -24,6 +24,8 @@ export interface ChatMessage {
   route?: string;
   faithfulnessScore?: number | null;
   costUsd?: number;
+  /** True when a backing tool failed that turn, so the answer may be missing evidence. */
+  degraded?: boolean;
 }
 
 export interface WireChatTurn {
@@ -41,6 +43,8 @@ export interface WireChatResponse {
   route: string;
   faithfulness_score: number | null;
   cost_usd: number;
+  /** Absent from backends that predate it, which is why it is optional here. */
+  degraded?: boolean;
 }
 
 export interface WireValidationErrorItem {
@@ -62,6 +66,7 @@ export interface ChatSuccessResult {
   route: string;
   faithfulnessScore: number | null;
   costUsd: number;
+  degraded: boolean;
 }
 
 export interface ChatRateLimitedResult {

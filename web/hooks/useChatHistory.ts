@@ -55,6 +55,10 @@ export function useChatHistory() {
     setMessages((prev) => [...prev, message]);
   }, []);
 
+  const removeMessage = useCallback((id: string) => {
+    setMessages((prev) => prev.filter((message) => message.id !== id));
+  }, []);
+
   const clear = useCallback(() => {
     setMessages([]);
     try {
@@ -64,5 +68,5 @@ export function useChatHistory() {
     }
   }, []);
 
-  return { messages, addMessage, clear, hydrated };
+  return { messages, addMessage, removeMessage, clear, hydrated };
 }
