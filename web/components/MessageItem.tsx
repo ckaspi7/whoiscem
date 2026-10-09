@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 
 import type { ChatMessage } from "@/lib/chat-types";
 
-import { RevealText } from "./RevealText";
+import { AnswerBody } from "./AnswerBody";
 import { TransparencyCaption } from "./TransparencyCaption";
 
 const ENTRY_TRANSITION = { duration: 0.3, ease: [0.16, 1, 0.3, 1] as const };
@@ -39,10 +39,10 @@ export function MessageItem({ message, reveal }: { message: ChatMessage; reveal?
       transition={ENTRY_TRANSITION}
       className="max-w-[68ch] border-l-2 border-ember/40 pl-4 sm:pl-5"
     >
-      <p className="font-serif text-[17px] leading-[1.7] text-paper/95">
+      <div className="font-serif text-[17px] leading-[1.7] text-paper/95">
         <span className="sr-only">Cem&rsquo;s assistant said: </span>
-        {reveal ? <RevealText text={message.content} /> : message.content}
-      </p>
+        <AnswerBody text={message.content} reveal={reveal} />
+      </div>
       <TransparencyCaption
         route={message.route ?? ""}
         faithfulnessScore={message.faithfulnessScore}

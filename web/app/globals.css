@@ -91,3 +91,160 @@ body {
     animation: none;
   }
 }
+
+/*
+ * Markdown prose for assistant answers (components/AnswerBody.tsx). Headings
+ * are deliberately modest: this is a chat turn, not a document, so structure
+ * comes from weight and spacing rather than size.
+ */
+.answer-prose > :first-child {
+  margin-top: 0;
+}
+
+.answer-prose > :last-child {
+  margin-bottom: 0;
+}
+
+.answer-prose p {
+  margin: 0 0 0.9em;
+}
+
+.answer-prose ul,
+.answer-prose ol {
+  margin: 0.4em 0 0.9em;
+  padding-left: 1.4em;
+}
+
+.answer-prose ul {
+  list-style: disc;
+}
+
+.answer-prose ol {
+  list-style: decimal;
+}
+
+.answer-prose li + li {
+  margin-top: 0.3em;
+}
+
+.answer-prose li > ul,
+.answer-prose li > ol {
+  margin: 0.3em 0 0.4em;
+}
+
+.answer-prose li::marker {
+  color: var(--color-ember);
+}
+
+.answer-prose strong {
+  font-weight: 600;
+}
+
+.answer-prose em {
+  font-style: italic;
+}
+
+.answer-prose h1,
+.answer-prose h2,
+.answer-prose h3,
+.answer-prose h4,
+.answer-prose h5,
+.answer-prose h6 {
+  margin: 1.1em 0 0.35em;
+  font-family: var(--font-sans);
+  font-size: 0.98em;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.answer-prose a {
+  color: var(--color-ember-bright);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.answer-prose code {
+  padding: 0.1em 0.35em;
+  border-radius: 0.3em;
+  background: var(--color-surface-raised);
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+}
+
+.answer-prose pre {
+  overflow-x: auto;
+  margin: 0.4em 0 0.9em;
+  padding: 0.75em 1em;
+  border-radius: 0.75em;
+  background: var(--color-surface);
+}
+
+.answer-prose pre code {
+  padding: 0;
+  background: none;
+}
+
+.answer-prose blockquote {
+  margin: 0.4em 0 0.9em;
+  padding-left: 1em;
+  border-left: 2px solid var(--color-ember-dim);
+  font-style: italic;
+}
+
+.answer-prose hr {
+  margin: 1.2em 0;
+  border: 0;
+  border-top: 1px solid var(--color-surface-raised);
+}
+
+.answer-table {
+  margin: 0.4em 0 0.9em;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.answer-prose table {
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: 0.9em;
+}
+
+.answer-prose th,
+.answer-prose td {
+  padding: 0.4em 0.9em 0.4em 0;
+  border-bottom: 1px solid var(--color-surface-raised);
+  text-align: left;
+  vertical-align: top;
+}
+
+.answer-prose th {
+  font-weight: 600;
+}
+
+/*
+ * The word-by-word reveal (lib/reveal.ts wraps each word in .reveal-word with
+ * its index in --i). Pure CSS: opacity and transform only.
+ */
+@keyframes reveal-in {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.reveal-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: reveal-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--i) * var(--reveal-step, 0.03s));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-word {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
