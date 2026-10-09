@@ -36,7 +36,7 @@ export function ChatInput({ onSend, disabled }: { onSend: (text: string) => void
           maxLength={MAX_CHARS}
           disabled={disabled}
           rows={1}
-          placeholder="Ask about my work, resume, or projects."
+          placeholder="Ask about Cem’s work, resume, or projects."
           aria-label="Message"
           onChange={(event) => {
             setValue(event.target.value);
