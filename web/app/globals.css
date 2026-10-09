@@ -15,7 +15,18 @@
   --color-ember: #e2652e;
   --color-ember-bright: #ff9558;
   --color-ember-dim: #5c3420;
+}
 
+/*
+ * `inline` is load-bearing. next/font defines --font-geist-sans and friends on
+ * <body> (via the variable class in layout.tsx), but a plain @theme resolves
+ * var() at :root, where they do not exist. The declaration is then invalid at
+ * computed-value time, every font-sans/font-serif/font-mono utility falls back
+ * to the inherited system stack, and no webfont ever loads: the typography this
+ * design specifies was never rendered in any build until this was fixed.
+ * Inlining makes each utility carry the var() reference, resolved on the element.
+ */
+@theme inline {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
