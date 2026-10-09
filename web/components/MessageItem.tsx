@@ -45,9 +45,9 @@ export function MessageItem({ message, reveal, onRetry }: MessageItemProps) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={ENTRY_TRANSITION}
-      className="max-w-[68ch] border-l-2 border-accent/40 pl-4 sm:pl-5"
+      className="answer"
     >
-      <div className="font-serif text-[17px] leading-[1.7] text-paper/95">
+      <div className="font-prose text-[17px] leading-[1.7] text-paper/95">
         <span className="sr-only">Cem&rsquo;s assistant said: </span>
         <AnswerBody text={message.content} reveal={reveal} />
       </div>

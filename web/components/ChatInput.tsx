@@ -28,7 +28,7 @@ export function ChatInput({ onSend, disabled }: { onSend: (text: string) => void
   const nearLimit = value.length > MAX_CHARS * 0.9;
 
   return (
-    <div className="border-t border-line/80 bg-ink/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+    <div className="composer px-4 py-3 sm:px-6 sm:py-4">
       <div className="mx-auto flex max-w-[720px] items-end gap-2.5">
         <textarea
           ref={textareaRef}

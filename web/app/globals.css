@@ -38,18 +38,27 @@
 }
 
 /*
- * `inline` is load-bearing. next/font defines --font-geist-sans and friends on
- * <body> (via the variable class in layout.tsx), but a plain @theme resolves
- * var() at :root, where they do not exist. The declaration is then invalid at
- * computed-value time, every font-sans/font-serif/font-mono utility falls back
- * to the inherited system stack, and no webfont ever loads: the typography this
- * design specifies was never rendered in any build until this was fixed.
- * Inlining makes each utility carry the var() reference, resolved on the element.
+ * Type is four roles, each filled by a font family a theme chooses:
+ *
+ *   font-sans     interface: buttons, the visitor's bubble, tables, headings
+ *   font-prose    the assistant's answers, the tagline, the thinking line
+ *   font-display  the title
+ *   font-mono     captions and the counter
+ *
+ * `inline` is load-bearing. A plain @theme resolves var() at :root, and a
+ * declaration that cannot resolve there is invalid at computed-value time, so
+ * every font utility fell back to the system stack and no webfont ever loaded
+ * (the typography this design specifies rendered in no build until this was
+ * fixed). Inlining makes each utility carry the var() reference, resolved on
+ * the element. The flip side: inline tokens are NOT emitted as custom
+ * properties, so CSS outside a utility must use the --ff-* roles below, never
+ * var(--font-sans); globals.test.ts enforces that.
  */
 @theme inline {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-sans: var(--ff-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-prose: var(--ff-prose), ui-serif, Georgia, serif;
+  --font-display: var(--ff-display), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--ff-mono), ui-monospace, monospace;
 }
 
 /*
@@ -59,6 +68,13 @@
  */
 :root {
   color-scheme: dark;
+
+  /* The font families filling each role. next/font defines the families on <html>. */
+  --ff-sans: var(--font-geist-sans);
+  --ff-prose: var(--font-source-serif);
+  --ff-display: var(--font-geist-sans);
+  --ff-mono: var(--font-geist-mono);
+
   --radius-pill: 9999px;
   --radius-field: 1rem;
   --radius-bubble: 1rem;
@@ -103,6 +119,47 @@
     border: 1px solid color-mix(in oklab, var(--color-accent-dim) 60%, transparent);
     border-radius: var(--radius-card);
     background: color-mix(in oklab, var(--color-surface-raised) 60%, transparent);
+  }
+
+  /*
+   * Structure hooks. The defaults reproduce the single centred column; a theme
+   * restyles them (an answer as a card, the composer as glass) or reveals the
+   * profile pieces that every other theme hides.
+   */
+  .app-shell {
+    display: flex;
+    min-height: 100dvh;
+    flex-direction: column;
+  }
+
+  .app-chat {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 0%;
+    flex-direction: column;
+  }
+
+  .answer {
+    max-width: 68ch;
+    padding-left: 1rem;
+    border-left: 2px solid color-mix(in oklab, var(--color-accent) 40%, transparent);
+  }
+
+  @media (min-width: 640px) {
+    .answer {
+      padding-left: 1.25rem;
+    }
+  }
+
+  .composer {
+    border-top: 1px solid color-mix(in oklab, var(--color-line) 80%, transparent);
+    background: color-mix(in oklab, var(--color-ink) 95%, transparent);
+    backdrop-filter: blur(8px);
+  }
+
+  .profile-rail,
+  .masthead-facts {
+    display: none;
   }
 }
 
@@ -221,7 +278,7 @@ body {
 .answer-prose h5,
 .answer-prose h6 {
   margin: 1.1em 0 0.35em;
-  font-family: var(--font-sans);
+  font-family: var(--ff-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 0.98em;
   font-weight: 600;
   letter-spacing: -0.005em;
@@ -238,7 +295,7 @@ body {
   padding: 0.1em 0.35em;
   border-radius: 0.3em;
   background: var(--color-surface-raised);
-  font-family: var(--font-mono);
+  font-family: var(--ff-mono), ui-monospace, monospace;
   font-size: 0.86em;
 }
 
@@ -276,7 +333,7 @@ body {
 
 .answer-prose table {
   border-collapse: collapse;
-  font-family: var(--font-sans);
+  font-family: var(--ff-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 0.9em;
 }
 

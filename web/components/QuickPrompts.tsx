@@ -7,7 +7,7 @@ const PROMPTS = ["Where does Cem work?", "What has he been listening to?", "What
 /** Shown only in the empty state, to demonstrate the assistant's range without making a visitor think one up. */
 export function QuickPrompts({ onPick }: { onPick: (text: string) => void }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="quick-prompts flex flex-wrap gap-2">
       {PROMPTS.map((prompt, i) => (
         <motion.button
           key={prompt}

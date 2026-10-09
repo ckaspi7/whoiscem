@@ -15,7 +15,7 @@ export function ThinkingIndicator({ isFirstMessage }: { isFirstMessage: boolean 
 
   return (
     <div
-      className="flex max-w-[68ch] items-center gap-3 border-l-2 border-accent/40 pl-4 sm:pl-5"
+      className="answer thinking flex items-center gap-3"
       role="status"
       aria-live="polite"
     >
@@ -29,7 +29,7 @@ export function ThinkingIndicator({ isFirstMessage }: { isFirstMessage: boolean 
         )}
         <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" />
       </span>
-      <p className="font-serif text-[15px] italic leading-relaxed text-paper-faint">{text}</p>
+      <p className="font-prose text-[15px] italic leading-relaxed text-paper-faint">{text}</p>
     </div>
   );
 }
