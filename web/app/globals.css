@@ -1,20 +1,40 @@
 @import "tailwindcss";
+@import "../themes/porcelain.css";
 
 /*
- * One theme, locked: a warm dark base with a single ember accent (Section
- * 4.11 / 4.2 of the taste-skill - page theme lock, one accent color used
- * identically everywhere). No light mode toggle - the brief calls for a
- * dark base specifically, so this overrides prefers-color-scheme rather
- * than following it.
+ * Design tokens. This block is the default theme (ember: a warm dark base with
+ * one accent). Other themes reassign the same variables under
+ * :root[data-theme="..."] in themes/<name>.css, so a component names a role
+ * (text-paper-dim, border-line, bg-accent), never a colour. Every theme must
+ * define every token, and themes/themes.test.ts fails the build if any text
+ * pair drops below WCAG AA contrast.
+ *
+ *   ink             page background
+ *   surface         inset surfaces: fields, code blocks
+ *   surface-raised  raised surfaces: the visitor's bubble, chips, rules
+ *   paper           primary text
+ *   paper-dim       secondary text
+ *   paper-faint     tertiary text: captions and counters (still AA)
+ *   line            hairlines
+ *   line-strong     emphasised borders and hover states
+ *   accent          the one accent, for markers and fills
+ *   accent-bright   accent as small text (links, hover): must pass AA
+ *   accent-dim      quiet accent tint: selection, quote rules
+ *   on-accent       text or icons on a solid accent fill
  */
 @theme {
   --color-ink: #0f0d0c;
   --color-surface: #18130f;
   --color-surface-raised: #221b16;
   --color-paper: #f3ece2;
-  --color-ember: #e2652e;
-  --color-ember-bright: #ff9558;
-  --color-ember-dim: #5c3420;
+  --color-paper-dim: #d6d3d1;
+  --color-paper-faint: #a8a29e;
+  --color-line: #292524;
+  --color-line-strong: #44403c;
+  --color-accent: #e2652e;
+  --color-accent-bright: #ff9558;
+  --color-accent-dim: #5c3420;
+  --color-on-accent: #0f0d0c;
 }
 
 /*
@@ -32,8 +52,58 @@
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
+/*
+ * Shape and material. Defaults reproduce the ember look (flat, no shadows); a
+ * theme restyles these with :root[data-theme="..."], which outranks :root, so
+ * it can change how pills, fields and bubbles feel without editing a component.
+ */
 :root {
   color-scheme: dark;
+  --radius-pill: 9999px;
+  --radius-field: 1rem;
+  --radius-bubble: 1rem;
+  --radius-bubble-tail: 0.125rem;
+  --radius-card: 1rem;
+  --pill-bg: transparent;
+  --pill-shadow: none;
+  --bubble-shadow: none;
+  --field-shadow: none;
+}
+
+@layer components {
+  .pill {
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-pill);
+    background: var(--pill-bg);
+    box-shadow: var(--pill-shadow);
+  }
+
+  .field {
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-field);
+    background: var(--color-surface);
+    box-shadow: var(--field-shadow);
+  }
+
+  .bubble {
+    border-radius: var(--radius-bubble);
+    border-bottom-right-radius: var(--radius-bubble-tail);
+    background: var(--color-surface-raised);
+    box-shadow: var(--bubble-shadow);
+  }
+
+  .btn-accent {
+    border-radius: var(--radius-pill);
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    box-shadow: var(--pill-shadow);
+  }
+
+  .panel {
+    border: 1px solid color-mix(in oklab, var(--color-accent-dim) 60%, transparent);
+    border-radius: var(--radius-card);
+    background: color-mix(in oklab, var(--color-surface-raised) 60%, transparent);
+  }
 }
 
 body {
@@ -41,7 +111,7 @@ body {
 }
 
 ::selection {
-  background-color: var(--color-ember-dim);
+  background-color: var(--color-accent-dim);
   color: var(--color-paper);
 }
 
@@ -133,7 +203,7 @@ body {
 }
 
 .answer-prose li::marker {
-  color: var(--color-ember);
+  color: var(--color-accent);
 }
 
 .answer-prose strong {
@@ -158,7 +228,7 @@ body {
 }
 
 .answer-prose a {
-  color: var(--color-ember-bright);
+  color: var(--color-accent-bright);
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
@@ -188,7 +258,7 @@ body {
 .answer-prose blockquote {
   margin: 0.4em 0 0.9em;
   padding-left: 1em;
-  border-left: 2px solid var(--color-ember-dim);
+  border-left: 2px solid var(--color-accent-dim);
   font-style: italic;
 }
 

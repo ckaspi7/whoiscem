@@ -28,7 +28,7 @@ export function ChatInput({ onSend, disabled }: { onSend: (text: string) => void
   const nearLimit = value.length > MAX_CHARS * 0.9;
 
   return (
-    <div className="border-t border-stone-800/80 bg-ink/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+    <div className="border-t border-line/80 bg-ink/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
       <div className="mx-auto flex max-w-[720px] items-end gap-2.5">
         <textarea
           ref={textareaRef}
@@ -45,21 +45,21 @@ export function ChatInput({ onSend, disabled }: { onSend: (text: string) => void
             el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
           }}
           onKeyDown={handleKeyDown}
-          className="max-h-40 flex-1 resize-none rounded-2xl border border-stone-800 bg-surface px-4 py-2.5 font-sans text-[15px] text-paper placeholder:text-stone-400 focus:border-ember/60 focus:outline-none disabled:opacity-50"
+          className="field max-h-40 flex-1 resize-none px-4 py-2.5 font-sans text-[15px] text-paper placeholder:text-paper-faint focus:border-accent/60 focus:outline-none disabled:opacity-50"
         />
         <motion.button
           type="button"
           onClick={submit}
           disabled={disabled || !value.trim()}
           whileTap={{ scale: 0.93 }}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ember text-ink transition-opacity disabled:opacity-30"
+          className="btn-accent flex h-10 w-10 shrink-0 items-center justify-center transition-opacity disabled:opacity-30"
           aria-label="Send message"
         >
           <PaperPlaneRight size={17} weight="fill" aria-hidden />
         </motion.button>
       </div>
       <div className="mx-auto mt-1.5 flex max-w-[720px] justify-end">
-        <span className={`font-mono text-[10.5px] ${nearLimit ? "text-ember-bright" : "text-stone-400"}`}>
+        <span className={`font-mono text-[10.5px] ${nearLimit ? "text-accent-bright" : "text-paper-faint"}`}>
           {value.length} / {MAX_CHARS}
         </span>
       </div>

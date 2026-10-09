@@ -32,7 +32,7 @@ export function MessageItem({ message, reveal, onRetry }: MessageItemProps) {
         transition={ENTRY_TRANSITION}
         className="flex justify-end"
       >
-        <p className="max-w-[75%] rounded-2xl rounded-br-sm bg-surface-raised px-4 py-2.5 font-sans text-[15px] leading-relaxed text-paper">
+        <p className="bubble max-w-[75%] px-4 py-2.5 font-sans text-[15px] leading-relaxed text-paper">
           <span className="sr-only">You said: </span>
           {message.content}
         </p>
@@ -45,7 +45,7 @@ export function MessageItem({ message, reveal, onRetry }: MessageItemProps) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={ENTRY_TRANSITION}
-      className="max-w-[68ch] border-l-2 border-ember/40 pl-4 sm:pl-5"
+      className="max-w-[68ch] border-l-2 border-accent/40 pl-4 sm:pl-5"
     >
       <div className="font-serif text-[17px] leading-[1.7] text-paper/95">
         <span className="sr-only">Cem&rsquo;s assistant said: </span>
@@ -54,17 +54,17 @@ export function MessageItem({ message, reveal, onRetry }: MessageItemProps) {
       {message.degraded && (
         <p
           role="status"
-          className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 font-sans text-[13px] leading-snug text-stone-400"
+          className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 font-sans text-[13px] leading-snug text-paper-faint"
         >
           <span className="inline-flex items-center gap-1.5">
-            <WarningCircle size={15} weight="bold" className="shrink-0 text-ember-bright" aria-hidden />
+            <WarningCircle size={15} weight="bold" className="shrink-0 text-accent-bright" aria-hidden />
             Part of the knowledge base was unreachable, so this answer may be incomplete.
           </span>
           {onRetry && (
             <button
               type="button"
               onClick={onRetry}
-              className="inline-flex items-center gap-1.5 rounded-full border border-ember/50 px-3 py-1 font-medium text-ember-bright transition-colors hover:bg-ember/10 active:scale-[0.97]"
+              className="pill inline-flex items-center gap-1.5 border-accent/50 px-3 py-1 font-medium text-accent-bright transition-colors hover:bg-accent/10 active:scale-[0.97]"
             >
               <ArrowClockwise size={13} weight="bold" aria-hidden />
               Try again

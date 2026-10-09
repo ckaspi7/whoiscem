@@ -13,9 +13,9 @@ export function Masthead({ onClear, canClear }: { onClear: () => void; canClear:
       <div className="mx-auto flex w-full max-w-[720px] items-start justify-between gap-4">
         <div>
           <h1 className="font-sans text-2xl font-semibold tracking-tight text-paper sm:text-3xl">
-            Cem Kaspi<span className="text-ember">.</span>
+            Cem Kaspi<span className="text-accent">.</span>
           </h1>
-          <p className="mt-1.5 max-w-md font-serif text-[15px] italic leading-snug text-stone-400 sm:text-base">
+          <p className="mt-1.5 max-w-md font-serif text-[15px] italic leading-snug text-paper-faint sm:text-base">
             Software engineer. An assistant wired into Cem&rsquo;s real resume and work history, not a canned
             script.
           </p>
@@ -24,7 +24,7 @@ export function Masthead({ onClear, canClear }: { onClear: () => void; canClear:
           <button
             type="button"
             onClick={onClear}
-            className="mt-1 flex shrink-0 items-center gap-1.5 rounded-full border border-stone-800 px-3 py-1.5 font-sans text-[12.5px] text-stone-400 transition-colors hover:border-stone-600 hover:text-stone-300"
+            className="pill mt-1 flex shrink-0 items-center gap-1.5 border-line px-3 py-1.5 font-sans text-[12.5px] text-paper-faint transition-colors hover:border-line-strong hover:text-paper-dim"
           >
             <Trash size={13} aria-hidden />
             Clear chat

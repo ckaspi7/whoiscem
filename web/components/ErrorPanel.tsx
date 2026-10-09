@@ -36,16 +36,16 @@ function PanelShell({ children, onRetry }: { children: ReactNode; onRetry?: () =
   return (
     <div
       role="alert"
-      className="flex max-w-[68ch] items-start gap-3 rounded-2xl border border-ember-dim/60 bg-surface-raised/60 px-4 py-3.5 font-sans text-[14px] leading-relaxed text-stone-300"
+      className="panel flex max-w-[68ch] items-start gap-3 px-4 py-3.5 font-sans text-[14px] leading-relaxed text-paper-dim"
     >
-      <WarningCircle size={18} weight="bold" className="mt-0.5 shrink-0 text-ember-bright" aria-hidden />
+      <WarningCircle size={18} weight="bold" className="mt-0.5 shrink-0 text-accent-bright" aria-hidden />
       <div className="flex-1">
         {children}
         {onRetry && (
           <button
             type="button"
             onClick={onRetry}
-            className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-ember/50 px-3 py-1 font-sans text-[13px] font-medium text-ember-bright transition-colors hover:bg-ember/10 active:scale-[0.97]"
+            className="pill mt-2.5 inline-flex items-center gap-1.5 border-accent/50 px-3 py-1 font-sans text-[13px] font-medium text-accent-bright transition-colors hover:bg-accent/10 active:scale-[0.97]"
           >
             <ArrowClockwise size={13} weight="bold" aria-hidden />
             Try again
@@ -85,7 +85,7 @@ export function ErrorPanel({ error, onRetry }: { error: ChatErrorResult; onRetry
       return (
         <PanelShell>
           <p>Cem&rsquo;s daily budget for this assistant has been used up for now.</p>
-          <p className="mt-1 text-stone-400">
+          <p className="mt-1 text-paper-faint">
             It resets at {formatResetTime(error.resetAt)}.
           </p>
         </PanelShell>
@@ -95,7 +95,7 @@ export function ErrorPanel({ error, onRetry }: { error: ChatErrorResult; onRetry
       return (
         <PanelShell onRetry={onRetry}>
           <p>That message could not be sent.</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-stone-400">
+          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-paper-faint">
             {error.messages.map((message) => (
               <li key={message}>{message}</li>
             ))}

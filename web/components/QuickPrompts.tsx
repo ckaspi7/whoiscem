@@ -17,7 +17,7 @@ export function QuickPrompts({ onPick }: { onPick: (text: string) => void }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.15 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
           whileTap={{ scale: 0.96 }}
-          className="rounded-full border border-stone-700 px-3.5 py-1.5 font-sans text-[13px] text-stone-300 transition-colors hover:border-ember/60 hover:text-ember-bright"
+          className="pill px-3.5 py-1.5 font-sans text-[13px] text-paper-dim transition-colors hover:border-accent/60 hover:text-accent-bright"
         >
           {prompt}
         </motion.button>

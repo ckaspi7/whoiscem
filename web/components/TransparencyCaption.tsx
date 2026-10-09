@@ -29,7 +29,7 @@ export function TransparencyCaption({ route, faithfulnessScore, costUsd }: Trans
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen} className="mt-2.5">
       <Collapsible.Trigger
-        className="group inline-flex cursor-pointer items-center gap-1 rounded-sm font-mono text-[11px] tracking-wide text-stone-400 transition-colors hover:text-ember-bright focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ember-bright/60"
+        className="group inline-flex cursor-pointer items-center gap-1 rounded-sm font-mono text-[11px] tracking-wide text-paper-faint transition-colors hover:text-accent-bright focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-bright/60"
         aria-controls={contentId}
       >
         <CaretDown
@@ -44,15 +44,15 @@ export function TransparencyCaption({ route, faithfulnessScore, costUsd }: Trans
         id={contentId}
         className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down"
       >
-        <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-[11px] leading-relaxed text-stone-400">
+        <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-[11px] leading-relaxed text-paper-faint">
           <dt>Route</dt>
-          <dd className="text-stone-300">{route || "unknown"}</dd>
+          <dd className="text-paper-dim">{route || "unknown"}</dd>
           <dt>Faithfulness</dt>
-          <dd className="text-stone-300">{faithfulnessLabel(faithfulnessScore)}</dd>
+          <dd className="text-paper-dim">{faithfulnessLabel(faithfulnessScore)}</dd>
           {costUsd !== undefined && (
             <>
               <dt>Cost</dt>
-              <dd className="text-stone-300">${costUsd.toFixed(4)}</dd>
+              <dd className="text-paper-dim">${costUsd.toFixed(4)}</dd>
             </>
           )}
         </dl>
