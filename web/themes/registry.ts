@@ -21,6 +21,7 @@ export const THEMES = [
   { id: "dusk", label: "Dusk", scheme: "dark" },
   { id: "obsidian", label: "Obsidian", scheme: "dark" },
   { id: "aurora", label: "Aurora", scheme: "light" },
+  { id: "dossier", label: "Dossier", scheme: "light" },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];

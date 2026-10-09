@@ -3,6 +3,7 @@
 @import "../themes/dusk.css";
 @import "../themes/obsidian.css";
 @import "../themes/aurora.css";
+@import "../themes/dossier.css";
 
 /*
  * Design tokens. This block is the default theme (ember: a warm dark base with

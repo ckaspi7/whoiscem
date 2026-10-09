@@ -23,8 +23,8 @@ export function Masthead({ onClear, canClear }: { onClear: () => void; canClear:
             Cem Kaspi<span className="text-accent">.</span>
           </h1>
           <p className="masthead-sub mt-1.5 max-w-md font-prose text-[15px] italic leading-snug text-paper-faint sm:text-base">
-            Software engineer. An assistant wired into Cem&rsquo;s real resume and work history, not a canned
-            script.
+            <span className="masthead-role">Software engineer. </span>
+            An assistant wired into Cem&rsquo;s real resume and work history, not a canned script.
           </p>
           <ul className="masthead-facts" aria-label="At a glance">
             {FACTS.slice(0, 3).map((fact) => (
