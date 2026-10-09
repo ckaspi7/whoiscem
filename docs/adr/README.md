@@ -18,3 +18,4 @@ behind each one and [README.md](../../README.md) for the full narrative.
 | [0006](0006-fail-open-judge-fail-closed-tool-errors.md) | The faithfulness judge fails open; a tool error must never reach context |
 | [0007](0007-rate-limiting-and-spend-cap-live-in-a-new-api-layer.md) | Rate limiting and the spend cap live in a new API layer, not in Streamlit directly |
 | [0008](0008-local-classifier-replaces-llm-judge-for-faithfulness.md) | A local classifier (HHEM) replaces the LLM judge for the faithfulness guardrail |
+| [0009](0009-faithfulness-judge-reads-a-focused-window-first.md) | The faithfulness judge reads a focused window of context first, trading a little detection for speed and fewer false warnings |

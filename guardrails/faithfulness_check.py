@@ -33,6 +33,28 @@ _HHEM_REVISION = "8e4a2e6e96c708cc76c2344f7e4757df2515292c"
 _HHEM_REFUSE_BELOW = 0.15
 _HHEM_PASS_ABOVE = 0.40
 
+# How HHEM reads the context. The resume route hands the judge the entire
+# resume (about 7.6 KB, over 2,000 tokens) because the "auto" retrieval
+# strategy returns every chunk, most relevant first. The 87.5% accuracy figure
+# above came from pairs whose contexts were 333-1,346 characters and from no
+# resume-route pairs at all, so it said nothing about that length.
+#
+#   full             score against the whole context
+#   focus            score against only the leading ~focus_chars of it
+#   focus_then_full  focus first; only a score below the pass line pays for a
+#                    second look at the whole context, and the higher score wins
+#
+# Retrieval returns chunks most-relevant-first, so the front of the string is
+# the best evidence. Measured on resume-route pairs (eval/ablate_judge_context.py,
+# docs/adr/0009): focus_then_full does not improve accuracy. It scores faithful
+# answers in about a quarter of the time and never warns on one, and in exchange
+# lets slightly more invented details through unflagged. focus alone refuses
+# faithful answers whose evidence falls outside the window, so it is not offered
+# as the default.
+CONTEXT_MODES = ("full", "focus", "focus_then_full")
+DEFAULT_CONTEXT_MODE = "focus_then_full"
+DEFAULT_FOCUS_CHARS = 2000
+
 
 def _get_hhem():
     """Lazily load and cache the local hallucination classifier.
@@ -60,6 +82,53 @@ def _hhem_to_five_scale(raw_score: float) -> int:
     return 5
 
 
+def _focus_window(context: str, budget: int) -> str:
+    """The leading paragraphs of ``context`` that fit in about ``budget`` characters.
+
+    Never cuts mid-paragraph, and always keeps the first paragraph even when it
+    alone exceeds the budget.
+    """
+    if len(context) <= budget:
+        return context
+    kept: list[str] = []
+    used = 0
+    for paragraph in context.split("\n\n"):
+        cost = len(paragraph) + (2 if kept else 0)
+        if kept and used + cost > budget:
+            break
+        kept.append(paragraph)
+        used += cost
+    return "\n\n".join(kept)
+
+
+def hhem_score(
+    answer: str,
+    context: str,
+    *,
+    mode: str = DEFAULT_CONTEXT_MODE,
+    focus_chars: int = DEFAULT_FOCUS_CHARS,
+) -> float | None:
+    """The raw 0-1 HHEM consistency score of ``answer`` against ``context``.
+
+    None means there is no context to check against. Raises if the model cannot
+    load or predict; ``_judge`` decides how to fail.
+    """
+    if mode not in CONTEXT_MODES:
+        raise ValueError(f"mode must be one of {', '.join(CONTEXT_MODES)} - got {mode!r}")
+    if not context.strip():
+        return None
+
+    model = _get_hhem()
+    if mode == "full":
+        return float(model.predict([(context, answer)])[0])
+
+    focus = _focus_window(context, focus_chars)
+    focused = float(model.predict([(focus, answer)])[0])
+    if mode == "focus" or focused >= _HHEM_PASS_ABOVE or len(focus) >= len(context):
+        return focused
+    return max(focused, float(model.predict([(context, answer)])[0]))
+
+
 def _judge(answer: str, context: str) -> tuple[int | None, dict[str, int]]:
     """The real check: score plus token usage (always zero now — HHEM is a
     local model, not a priced API call; the return shape is unchanged so
@@ -76,7 +145,9 @@ def _judge(answer: str, context: str) -> tuple[int | None, dict[str, int]]:
         return None, dict(_NO_USAGE)
 
     try:
-        raw_score = float(_get_hhem().predict([(context, answer)])[0])
+        raw_score = hhem_score(answer, context)
+        if raw_score is None:
+            return None, dict(_NO_USAGE)
         return _hhem_to_five_scale(raw_score), dict(_NO_USAGE)
     except Exception as exc:
         logger.warning("Faithfulness check failed, failing open (no check applied): %s", exc)

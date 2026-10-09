@@ -63,7 +63,8 @@ not the clean sweep the small pilot suggested.
   reasoned margin either side of that boundary, not independently validated
   as its own split. Worth revisiting if the warn tier fires far more or less
   than the ~10-15% of turns the measured overlap zone would predict.
-- **No resume-route pairs were measured.** This machine's network cannot
+- **No resume-route pairs were measured.** *(Update: measured since; see
+  [ADR-0009](0009-faithfulness-judge-reads-a-focused-window-first.md).)* This machine's network cannot
   reach the Qdrant Cloud cluster the deployed app uses (a corporate-proxy
   block, documented elsewhere, unrelated to this decision) — re-run
   `eval/build_faithfulness_test_set.py` once that's not a constraint, or from
