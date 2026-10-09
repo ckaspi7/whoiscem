@@ -20,6 +20,26 @@ function themeBlocks(source: string): ThemeBlock[] {
 
 const stripComments = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "");
 
+describe("chat layout", () => {
+  // The page scrolls as a document, so without these a conversation of a few
+  // answers pushes the input below the fold: the composer had to be scrolled to
+  // after every reply. design-review's "long" state checks the same in a browser.
+  it("pins the composer to the bottom of the viewport", () => {
+    const rule = css.match(/\.composer\s*\{([^}]*)\}/)?.[1] ?? "";
+
+    expect(rule).toMatch(/position:\s*sticky/);
+    expect(rule).toMatch(/bottom:\s*0/);
+  });
+
+  it("scrolls to a marker after the composer, so the last answer lands above it rather than under it", () => {
+    const source = readFileSync(path.join(webRoot, "components/ChatApp.tsx"), "utf8");
+    const composerAt = source.indexOf("<ChatInput");
+
+    expect(composerAt).toBeGreaterThan(-1);
+    expect(source.indexOf("ref={bottomRef}")).toBeGreaterThan(composerAt);
+  });
+});
+
 describe("font tokens", () => {
   it("are declared in an `@theme inline` block, because a font family is defined below :root", () => {
     // A plain @theme resolves var() at :root, where the families do not exist

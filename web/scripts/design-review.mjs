@@ -3,9 +3,12 @@
  * Design review harness: evidence for a theme, not claims about it.
  *
  * For each theme and viewport it drives the real app (the chat API is mocked
- * in the browser, so no backend or OpenAI credit is needed) through eight
+ * in the browser, so no backend or OpenAI credit is needed) through nine
  * states, saves a screenshot of each, builds a contact sheet, and audits
- * readability against the pixels actually rendered.
+ * readability against the pixels actually rendered. Two structural checks ride
+ * along: the header, messages and composer share their edges ("answer"), and in
+ * a conversation long enough to scroll ("long") the composer stays on screen and
+ * the last answer is not hidden behind it.
  *
  *   npm run build && npx next start -p 3200      # in one terminal
  *   npm run design-review -- --base http://127.0.0.1:3200
@@ -33,9 +36,10 @@ import path from "node:path";
 import { chromium } from "playwright-core";
 
 const VIEWPORTS = { desktop: { width: 1440, height: 900 }, mobile: { width: 390, height: 844 } };
-const STATES = ["empty", "answer", "thinking", "refusal", "degraded", "rate-limit", "spend-cap", "network"];
+const STATES = ["empty", "answer", "long", "thinking", "refusal", "degraded", "rate-limit", "spend-cap", "network"];
 const SCENARIO = {
   answer: "answer",
+  long: "answer",
   thinking: "slow",
   refusal: "refusal",
   degraded: "degraded",
@@ -43,7 +47,10 @@ const SCENARIO = {
   "spend-cap": "spend-cap",
   network: "network",
 };
-const AUDITED = new Set(["empty", "answer", "refusal", "degraded", "rate-limit", "spend-cap"]);
+const AUDITED = new Set(["empty", "answer", "long", "refusal", "degraded", "rate-limit", "spend-cap"]);
+// Captured as the viewport a visitor sees, scrolled where the page scrolled itself,
+// rather than as the whole page: the point is what is on screen, and in reach.
+const VIEWPORT_STATES = new Set(["long"]);
 const EXPECTED_FAILURE_STATES = new Set(["rate-limit", "spend-cap", "network"]);
 const FIXED_NOW = new Date("2026-06-15T19:45:00Z");
 const SETTLE_MS = 1000;
@@ -156,6 +163,18 @@ async function drive(page, state) {
       await page.waitForFunction(() => document.querySelectorAll(".answer-prose").length >= 2);
       await page.waitForTimeout(2400);
       break;
+    case "long": {
+      // Enough exchanges that the page must scroll, on both viewports.
+      await chip("What's on his LinkedIn?");
+      await answers(page).first().waitFor();
+      const followUps = ["What are his skills and tools?", "And his career history?", "Which tools does that involve?"];
+      for (const [i, text] of followUps.entries()) {
+        await ask(text);
+        await page.waitForFunction((n) => document.querySelectorAll(".answer-prose").length >= n, i + 2);
+      }
+      await page.waitForTimeout(2400);
+      break;
+    }
     case "thinking":
       await chip("Where does Cem work?");
       await page.getByRole("status").first().waitFor();
@@ -174,8 +193,90 @@ async function drive(page, state) {
   }
 }
 
-/** In the page: every visible text run, its colour, size and client rects. */
-function collectTextRuns() {
+/**
+ * Grow the viewport to the page's full height, then capture from the top. A
+ * full-page screenshot is taken at the real viewport size, so anything pinned to
+ * it (the composer, a profile rail) would be drawn mid-page; at full height each
+ * sits where a visitor at the bottom of the page would see it. A fixed
+ * background is likewise drawn where the page happens to be scrolled, so the
+ * capture also starts from the top.
+ */
+async function expandToPage(page, viewport) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    if (height <= (await page.evaluate(() => innerHeight))) break;
+    await page.setViewportSize({ width: viewport.width, height });
+    await page.waitForTimeout(300);
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+}
+
+/** The header, the messages and the composer should share a left edge and a right edge. */
+async function checkAlignment(page) {
+  const edges = await page.evaluate(() => {
+    const edge = (selector) => {
+      const box = document.querySelector(selector)?.getBoundingClientRect();
+      return box ? { left: Math.round(box.left), right: Math.round(box.right) } : null;
+    };
+    return { masthead: edge(".masthead-inner"), answer: edge(".answer"), bubble: edge(".bubble"), composer: edge(".composer > div") };
+  });
+  const { masthead, answer, bubble, composer } = edges;
+  if (!masthead || !answer || !bubble || !composer) return ["could not find the header, an answer, a bubble and the composer to compare"];
+  const same = (a, b) => Math.abs(a - b) <= 1;
+  const problems = [];
+  if (!same(masthead.left, answer.left) || !same(composer.left, answer.left)) {
+    problems.push(`left edges differ: header ${masthead.left}, answers ${answer.left}, composer ${composer.left}`);
+  }
+  if (!same(masthead.right, bubble.right) || !same(composer.right, bubble.right)) {
+    problems.push(`right edges differ: header ${masthead.right}, messages ${bubble.right}, composer ${composer.right}`);
+  }
+  return problems;
+}
+
+/**
+ * Is the input in reach in a conversation long enough to scroll? Checked twice:
+ * where the page scrolled itself after the last answer (the composer on screen,
+ * and the answer not hidden behind it), then after scrolling up into the
+ * conversation, where only a pinned composer is still there. The page is left
+ * at that second position, so the screenshot and audit that follow show the
+ * composer over real content.
+ */
+async function checkReach(page) {
+  const measure = () =>
+    page.evaluate(() => {
+      const composer = document.querySelector(".composer")?.getBoundingClientRect();
+      const answers = document.querySelectorAll(".answer");
+      const last = answers[answers.length - 1]?.getBoundingClientRect();
+      return {
+        overflowed: document.documentElement.scrollHeight > innerHeight,
+        innerHeight,
+        composer: composer ? { top: Math.round(composer.top), bottom: Math.round(composer.bottom) } : null,
+        lastBottom: last ? Math.round(last.bottom) : null,
+      };
+    });
+  const offScreen = (m) => m.composer.top < 0 || m.composer.bottom > m.innerHeight + 1;
+  const where = (m) => `${m.composer.top}-${m.composer.bottom} in a ${m.innerHeight}px viewport`;
+
+  const problems = [];
+  const landed = await measure();
+  if (!landed.overflowed) problems.push("the page never overflowed, so pinning went untested");
+  if (!landed.composer) return [...problems, "no composer on the page"];
+  if (offScreen(landed)) problems.push(`after the page scrolled itself, the composer is off screen (${where(landed)})`);
+  if (landed.lastBottom !== null && landed.lastBottom > landed.composer.top + 1) {
+    problems.push(`the last answer runs under the composer (${landed.lastBottom} > ${landed.composer.top})`);
+  }
+
+  await page.evaluate(() => window.scrollTo(0, (document.documentElement.scrollHeight - innerHeight) * 0.4));
+  await page.waitForTimeout(600);
+  const reading = await measure();
+  if (reading.composer && offScreen(reading)) {
+    problems.push(`while reading earlier answers, the composer is off screen (${where(reading)})`);
+  }
+  return problems;
+}
+
+/** In the page: every visible text run, its colour, size and client rects (only those on screen, if asked). */
+function collectTextRuns({ viewportOnly = false } = {}) {
   const sentinel = "#123456";
   const toRgba = (css) => {
     const canvas = document.createElement("canvas");
@@ -237,6 +338,10 @@ function collectTextRuns() {
       });
     }
   }
+  if (viewportOnly) {
+    const onScreen = (r) => r.y < scrollY + innerHeight && r.y + r.h > scrollY;
+    return { runs: runs.filter((run) => run.rects.some(onScreen)), unparsed };
+  }
   return { runs, unparsed };
 }
 
@@ -284,8 +389,8 @@ async function measureContrast({ b64, runs }) {
   });
 }
 
-async function auditContrast(page, scratch) {
-  const { runs, unparsed } = await page.evaluate(collectTextRuns);
+async function auditContrast(page, scratch, options = {}) {
+  const { runs, unparsed } = await page.evaluate(collectTextRuns, options);
   await page.addStyleTag({
     content:
       "*{color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important}" +
@@ -369,7 +474,7 @@ async function main() {
     await mkdir(path.join(args.out, theme), { recursive: true });
     report[theme] = {};
     for (const [viewportName, viewport] of Object.entries(VIEWPORTS)) {
-      const entry = { overflow: [], console: [], audit: {}, fonts: null };
+      const entry = { overflow: [], layout: [], console: [], audit: {}, fonts: null };
       const sheet = [];
       for (const state of STATES) {
         // Deterministic on purpose, so two runs differ only where the design does:
@@ -396,12 +501,18 @@ async function main() {
         await page.waitForTimeout(SETTLE_MS);
         await drive(page, state);
         await page.waitForTimeout(SETTLE_MS);
-        // A full-page capture draws a fixed background where the page happens to
-        // be scrolled, leaving a band at the top; capture from the top instead.
-        await page.evaluate(() => window.scrollTo(0, 0));
+        const viewportState = VIEWPORT_STATES.has(state);
+        if (state === "answer") {
+          for (const problem of await checkAlignment(page)) entry.layout.push(`${state}: ${problem}`);
+        }
+        if (viewportState) {
+          for (const problem of await checkReach(page)) entry.layout.push(`${state}: ${problem}`);
+        } else {
+          await expandToPage(page, viewport);
+        }
 
         const file = path.join(args.out, theme, `${viewportName}-${state}.png`);
-        const png = await page.screenshot({ path: file, fullPage: true });
+        const png = await page.screenshot({ path: file, fullPage: !viewportState });
         sheet.push({ label: state, b64: png.toString("base64") });
 
         const facts = await page.evaluate(async () => {
@@ -420,7 +531,9 @@ async function main() {
         entry.fonts ??= { title: facts.title, loaded: new Set() };
         facts.loaded.forEach((f) => entry.fonts.loaded.add(f));
 
-        if (args.audit && AUDITED.has(state)) entry.audit[state] = await auditContrast(page, scratch);
+        if (args.audit && AUDITED.has(state)) {
+          entry.audit[state] = await auditContrast(page, scratch, { viewportOnly: viewportState });
+        }
         await context.close();
       }
       await buildSheet(
@@ -434,10 +547,11 @@ async function main() {
       report[theme][viewportName] = entry;
 
       const failed = Object.entries(entry.audit).filter(([, a]) => a.failures.length);
-      problems += failed.length + entry.overflow.length + entry.console.length;
+      problems += failed.length + entry.overflow.length + entry.layout.length + entry.console.length;
       const lowest = Math.min(...Object.values(entry.audit).map((a) => a.lowest), Infinity);
       console.log(
         `${theme.padEnd(10)} ${viewportName.padEnd(8)} overflow:${entry.overflow.length ? entry.overflow : "none"}  ` +
+          `layout:${entry.layout.length ? "FAILED" : "ok"}  ` +
           `console:${entry.console.length || "none"}  lowest contrast:${Number.isFinite(lowest) ? lowest : "n/a"}  ` +
           `title font:${entry.fonts.title}  fonts:${entry.fonts.loaded.join("+")}`,
       );
@@ -447,6 +561,7 @@ async function main() {
       if (tightest) {
         console.log(`   tightest margin: "${tightest.text}" ${tightest.ratio}:1 (needs ${tightest.need})`);
       }
+      for (const message of entry.layout) console.log(`   LAYOUT PROBLEM in ${message}`);
       for (const [state, a] of failed) {
         for (const f of a.failures.slice(0, 6)) {
           console.log(`   LOW CONTRAST in ${state}: "${f.text}" ${f.ratio}:1 (needs ${f.need}) on rgb(${f.background})`);

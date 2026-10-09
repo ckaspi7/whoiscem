@@ -29,7 +29,7 @@ export function ChatInput({ onSend, disabled }: { onSend: (text: string) => void
 
   return (
     <div className="composer px-4 py-3 sm:px-6 sm:py-4">
-      <div className="mx-auto flex max-w-[720px] items-end gap-2.5">
+      <div className="mx-auto flex max-w-2xl items-end gap-2.5">
         <textarea
           ref={textareaRef}
           value={value}
@@ -58,7 +58,7 @@ export function ChatInput({ onSend, disabled }: { onSend: (text: string) => void
           <PaperPlaneRight size={17} weight="fill" aria-hidden />
         </motion.button>
       </div>
-      <div className="mx-auto mt-1.5 flex max-w-[720px] justify-end">
+      <div className="mx-auto mt-1.5 flex max-w-2xl justify-end">
         <span className={`font-mono text-[10.5px] ${nearLimit ? "text-accent-bright" : "text-paper-faint"}`}>
           {value.length} / {MAX_CHARS}
         </span>

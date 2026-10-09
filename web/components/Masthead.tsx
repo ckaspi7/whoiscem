@@ -5,9 +5,11 @@ import { Trash } from "@phosphor-icons/react";
 import { FACTS } from "@/lib/profile";
 
 /**
- * Shares the chat column's width and gutters (max-w-[720px], px-4/sm:px-6) so
- * the title lines up with the conversation below it instead of hugging the
- * viewport edge while the messages sit in the middle.
+ * Lines up with the conversation below it instead of hugging the viewport edge
+ * while the messages sit in the middle. The chat column is 720px with its
+ * gutters inside that, so its content is 42rem (max-w-2xl); this header and the
+ * composer keep their gutters outside a box of that width, so all three share
+ * the same left and right edges at every viewport.
  *
  * The at-a-glance facts are always in the DOM and hidden by CSS
  * (.masthead-facts); a theme that wants hero chips reveals them.
@@ -15,7 +17,7 @@ import { FACTS } from "@/lib/profile";
 export function Masthead({ onClear, canClear }: { onClear: () => void; canClear: boolean }) {
   return (
     <header className="masthead px-4 pb-6 pt-8 sm:px-6 sm:pt-10">
-      <div className="masthead-inner mx-auto flex w-full max-w-[720px] items-start justify-between gap-4">
+      <div className="masthead-inner mx-auto flex w-full max-w-2xl items-start justify-between gap-4">
         <div className="masthead-text">
           <h1 className="masthead-title font-display text-2xl font-semibold tracking-tight text-paper sm:text-3xl">
             Cem Kaspi<span className="text-accent">.</span>

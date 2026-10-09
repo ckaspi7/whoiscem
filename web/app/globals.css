@@ -154,7 +154,11 @@
     }
   }
 
+  /* Pinned to the bottom of the viewport, so the input stays in reach however long the conversation gets. */
   .composer {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
     border-top: 1px solid color-mix(in oklab, var(--color-line) 80%, transparent);
     background: color-mix(in oklab, var(--color-ink) 95%, transparent);
     backdrop-filter: blur(8px);

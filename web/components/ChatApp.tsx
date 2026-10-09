@@ -43,10 +43,11 @@ export function ChatApp() {
               />
               {isLoading && <ThinkingIndicator isFirstMessage={sendState.isFirstMessage} />}
               {sendState.status === "error" && <ErrorPanel error={sendState.error} onRetry={retry} />}
-              <div ref={bottomRef} />
             </div>
           </div>
           <ChatInput onSend={send} disabled={isLoading} />
+          {/* After the pinned composer, so scrolling here lands the last message just above it, not under it. */}
+          <div ref={bottomRef} aria-hidden />
         </main>
       </div>
     </div>
