@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "../themes/porcelain.css";
+@import "../themes/dusk.css";
 
 /*
  * Design tokens. This block is the default theme (ember: a warm dark base with
