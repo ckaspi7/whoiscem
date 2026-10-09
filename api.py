@@ -40,6 +40,7 @@ from chatbot import MAX_INPUT_CHARS
 from config import load_settings
 from cost import estimate_cost
 from guardrails.faithfulness_check import apply_faithfulness_tiering, score_faithfulness
+from guardrails.refusal import looks_like_refusal
 from observability import set_session_id, setup_logging, setup_tracing
 from rate_limit import RateLimiter
 from retrieval.backends import create_qdrant_client
@@ -114,6 +115,14 @@ class ChatResponse(BaseModel):
     route: str
     faithfulness_score: int | None
     cost_usd: float
+    # True when a tool failed this turn, so the answer may be missing evidence.
+    degraded: bool = False
+
+
+_DEGRADED_RESPONSE = (
+    "I couldn't reach my knowledge base just now, so I can't answer that reliably. "
+    "Please try again in a moment."
+)
 
 
 def _require_api_key(x_api_key: str | None = Header(default=None)) -> None:
@@ -248,6 +257,13 @@ def chat(
         score = score_faithfulness(raw_answer, result_state.get("context_used", ""))
     answer = apply_faithfulness_tiering(raw_answer, score)
 
+    # A tool that errored left the model with no evidence, so its "I don't have
+    # that information" describes our outage, not the knowledge base. Say so
+    # rather than passing it off as an honest refusal.
+    degraded = bool(result_state.get("tool_error"))
+    if degraded and looks_like_refusal(raw_answer):
+        answer, score = _DEGRADED_RESPONSE, None
+
     token_usage = result_state.get("token_usage") or {}
     judge_usage = token_usage.get("check_faithfulness", {"input": 0, "output": 0})
     graph_input = sum(u["input"] for k, u in token_usage.items() if k != "check_faithfulness")
@@ -263,4 +279,5 @@ def chat(
         route=result_state.get("route", ""),
         faithfulness_score=score,
         cost_usd=round(cost_usd, 6),
+        degraded=degraded,
     )
