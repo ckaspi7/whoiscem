@@ -390,6 +390,9 @@ async function main() {
         await page.waitForTimeout(SETTLE_MS);
         await drive(page, state);
         await page.waitForTimeout(SETTLE_MS);
+        // A full-page capture draws a fixed background where the page happens to
+        // be scrolled, leaving a band at the top; capture from the top instead.
+        await page.evaluate(() => window.scrollTo(0, 0));
 
         const file = path.join(args.out, theme, `${viewportName}-${state}.png`);
         const png = await page.screenshot({ path: file, fullPage: true });
