@@ -66,7 +66,7 @@
     inset 0 1px 0 rgb(255 255 255 / 0.05);
 }
 
-:root[data-theme="obsidian"] .masthead-inner > .pill {
+:root[data-theme="obsidian"] .masthead-inner > .masthead-actions {
   position: absolute;
   top: 1.15rem;
   right: 1.15rem;

@@ -156,7 +156,7 @@
     padding-bottom: 0;
   }
 
-  :root[data-theme="dossier"] .masthead-inner > .pill {
+  :root[data-theme="dossier"] .masthead-inner > .masthead-actions {
     margin-left: auto;
   }
 }

@@ -71,10 +71,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  // The default theme's page colour. Browser chrome keeps it under any theme;
-  // a light theme gets a dark address bar on mobile, a cosmetic gap rather
-  // than a readability one, so it is left alone until a theme is chosen.
-  themeColor: "#0f0d0c",
+  // The page colour of each half of the default pair, picked by the visitor's
+  // system setting, which is also what picks their theme until they choose one.
+  // Browser chrome keeps it if they then switch or pick another theme: a cosmetic
+  // gap rather than a readability one.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4f1fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#130f19" },
+  ],
 };
 
 // The switcher is for comparing designs; visitors to the real site never see it.

@@ -14,41 +14,79 @@
  * on solid tokens, never on a translucent layer; texture and blur belong to
  * the page ground and to chrome, not behind words; and a highlight that
  * lightens a surface must not be used where the text is light.
+ *
+ * Two themes with the same `family` and opposite schemes are a light/dark pair:
+ * the switch in the header moves between them, and a visitor who has not chosen
+ * gets the half that matches their operating system.
  */
+interface ThemeEntry {
+  readonly id: string;
+  readonly label: string;
+  readonly scheme: "light" | "dark";
+  readonly family?: string;
+}
+
 export const THEMES = [
   { id: "ember", label: "Ember", scheme: "dark" },
   { id: "porcelain", label: "Porcelain", scheme: "light" },
   { id: "dusk", label: "Dusk", scheme: "dark" },
   { id: "obsidian", label: "Obsidian", scheme: "dark" },
-  { id: "aurora", label: "Aurora", scheme: "light" },
+  { id: "aurora", label: "Aurora", scheme: "light", family: "aurora" },
+  { id: "aurora-night", label: "Aurora Night", scheme: "dark", family: "aurora" },
   { id: "dossier", label: "Dossier", scheme: "light" },
-] as const;
+] as const satisfies readonly ThemeEntry[];
 
 export type ThemeId = (typeof THEMES)[number]["id"];
 
+/** The theme whose tokens live in globals.css: what the server renders and what an unknown id falls back to. */
 export const DEFAULT_THEME: ThemeId = "ember";
+
+/** What a visitor who has chosen nothing sees: the half of the pair that matches their system. */
+export const VISITOR_DEFAULTS = { light: "aurora", dark: "aurora-night" } as const satisfies Record<
+  "light" | "dark",
+  ThemeId
+>;
+
 export const THEME_STORAGE_KEY = "whoiscem:theme";
 
 export function isThemeId(value: unknown): value is ThemeId {
   return THEMES.some((theme) => theme.id === value);
 }
 
+/** The other half of a light/dark pair, or null for a theme that has none. */
+export function counterpart(id: ThemeId): ThemeId | null {
+  const entries: readonly ThemeEntry[] = THEMES;
+  const current = entries.find((theme) => theme.id === id);
+  if (!current?.family) return null;
+  const other = entries.find((theme) => theme.family === current.family && theme.scheme !== current.scheme);
+  return other && isThemeId(other.id) ? other.id : null;
+}
+
+export function schemeOf(id: ThemeId): "light" | "dark" {
+  const entries: readonly ThemeEntry[] = THEMES;
+  return entries.find((theme) => theme.id === id)?.scheme ?? "dark";
+}
+
 /**
  * Runs in <head>, before first paint, so a chosen theme never flashes the
  * default first. `?theme=<id>` wins and is remembered; otherwise the
- * remembered choice; otherwise the default. Any failure (storage blocked,
- * odd URL) leaves the default in place.
+ * remembered choice; otherwise the half of the default pair that matches the
+ * visitor's system. Each lookup fails on its own (storage blocked, no
+ * matchMedia, odd URL) without taking the others down, so a visitor with
+ * storage blocked still gets the right half instead of the fallback theme.
  */
 export function themeInitScript(): string {
   const ids = JSON.stringify(THEMES.map((theme) => theme.id));
   const key = JSON.stringify(THEME_STORAGE_KEY);
-  const fallback = JSON.stringify(DEFAULT_THEME);
+  const light = JSON.stringify(VISITOR_DEFAULTS.light);
+  const dark = JSON.stringify(VISITOR_DEFAULTS.dark);
   return (
-    `(function(){try{var ids=${ids};` +
-    `var q=new URLSearchParams(location.search).get("theme");` +
-    `var s=localStorage.getItem(${key});` +
-    `var t=ids.indexOf(q)>-1?q:ids.indexOf(s)>-1?s:${fallback};` +
-    `if(ids.indexOf(q)>-1)localStorage.setItem(${key},q);` +
-    `document.documentElement.dataset.theme=t;}catch(e){}})();`
+    `(function(){var ids=${ids},q=null,s=null,d=false;` +
+    `try{q=new URLSearchParams(location.search).get("theme")}catch(e){}` +
+    `try{s=localStorage.getItem(${key})}catch(e){}` +
+    `try{d=matchMedia("(prefers-color-scheme: dark)").matches}catch(e){}` +
+    `var t=ids.indexOf(q)>-1?q:ids.indexOf(s)>-1?s:d?${dark}:${light};` +
+    `try{if(ids.indexOf(q)>-1)localStorage.setItem(${key},q)}catch(e){}` +
+    `document.documentElement.dataset.theme=t;})();`
   );
 }

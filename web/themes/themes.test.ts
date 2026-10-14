@@ -4,7 +4,17 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { contrastRatio } from "./contrast";
-import { DEFAULT_THEME, THEMES, THEME_STORAGE_KEY, isThemeId, themeInitScript, type ThemeId } from "./registry";
+import {
+  DEFAULT_THEME,
+  THEMES,
+  THEME_STORAGE_KEY,
+  VISITOR_DEFAULTS,
+  counterpart,
+  isThemeId,
+  schemeOf,
+  themeInitScript,
+  type ThemeId,
+} from "./registry";
 
 const webRoot = path.join(import.meta.dirname, "..");
 const read = (relative: string) => readFileSync(path.join(webRoot, relative), "utf8");
@@ -106,6 +116,26 @@ describe("the registry", () => {
     expect(isThemeId("neon")).toBe(false);
     expect(isThemeId(null)).toBe(false);
   });
+
+  it("pairs a theme with its other half, and only where a family has exactly one of each", () => {
+    expect(counterpart("aurora")).toBe("aurora-night");
+    expect(counterpart("aurora-night")).toBe("aurora");
+    expect(counterpart("ember")).toBeNull();
+
+    const families = new Map<string, string[]>();
+    for (const theme of THEMES as readonly { id: string; scheme: string; family?: string }[]) {
+      if (theme.family) families.set(theme.family, [...(families.get(theme.family) ?? []), theme.scheme]);
+    }
+    for (const [family, schemes] of families) {
+      expect(schemes.slice().sort(), `family ${family}`).toEqual(["dark", "light"]);
+    }
+  });
+
+  it("gives a visitor who chose nothing a half of the pair that matches their system", () => {
+    expect(schemeOf(VISITOR_DEFAULTS.light)).toBe("light");
+    expect(schemeOf(VISITOR_DEFAULTS.dark)).toBe("dark");
+    expect(counterpart(VISITOR_DEFAULTS.light)).toBe(VISITOR_DEFAULTS.dark);
+  });
 });
 
 describe.each(THEMES.map((theme) => [theme.id, theme.scheme] as const))("theme %s", (id, scheme) => {
@@ -144,27 +174,41 @@ describe.each(THEMES.map((theme) => [theme.id, theme.scheme] as const))("theme %
 });
 
 describe("themeInitScript", () => {
-  function run(search: string, stored: string | null) {
+  function run(search: string, stored: string | null, options: { dark?: boolean; storageBlocked?: boolean } = {}) {
     const store = new Map<string, string>(stored ? [[THEME_STORAGE_KEY, stored]] : []);
     const root = { dataset: {} as Record<string, string> };
-    new Function("location", "localStorage", "document", themeInitScript())(
+    const blocked = () => {
+      throw new Error("storage blocked");
+    };
+    new Function("location", "localStorage", "document", "matchMedia", themeInitScript())(
       { search },
-      { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) },
+      options.storageBlocked
+        ? { getItem: blocked, setItem: blocked }
+        : { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) },
       { documentElement: root },
+      (query: string) => ({ matches: Boolean(options.dark) && query.includes("dark") }),
     );
     return { theme: root.dataset.theme, remembered: store.get(THEME_STORAGE_KEY) };
   }
 
-  it("applies the default when nothing is asked for", () => {
-    expect(run("", null).theme).toBe(DEFAULT_THEME);
+  it("gives a first-time visitor the half of the default pair that matches their system", () => {
+    expect(run("", null).theme).toBe(VISITOR_DEFAULTS.light);
+    expect(run("", null, { dark: true }).theme).toBe(VISITOR_DEFAULTS.dark);
+  });
+
+  it("still does, with storage blocked, rather than falling back to the page's own default", () => {
+    expect(run("", null, { storageBlocked: true }).theme).toBe(VISITOR_DEFAULTS.light);
+    expect(run("", null, { storageBlocked: true, dark: true }).theme).toBe(VISITOR_DEFAULTS.dark);
+    expect(run("?theme=porcelain", null, { storageBlocked: true }).theme).toBe("porcelain");
   });
 
   it("applies and remembers a theme asked for in the URL", () => {
     expect(run("?theme=porcelain", null)).toEqual({ theme: "porcelain", remembered: "porcelain" });
   });
 
-  it("uses the remembered theme when the URL says nothing", () => {
+  it("uses the remembered theme when the URL says nothing, whatever the system prefers", () => {
     expect(run("", "porcelain").theme).toBe("porcelain");
+    expect(run("", "aurora", { dark: true }).theme).toBe("aurora");
   });
 
   it("lets the URL override what was remembered", () => {
@@ -172,7 +216,17 @@ describe("themeInitScript", () => {
   });
 
   it("ignores a theme it does not know, whether from the URL or storage", () => {
-    expect(run("?theme=neon", null).theme).toBe(DEFAULT_THEME);
-    expect(run("", "neon").theme).toBe(DEFAULT_THEME);
+    expect(run("?theme=neon", null).theme).toBe(VISITOR_DEFAULTS.light);
+    expect(run("", "neon", { dark: true }).theme).toBe(VISITOR_DEFAULTS.dark);
+  });
+
+  it("falls back to the light half when the browser has no matchMedia", () => {
+    const root = { dataset: {} as Record<string, string> };
+    new Function("location", "localStorage", "document", themeInitScript())(
+      { search: "" },
+      { getItem: () => null, setItem: () => undefined },
+      { documentElement: root },
+    );
+    expect(root.dataset.theme).toBe(VISITOR_DEFAULTS.light);
   });
 });
