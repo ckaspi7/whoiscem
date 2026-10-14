@@ -305,6 +305,9 @@ function collectTextRuns({ viewportOnly = false } = {}) {
     if (!text || !el || el.closest("script,style,noscript,.sr-only,[aria-hidden=true]")) continue;
     const style = getComputedStyle(el);
     if (style.display === "none" || style.visibility === "hidden") continue;
+    // Text clipped to a 1px box (the screen-reader-only pattern) still lays out at full
+    // width, so it would be measured as if a visitor could see it.
+    if (style.position === "absolute" && el.offsetWidth <= 1 && el.offsetHeight <= 1) continue;
     const opacity = effectiveOpacity(el);
     if (opacity < 0.05) continue;
     const range = document.createRange();
