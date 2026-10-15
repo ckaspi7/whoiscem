@@ -128,6 +128,7 @@ def test_chat_returns_the_answer_route_and_a_real_cost(client):
     assert body["route"] == "resume"
     assert body["faithfulness_score"] == 5
     assert body["cost_usd"] > 0
+    assert body["degraded"] is False
 
 
 def test_chat_passes_history_through_as_real_messages():
@@ -320,6 +321,53 @@ def test_a_score_already_computed_in_graph_is_reused_not_rejudged(client):
     assert response.status_code == 200
     mock_score.assert_not_called()
     assert response.json()["faithfulness_score"] == 5
+
+
+# ---------------------------------------------------------------------------
+# Degraded mode — a tool failure must never be presented as an honest refusal.
+# ---------------------------------------------------------------------------
+
+
+def test_a_tool_failure_is_reported_as_degraded_not_as_a_refusal():
+    graph = _mock_graph(
+        answer="I don't have that information.",
+        tool_error="403 Forbidden",
+        context_used="",
+        faithfulness_score=None,
+    )
+    with patch("chatbot.create_assistant", return_value=graph), TestClient(api.app) as client:
+        response = client.post("/chat", json={"message": "What did Cem study?"})
+
+    body = response.json()
+    assert body["degraded"] is True
+    assert "couldn't reach my knowledge base" in body["response"]
+    assert "403" not in body["response"], "a tool's error text must never reach the visitor"
+    assert body["faithfulness_score"] is None
+
+
+def test_a_tool_failure_does_not_replace_an_answer_the_model_could_still_give():
+    graph = _mock_graph(
+        answer="Cem works as an AI/ML Engineer at TELUS.",
+        tool_error="403 Forbidden",
+        context_used="",
+        faithfulness_score=None,
+    )
+    with patch("chatbot.create_assistant", return_value=graph), TestClient(api.app) as client:
+        response = client.post("/chat", json={"message": "Where does Cem work?"})
+
+    body = response.json()
+    assert body["degraded"] is True
+    assert body["response"] == "Cem works as an AI/ML Engineer at TELUS."
+
+
+def test_a_genuine_refusal_with_healthy_tools_is_left_alone():
+    graph = _mock_graph(answer="I don't have that information about Cem.", tool_error="")
+    with patch("chatbot.create_assistant", return_value=graph), TestClient(api.app) as client:
+        response = client.post("/chat", json={"message": "Is he open to relocating?"})
+
+    body = response.json()
+    assert body["degraded"] is False
+    assert body["response"] == "I don't have that information about Cem."
 
 
 # ---------------------------------------------------------------------------
