@@ -1,7 +1,8 @@
-# 0009 — The faithfulness judge reads a focused window of context first
+# 0009 — The faithfulness judge can read a focused window of context first
 
-**Status:** Accepted — measured, and the measurement overturned the hypothesis
-that motivated it. What it buys is speed and fewer false warnings, not accuracy.
+**Status:** Accepted as an option, **not enabled**: the default stays `full`. The
+measurement overturned the hypothesis that motivated it. What the windowed mode
+buys is speed and fewer false warnings, not accuracy, and it costs detection.
 
 ## Context
 
@@ -31,12 +32,13 @@ they had been flagged is not evidence.
 
 ## Decision
 
-`hhem_score` reads the leading ~2,000 characters of context first (retrieval
-returns chunks most-relevant-first, so that is the best evidence) and only a
-score below the pass line pays for a second look at the whole context; the
-higher of the two scores is kept (`focus_then_full`, now `DEFAULT_CONTEXT_MODE`).
-Contexts shorter than the window, which is every context on the other three
-routes, are scored exactly as before.
+`hhem_score` takes a `mode`. `focus_then_full` reads the leading ~2,000
+characters of context first (retrieval returns chunks most-relevant-first, so
+that is the best evidence) and only a score below the pass line pays for a
+second look at the whole context; the higher of the two scores is kept. Contexts
+shorter than the window, which is every context on the other three routes, are
+scored exactly as before. `DEFAULT_CONTEXT_MODE` stays `full`, so nothing about
+what production scores changes; see "Why it is not the default" below.
 
 ## What was measured
 
@@ -69,10 +71,18 @@ window, are identical under every strategy (the no-regression check).
   about 12 s), the two spurious warnings on correct answers disappear, and the
   in-graph self-correction retry (ADR-0005), which fires on any score below the
   pass line, fires less often on answers that were already right.
-- **Why adopt it despite the cost.** Spurious banners land on roughly 9% of
-  correct answers, which is nearly every answer a visitor sees, while the extra
-  misses only matter on the rare answer that contains an invented detail.
-  Reverting is one constant: `DEFAULT_CONTEXT_MODE = "full"`.
+- **Why it is not the default.** A spurious banner is a nuisance; an invented
+  detail about the owner's career passing with no banner at all is the failure
+  the guardrail exists to catch, and it is the one this mode makes more likely.
+  The offsetting benefit is two pairs out of 23, which is within noise, and the
+  latency it saves (13 s to 3 s per faithful answer) was measured on one
+  development laptop, not on a deployment. A planned change of generator model
+  will also change which answers are faithful at all, so the pairs measured here
+  describe the current model.
+- **Turning it on** is one constant, `DEFAULT_CONTEXT_MODE = "focus_then_full"`.
+  Re-run `eval/ablate_judge_context.py` first, on more pairs (50 or more per
+  class) and ideally on unfaithful answers the production model actually
+  produced, and on the replacement generator once there is one.
 
 ## Consequences
 

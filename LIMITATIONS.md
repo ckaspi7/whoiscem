@@ -204,10 +204,11 @@ score is noisy. ADR-0008's 87.5% was measured on contexts of 333-1,346
 characters from three routes and **none from the resume route**, which is where
 most questions go. Measured since on 46 resume-route pairs (23 correct answers,
 23 with one invented detail added; `eval/results/ablation-judge-context.json`):
-about 85% accurate at the 0.40 pass line, and with the shipped judge 7 of the 23
-invented details pass with no banner at all while 8 more get only the "not fully
-confident" note. That is a safety net with holes, not a guarantee that an answer
-is grounded.
+about 85% accurate at the 0.40 pass line, and with the shipped judge (the whole
+resume as context) 5 of the 23 invented details pass with no banner at all while
+8 more get only the "not fully confident" note. A faster windowed mode exists but
+is off, because it lets 7 through. That is a safety net with holes, not a
+guarantee that an answer is grounded.
 
 Two things make the numbers softer than they look: the pairs are small (a
 two-pair difference is within noise) and the unfaithful answers are LLM-written

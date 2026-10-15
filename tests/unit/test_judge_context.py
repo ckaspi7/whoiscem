@@ -145,6 +145,18 @@ def test_an_empty_context_returns_none_without_loading_the_model():
         assert hhem_score("answer", "   ") is None
 
 
+def test_the_default_judges_the_whole_context_in_one_look():
+    """The windowed modes exist but are off, so what production scores is unchanged."""
+    context = _context(30)
+    model = _stub(context, focus=0.9, full=0.1)
+
+    with patch("guardrails.faithfulness_check._get_hhem", return_value=model):
+        score = hhem_score("answer", context)
+
+    assert score == 0.1
+    assert model.predict.call_count == 1
+
+
 def test_score_faithfulness_uses_the_default_mode():
     with patch("guardrails.faithfulness_check.hhem_score", return_value=0.9) as scorer:
         assert score_faithfulness("answer", "context") == 5

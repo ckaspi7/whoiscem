@@ -49,10 +49,13 @@ _HHEM_PASS_ABOVE = 0.40
 # docs/adr/0009): focus_then_full does not improve accuracy. It scores faithful
 # answers in about a quarter of the time and never warns on one, and in exchange
 # lets slightly more invented details through unflagged. focus alone refuses
-# faithful answers whose evidence falls outside the window, so it is not offered
-# as the default.
+# faithful answers whose evidence falls outside the window.
+#
+# The default stays "full": the evidence is 23 pairs per class, where a two-pair
+# difference is noise, and the extra misses are the failure this guardrail
+# exists to catch. The windowed modes are available for when that changes.
 CONTEXT_MODES = ("full", "focus", "focus_then_full")
-DEFAULT_CONTEXT_MODE = "focus_then_full"
+DEFAULT_CONTEXT_MODE = "full"
 DEFAULT_FOCUS_CHARS = 2000
 
 
