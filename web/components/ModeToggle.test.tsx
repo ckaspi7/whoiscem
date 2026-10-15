@@ -35,6 +35,28 @@ describe("ModeToggle", () => {
     expect(root.dataset.theme).toBe("aurora");
   });
 
+  it("toggles twice when pressed twice before the first fade has begun", () => {
+    const updates: Array<() => void> = [];
+    Object.defineProperty(document, "startViewTransition", {
+      configurable: true,
+      writable: true,
+      value: (update: () => void) => {
+        updates.push(update);
+      },
+    });
+    try {
+      render(<ModeToggle />);
+      const button = screen.getByRole("button", { name: "Dark mode", hidden: true });
+      fireEvent.click(button);
+      fireEvent.click(button);
+      for (const update of updates) update();
+
+      expect(root.dataset.theme).toBe("aurora");
+    } finally {
+      Reflect.deleteProperty(document, "startViewTransition");
+    }
+  });
+
   it("keeps ?theme= in step when the URL already has one, so a reload does not undo the switch", () => {
     window.history.replaceState(null, "", "/?theme=aurora");
     render(<ModeToggle />);

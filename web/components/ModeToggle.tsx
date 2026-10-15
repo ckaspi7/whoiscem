@@ -2,7 +2,7 @@
 
 import { Moon, Sun } from "@phosphor-icons/react";
 
-import { chooseTheme, currentTheme, useActiveTheme } from "@/themes/client";
+import { chooseTheme, latestTheme, useActiveTheme } from "@/themes/client";
 import { counterpart, schemeOf } from "@/themes/registry";
 
 /**
@@ -10,8 +10,9 @@ import { counterpart, schemeOf } from "@/themes/registry";
  * reveals it (the Aurora pair does), the same way the profile rail is: nothing
  * about the layout is decided in JavaScript, so it cannot pop in after
  * hydration. Which icon shows is also CSS, from the theme on <html>. Only the
- * pressed state follows the theme through React; the click asks the page for
- * the theme at that moment, so it is right even before a re-render catches up.
+ * pressed state follows the theme through React; the click asks for the theme
+ * at that moment (including one still fading in), so it is right even before a
+ * re-render catches up.
  */
 export function ModeToggle() {
   const active = useActiveTheme();
@@ -23,7 +24,7 @@ export function ModeToggle() {
       aria-label="Dark mode"
       aria-pressed={schemeOf(active) === "dark"}
       onClick={() => {
-        const other = counterpart(currentTheme());
+        const other = counterpart(latestTheme());
         if (other) chooseTheme(other, "if-present");
       }}
     >
