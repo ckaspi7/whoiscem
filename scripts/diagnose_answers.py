@@ -124,12 +124,10 @@ def _probe_retrieval() -> str:
 
 
 def _hhem_score(answer: str, context: str) -> float | None:
-    if not context.strip():
-        return None
-    from guardrails.faithfulness_check import _get_hhem
+    from guardrails.faithfulness_check import hhem_score
 
     try:
-        return float(_get_hhem().predict([(context, answer)])[0])
+        return hhem_score(answer, context)
     except Exception as exc:
         print(f"  (HHEM unavailable: {exc})", file=sys.stderr)
         return None

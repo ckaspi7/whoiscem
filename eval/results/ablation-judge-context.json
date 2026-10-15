@@ -1,0 +1,3332 @@
+{
+  "run_at": "2026-10-09T18:26:26.765235+00:00",
+  "pairs": 78,
+  "routes_covered": [
+    "linkedin",
+    "personal",
+    "resume",
+    "spotify"
+  ],
+  "pass_line": 0.4,
+  "refuse_line": 0.15,
+  "summary": {
+    "resume": {
+      "full": {
+        "n_faithful": 23,
+        "n_unfaithful": 23,
+        "faithful_clean": 0.913,
+        "faithful_warned": 0.087,
+        "faithful_refused": 0.0,
+        "unfaithful_flagged": 0.783,
+        "unfaithful_refused": 0.435,
+        "unfaithful_missed": 0.217,
+        "accuracy": 0.848,
+        "mean_seconds": 13.18
+      },
+      "focus@2000": {
+        "n_faithful": 23,
+        "n_unfaithful": 23,
+        "faithful_clean": 0.87,
+        "faithful_warned": 0.0,
+        "faithful_refused": 0.13,
+        "unfaithful_flagged": 0.783,
+        "unfaithful_refused": 0.522,
+        "unfaithful_missed": 0.217,
+        "accuracy": 0.826,
+        "mean_seconds": 1.68
+      },
+      "focus_then_full@1500": {
+        "n_faithful": 23,
+        "n_unfaithful": 23,
+        "faithful_clean": 1.0,
+        "faithful_warned": 0.0,
+        "faithful_refused": 0.0,
+        "unfaithful_flagged": 0.696,
+        "unfaithful_refused": 0.348,
+        "unfaithful_missed": 0.304,
+        "accuracy": 0.848,
+        "mean_seconds": 7.92
+      },
+      "focus_then_full@2000": {
+        "n_faithful": 23,
+        "n_unfaithful": 23,
+        "faithful_clean": 1.0,
+        "faithful_warned": 0.0,
+        "faithful_refused": 0.0,
+        "unfaithful_flagged": 0.696,
+        "unfaithful_refused": 0.348,
+        "unfaithful_missed": 0.304,
+        "accuracy": 0.848,
+        "mean_seconds": 7.61
+      },
+      "focus_then_full@3000": {
+        "n_faithful": 23,
+        "n_unfaithful": 23,
+        "faithful_clean": 1.0,
+        "faithful_warned": 0.0,
+        "faithful_refused": 0.0,
+        "unfaithful_flagged": 0.696,
+        "unfaithful_refused": 0.304,
+        "unfaithful_missed": 0.304,
+        "accuracy": 0.848,
+        "mean_seconds": 7.74
+      }
+    },
+    "other routes (short contexts)": {
+      "full": {
+        "n_faithful": 16,
+        "n_unfaithful": 16,
+        "faithful_clean": 0.812,
+        "faithful_warned": 0.125,
+        "faithful_refused": 0.062,
+        "unfaithful_flagged": 0.875,
+        "unfaithful_refused": 0.688,
+        "unfaithful_missed": 0.125,
+        "accuracy": 0.844,
+        "mean_seconds": 1.37
+      },
+      "focus@2000": {
+        "n_faithful": 16,
+        "n_unfaithful": 16,
+        "faithful_clean": 0.812,
+        "faithful_warned": 0.125,
+        "faithful_refused": 0.062,
+        "unfaithful_flagged": 0.875,
+        "unfaithful_refused": 0.688,
+        "unfaithful_missed": 0.125,
+        "accuracy": 0.844,
+        "mean_seconds": 1.37
+      },
+      "focus_then_full@1500": {
+        "n_faithful": 16,
+        "n_unfaithful": 16,
+        "faithful_clean": 0.812,
+        "faithful_warned": 0.125,
+        "faithful_refused": 0.062,
+        "unfaithful_flagged": 0.875,
+        "unfaithful_refused": 0.688,
+        "unfaithful_missed": 0.125,
+        "accuracy": 0.844,
+        "mean_seconds": 1.37
+      },
+      "focus_then_full@2000": {
+        "n_faithful": 16,
+        "n_unfaithful": 16,
+        "faithful_clean": 0.812,
+        "faithful_warned": 0.125,
+        "faithful_refused": 0.062,
+        "unfaithful_flagged": 0.875,
+        "unfaithful_refused": 0.688,
+        "unfaithful_missed": 0.125,
+        "accuracy": 0.844,
+        "mean_seconds": 1.37
+      },
+      "focus_then_full@3000": {
+        "n_faithful": 16,
+        "n_unfaithful": 16,
+        "faithful_clean": 0.812,
+        "faithful_warned": 0.125,
+        "faithful_refused": 0.062,
+        "unfaithful_flagged": 0.875,
+        "unfaithful_refused": 0.688,
+        "unfaithful_missed": 0.125,
+        "accuracy": 0.844,
+        "mean_seconds": 1.37
+      }
+    },
+    "all": {
+      "full": {
+        "n_faithful": 39,
+        "n_unfaithful": 39,
+        "faithful_clean": 0.872,
+        "faithful_warned": 0.103,
+        "faithful_refused": 0.026,
+        "unfaithful_flagged": 0.821,
+        "unfaithful_refused": 0.538,
+        "unfaithful_missed": 0.179,
+        "accuracy": 0.846,
+        "mean_seconds": 8.33
+      },
+      "focus@2000": {
+        "n_faithful": 39,
+        "n_unfaithful": 39,
+        "faithful_clean": 0.846,
+        "faithful_warned": 0.051,
+        "faithful_refused": 0.103,
+        "unfaithful_flagged": 0.821,
+        "unfaithful_refused": 0.59,
+        "unfaithful_missed": 0.179,
+        "accuracy": 0.833,
+        "mean_seconds": 1.55
+      },
+      "focus_then_full@1500": {
+        "n_faithful": 39,
+        "n_unfaithful": 39,
+        "faithful_clean": 0.923,
+        "faithful_warned": 0.051,
+        "faithful_refused": 0.026,
+        "unfaithful_flagged": 0.769,
+        "unfaithful_refused": 0.487,
+        "unfaithful_missed": 0.231,
+        "accuracy": 0.846,
+        "mean_seconds": 5.23
+      },
+      "focus_then_full@2000": {
+        "n_faithful": 39,
+        "n_unfaithful": 39,
+        "faithful_clean": 0.923,
+        "faithful_warned": 0.051,
+        "faithful_refused": 0.026,
+        "unfaithful_flagged": 0.769,
+        "unfaithful_refused": 0.487,
+        "unfaithful_missed": 0.231,
+        "accuracy": 0.846,
+        "mean_seconds": 5.05
+      },
+      "focus_then_full@3000": {
+        "n_faithful": 39,
+        "n_unfaithful": 39,
+        "faithful_clean": 0.923,
+        "faithful_warned": 0.051,
+        "faithful_refused": 0.026,
+        "unfaithful_flagged": 0.769,
+        "unfaithful_refused": 0.462,
+        "unfaithful_missed": 0.231,
+        "accuracy": 0.846,
+        "mean_seconds": 5.12
+      }
+    }
+  },
+  "rows": {
+    "full": [
+      {
+        "id": "l001-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.9513,
+        "seconds": 2.062
+      },
+      {
+        "id": "l001-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.1898,
+        "seconds": 1.611
+      },
+      {
+        "id": "l002-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.7545,
+        "seconds": 1.369
+      },
+      {
+        "id": "l002-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.0179,
+        "seconds": 1.489
+      },
+      {
+        "id": "l003-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.8279,
+        "seconds": 0.944
+      },
+      {
+        "id": "l003-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.4973,
+        "seconds": 1.127
+      },
+      {
+        "id": "l004-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.9879,
+        "seconds": 1.174
+      },
+      {
+        "id": "l004-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.3392,
+        "seconds": 1.58
+      },
+      {
+        "id": "l005-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.3329,
+        "seconds": 3.652
+      },
+      {
+        "id": "l005-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.1987,
+        "seconds": 3.674
+      },
+      {
+        "id": "p001-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.9163,
+        "seconds": 0.545
+      },
+      {
+        "id": "p001-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.014,
+        "seconds": 0.819
+      },
+      {
+        "id": "p002-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.0653,
+        "seconds": 1.121
+      },
+      {
+        "id": "p002-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0565,
+        "seconds": 1.821
+      },
+      {
+        "id": "p003-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.4145,
+        "seconds": 0.541
+      },
+      {
+        "id": "p003-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0102,
+        "seconds": 0.409
+      },
+      {
+        "id": "p005-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.6743,
+        "seconds": 0.646
+      },
+      {
+        "id": "p005-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0122,
+        "seconds": 0.972
+      },
+      {
+        "id": "s001-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9385,
+        "seconds": 2.345
+      },
+      {
+        "id": "s001-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0066,
+        "seconds": 1.019
+      },
+      {
+        "id": "s002-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.7745,
+        "seconds": 1.054
+      },
+      {
+        "id": "s002-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.4825,
+        "seconds": 1.559
+      },
+      {
+        "id": "s003-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.8145,
+        "seconds": 1.493
+      },
+      {
+        "id": "s003-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0862,
+        "seconds": 1.048
+      },
+      {
+        "id": "s004-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9299,
+        "seconds": 1.383
+      },
+      {
+        "id": "s004-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0123,
+        "seconds": 1.184
+      },
+      {
+        "id": "s005-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9542,
+        "seconds": 0.995
+      },
+      {
+        "id": "s005-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0291,
+        "seconds": 1.96
+      },
+      {
+        "id": "s006-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.8661,
+        "seconds": 1.004
+      },
+      {
+        "id": "s006-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0519,
+        "seconds": 2.179
+      },
+      {
+        "id": "m003-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.2396,
+        "seconds": 0.604
+      },
+      {
+        "id": "m003-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.067,
+        "seconds": 0.36
+      },
+      {
+        "id": "r001-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9477,
+        "seconds": 13.808
+      },
+      {
+        "id": "r001-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1015,
+        "seconds": 17.035
+      },
+      {
+        "id": "r002-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8637,
+        "seconds": 16.154
+      },
+      {
+        "id": "r002-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1065,
+        "seconds": 13.825
+      },
+      {
+        "id": "r003-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.7905,
+        "seconds": 13.617
+      },
+      {
+        "id": "r003-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0087,
+        "seconds": 15.525
+      },
+      {
+        "id": "r004-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9494,
+        "seconds": 15.438
+      },
+      {
+        "id": "r004-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3071,
+        "seconds": 15.349
+      },
+      {
+        "id": "r005-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9534,
+        "seconds": 15.273
+      },
+      {
+        "id": "r005-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3045,
+        "seconds": 16.265
+      },
+      {
+        "id": "r006-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8919,
+        "seconds": 19.446
+      },
+      {
+        "id": "r006-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.619,
+        "seconds": 21.681
+      },
+      {
+        "id": "r007-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.982,
+        "seconds": 15.308
+      },
+      {
+        "id": "r007-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0279,
+        "seconds": 15.058
+      },
+      {
+        "id": "r008-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.2484,
+        "seconds": 14.464
+      },
+      {
+        "id": "r008-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0565,
+        "seconds": 14.5
+      },
+      {
+        "id": "r009-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.2977,
+        "seconds": 14.424
+      },
+      {
+        "id": "r009-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1044,
+        "seconds": 14.105
+      },
+      {
+        "id": "r010-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8639,
+        "seconds": 13.757
+      },
+      {
+        "id": "r010-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.2042,
+        "seconds": 14.843
+      },
+      {
+        "id": "r011-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8889,
+        "seconds": 10.911
+      },
+      {
+        "id": "r011-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3558,
+        "seconds": 11.576
+      },
+      {
+        "id": "r012-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8917,
+        "seconds": 15.49
+      },
+      {
+        "id": "r012-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1698,
+        "seconds": 11.137
+      },
+      {
+        "id": "r013-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9822,
+        "seconds": 13.649
+      },
+      {
+        "id": "r013-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.8552,
+        "seconds": 10.838
+      },
+      {
+        "id": "r014-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9922,
+        "seconds": 10.363
+      },
+      {
+        "id": "r014-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.8937,
+        "seconds": 12.25
+      },
+      {
+        "id": "r015-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9413,
+        "seconds": 12.336
+      },
+      {
+        "id": "r015-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.8616,
+        "seconds": 9.875
+      },
+      {
+        "id": "r016-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.937,
+        "seconds": 10.153
+      },
+      {
+        "id": "r016-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0378,
+        "seconds": 9.357
+      },
+      {
+        "id": "r017-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8089,
+        "seconds": 11.653
+      },
+      {
+        "id": "r017-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.4513,
+        "seconds": 13.961
+      },
+      {
+        "id": "r018-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8367,
+        "seconds": 15.839
+      },
+      {
+        "id": "r018-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.2534,
+        "seconds": 13.741
+      },
+      {
+        "id": "r019-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.7414,
+        "seconds": 16.743
+      },
+      {
+        "id": "r019-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.2295,
+        "seconds": 13.056
+      },
+      {
+        "id": "r020-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.7779,
+        "seconds": 8.875
+      },
+      {
+        "id": "r020-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0153,
+        "seconds": 10.996
+      },
+      {
+        "id": "f001-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.561,
+        "seconds": 9.456
+      },
+      {
+        "id": "f001-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.2114,
+        "seconds": 8.989
+      },
+      {
+        "id": "f002-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.4907,
+        "seconds": 9.146
+      },
+      {
+        "id": "f002-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1284,
+        "seconds": 9.214
+      },
+      {
+        "id": "f003-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.7252,
+        "seconds": 8.487
+      },
+      {
+        "id": "f003-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0142,
+        "seconds": 8.348
+      }
+    ],
+    "focus@2000": [
+      {
+        "id": "l001-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.9513,
+        "seconds": 2.062
+      },
+      {
+        "id": "l001-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.1898,
+        "seconds": 1.611
+      },
+      {
+        "id": "l002-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.7545,
+        "seconds": 1.369
+      },
+      {
+        "id": "l002-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.0179,
+        "seconds": 1.489
+      },
+      {
+        "id": "l003-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.8279,
+        "seconds": 0.944
+      },
+      {
+        "id": "l003-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.4973,
+        "seconds": 1.127
+      },
+      {
+        "id": "l004-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.9879,
+        "seconds": 1.174
+      },
+      {
+        "id": "l004-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.3392,
+        "seconds": 1.58
+      },
+      {
+        "id": "l005-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.3329,
+        "seconds": 3.652
+      },
+      {
+        "id": "l005-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.1987,
+        "seconds": 3.674
+      },
+      {
+        "id": "p001-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.9163,
+        "seconds": 0.545
+      },
+      {
+        "id": "p001-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.014,
+        "seconds": 0.819
+      },
+      {
+        "id": "p002-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.0653,
+        "seconds": 1.121
+      },
+      {
+        "id": "p002-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0565,
+        "seconds": 1.821
+      },
+      {
+        "id": "p003-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.4145,
+        "seconds": 0.541
+      },
+      {
+        "id": "p003-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0102,
+        "seconds": 0.409
+      },
+      {
+        "id": "p005-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.6743,
+        "seconds": 0.646
+      },
+      {
+        "id": "p005-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0122,
+        "seconds": 0.972
+      },
+      {
+        "id": "s001-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9385,
+        "seconds": 2.345
+      },
+      {
+        "id": "s001-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0066,
+        "seconds": 1.019
+      },
+      {
+        "id": "s002-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.7745,
+        "seconds": 1.054
+      },
+      {
+        "id": "s002-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.4825,
+        "seconds": 1.559
+      },
+      {
+        "id": "s003-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.8145,
+        "seconds": 1.493
+      },
+      {
+        "id": "s003-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0862,
+        "seconds": 1.048
+      },
+      {
+        "id": "s004-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9299,
+        "seconds": 1.383
+      },
+      {
+        "id": "s004-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0123,
+        "seconds": 1.184
+      },
+      {
+        "id": "s005-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9542,
+        "seconds": 0.995
+      },
+      {
+        "id": "s005-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0291,
+        "seconds": 1.96
+      },
+      {
+        "id": "s006-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.8661,
+        "seconds": 1.004
+      },
+      {
+        "id": "s006-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0519,
+        "seconds": 2.179
+      },
+      {
+        "id": "m003-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.2396,
+        "seconds": 0.604
+      },
+      {
+        "id": "m003-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.067,
+        "seconds": 0.36
+      },
+      {
+        "id": "r001-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9799,
+        "seconds": 2.061
+      },
+      {
+        "id": "r001-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1517,
+        "seconds": 1.955
+      },
+      {
+        "id": "r002-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9185,
+        "seconds": 1.084
+      },
+      {
+        "id": "r002-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.021,
+        "seconds": 1.086
+      },
+      {
+        "id": "r003-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.976,
+        "seconds": 1.003
+      },
+      {
+        "id": "r003-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0116,
+        "seconds": 1.232
+      },
+      {
+        "id": "r004-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9842,
+        "seconds": 1.606
+      },
+      {
+        "id": "r004-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.2013,
+        "seconds": 2.642
+      },
+      {
+        "id": "r005-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.0216,
+        "seconds": 1.185
+      },
+      {
+        "id": "r005-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0121,
+        "seconds": 1.374
+      },
+      {
+        "id": "r006-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9518,
+        "seconds": 1.779
+      },
+      {
+        "id": "r006-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.7473,
+        "seconds": 1.273
+      },
+      {
+        "id": "r007-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9798,
+        "seconds": 1.164
+      },
+      {
+        "id": "r007-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0287,
+        "seconds": 3.455
+      },
+      {
+        "id": "r008-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8529,
+        "seconds": 2.634
+      },
+      {
+        "id": "r008-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0759,
+        "seconds": 1.496
+      },
+      {
+        "id": "r009-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.555,
+        "seconds": 1.871
+      },
+      {
+        "id": "r009-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0593,
+        "seconds": 1.58
+      },
+      {
+        "id": "r010-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9591,
+        "seconds": 2.598
+      },
+      {
+        "id": "r010-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.267,
+        "seconds": 2.211
+      },
+      {
+        "id": "r011-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.0494,
+        "seconds": 1.73
+      },
+      {
+        "id": "r011-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0919,
+        "seconds": 1.356
+      },
+      {
+        "id": "r012-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9783,
+        "seconds": 1.598
+      },
+      {
+        "id": "r012-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.5459,
+        "seconds": 1.85
+      },
+      {
+        "id": "r013-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.495,
+        "seconds": 1.287
+      },
+      {
+        "id": "r013-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0634,
+        "seconds": 1.369
+      },
+      {
+        "id": "r014-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9953,
+        "seconds": 1.348
+      },
+      {
+        "id": "r014-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.8935,
+        "seconds": 1.517
+      },
+      {
+        "id": "r015-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.6917,
+        "seconds": 1.615
+      },
+      {
+        "id": "r015-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.5075,
+        "seconds": 1.513
+      },
+      {
+        "id": "r016-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.983,
+        "seconds": 1.547
+      },
+      {
+        "id": "r016-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.2462,
+        "seconds": 1.1
+      },
+      {
+        "id": "r017-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9884,
+        "seconds": 1.503
+      },
+      {
+        "id": "r017-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3239,
+        "seconds": 2.039
+      },
+      {
+        "id": "r018-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9564,
+        "seconds": 1.075
+      },
+      {
+        "id": "r018-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.244,
+        "seconds": 1.35
+      },
+      {
+        "id": "r019-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9729,
+        "seconds": 1.158
+      },
+      {
+        "id": "r019-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1221,
+        "seconds": 3.479
+      },
+      {
+        "id": "r020-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9581,
+        "seconds": 2.16
+      },
+      {
+        "id": "r020-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0438,
+        "seconds": 1.953
+      },
+      {
+        "id": "f001-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8388,
+        "seconds": 1.124
+      },
+      {
+        "id": "f001-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.516,
+        "seconds": 1.075
+      },
+      {
+        "id": "f002-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.0351,
+        "seconds": 1.961
+      },
+      {
+        "id": "f002-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0354,
+        "seconds": 1.427
+      },
+      {
+        "id": "f003-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9383,
+        "seconds": 1.969
+      },
+      {
+        "id": "f003-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0146,
+        "seconds": 1.838
+      }
+    ],
+    "focus_then_full@1500": [
+      {
+        "id": "l001-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.9513,
+        "seconds": 2.062
+      },
+      {
+        "id": "l001-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.1898,
+        "seconds": 1.611
+      },
+      {
+        "id": "l002-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.7545,
+        "seconds": 1.369
+      },
+      {
+        "id": "l002-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.0179,
+        "seconds": 1.489
+      },
+      {
+        "id": "l003-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.8279,
+        "seconds": 0.944
+      },
+      {
+        "id": "l003-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.4973,
+        "seconds": 1.127
+      },
+      {
+        "id": "l004-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.9879,
+        "seconds": 1.174
+      },
+      {
+        "id": "l004-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.3392,
+        "seconds": 1.58
+      },
+      {
+        "id": "l005-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.3329,
+        "seconds": 3.652
+      },
+      {
+        "id": "l005-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.1987,
+        "seconds": 3.674
+      },
+      {
+        "id": "p001-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.9163,
+        "seconds": 0.545
+      },
+      {
+        "id": "p001-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.014,
+        "seconds": 0.819
+      },
+      {
+        "id": "p002-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.0653,
+        "seconds": 1.121
+      },
+      {
+        "id": "p002-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0565,
+        "seconds": 1.821
+      },
+      {
+        "id": "p003-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.4145,
+        "seconds": 0.541
+      },
+      {
+        "id": "p003-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0102,
+        "seconds": 0.409
+      },
+      {
+        "id": "p005-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.6743,
+        "seconds": 0.646
+      },
+      {
+        "id": "p005-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0122,
+        "seconds": 0.972
+      },
+      {
+        "id": "s001-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9385,
+        "seconds": 2.345
+      },
+      {
+        "id": "s001-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0066,
+        "seconds": 1.019
+      },
+      {
+        "id": "s002-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.7745,
+        "seconds": 1.054
+      },
+      {
+        "id": "s002-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.4825,
+        "seconds": 1.559
+      },
+      {
+        "id": "s003-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.8145,
+        "seconds": 1.493
+      },
+      {
+        "id": "s003-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0862,
+        "seconds": 1.048
+      },
+      {
+        "id": "s004-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9299,
+        "seconds": 1.383
+      },
+      {
+        "id": "s004-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0123,
+        "seconds": 1.184
+      },
+      {
+        "id": "s005-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9542,
+        "seconds": 0.995
+      },
+      {
+        "id": "s005-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0291,
+        "seconds": 1.96
+      },
+      {
+        "id": "s006-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.8661,
+        "seconds": 1.004
+      },
+      {
+        "id": "s006-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0519,
+        "seconds": 2.179
+      },
+      {
+        "id": "m003-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.2396,
+        "seconds": 0.604
+      },
+      {
+        "id": "m003-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.067,
+        "seconds": 0.36
+      },
+      {
+        "id": "r001-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9817,
+        "seconds": 1.118
+      },
+      {
+        "id": "r001-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1692,
+        "seconds": 18.533
+      },
+      {
+        "id": "r002-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9185,
+        "seconds": 1.084
+      },
+      {
+        "id": "r002-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1065,
+        "seconds": 14.911
+      },
+      {
+        "id": "r003-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8784,
+        "seconds": 0.622
+      },
+      {
+        "id": "r003-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0087,
+        "seconds": 16.246
+      },
+      {
+        "id": "r004-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9736,
+        "seconds": 0.813
+      },
+      {
+        "id": "r004-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3071,
+        "seconds": 16.57
+      },
+      {
+        "id": "r005-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9534,
+        "seconds": 16.458
+      },
+      {
+        "id": "r005-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3045,
+        "seconds": 17.639
+      },
+      {
+        "id": "r006-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9012,
+        "seconds": 1.106
+      },
+      {
+        "id": "r006-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.7038,
+        "seconds": 1.188
+      },
+      {
+        "id": "r007-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9768,
+        "seconds": 1.126
+      },
+      {
+        "id": "r007-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0279,
+        "seconds": 16.255
+      },
+      {
+        "id": "r008-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8834,
+        "seconds": 0.81
+      },
+      {
+        "id": "r008-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0802,
+        "seconds": 15.334
+      },
+      {
+        "id": "r009-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.5872,
+        "seconds": 0.931
+      },
+      {
+        "id": "r009-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1044,
+        "seconds": 15.256
+      },
+      {
+        "id": "r010-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9797,
+        "seconds": 1.205
+      },
+      {
+        "id": "r010-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3426,
+        "seconds": 15.982
+      },
+      {
+        "id": "r011-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8889,
+        "seconds": 11.855
+      },
+      {
+        "id": "r011-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3558,
+        "seconds": 12.328
+      },
+      {
+        "id": "r012-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9435,
+        "seconds": 0.915
+      },
+      {
+        "id": "r012-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.4689,
+        "seconds": 0.938
+      },
+      {
+        "id": "r013-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9822,
+        "seconds": 15.011
+      },
+      {
+        "id": "r013-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.8552,
+        "seconds": 11.892
+      },
+      {
+        "id": "r014-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9921,
+        "seconds": 1.571
+      },
+      {
+        "id": "r014-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.8198,
+        "seconds": 1.705
+      },
+      {
+        "id": "r015-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9413,
+        "seconds": 13.44
+      },
+      {
+        "id": "r015-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.8616,
+        "seconds": 12.012
+      },
+      {
+        "id": "r016-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.983,
+        "seconds": 1.547
+      },
+      {
+        "id": "r016-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.2462,
+        "seconds": 10.457
+      },
+      {
+        "id": "r017-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9814,
+        "seconds": 1.049
+      },
+      {
+        "id": "r017-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.4513,
+        "seconds": 15.989
+      },
+      {
+        "id": "r018-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.912,
+        "seconds": 1.436
+      },
+      {
+        "id": "r018-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.2534,
+        "seconds": 15.409
+      },
+      {
+        "id": "r019-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9785,
+        "seconds": 1.661
+      },
+      {
+        "id": "r019-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.2295,
+        "seconds": 14.541
+      },
+      {
+        "id": "r020-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9627,
+        "seconds": 0.948
+      },
+      {
+        "id": "r020-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0283,
+        "seconds": 12.289
+      },
+      {
+        "id": "f001-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8803,
+        "seconds": 0.966
+      },
+      {
+        "id": "f001-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.4414,
+        "seconds": 1.055
+      },
+      {
+        "id": "f002-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.4907,
+        "seconds": 10.69
+      },
+      {
+        "id": "f002-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1284,
+        "seconds": 11.268
+      },
+      {
+        "id": "f003-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9508,
+        "seconds": 0.868
+      },
+      {
+        "id": "f003-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0142,
+        "seconds": 9.225
+      }
+    ],
+    "focus_then_full@2000": [
+      {
+        "id": "l001-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.9513,
+        "seconds": 2.062
+      },
+      {
+        "id": "l001-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.1898,
+        "seconds": 1.611
+      },
+      {
+        "id": "l002-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.7545,
+        "seconds": 1.369
+      },
+      {
+        "id": "l002-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.0179,
+        "seconds": 1.489
+      },
+      {
+        "id": "l003-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.8279,
+        "seconds": 0.944
+      },
+      {
+        "id": "l003-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.4973,
+        "seconds": 1.127
+      },
+      {
+        "id": "l004-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.9879,
+        "seconds": 1.174
+      },
+      {
+        "id": "l004-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.3392,
+        "seconds": 1.58
+      },
+      {
+        "id": "l005-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.3329,
+        "seconds": 3.652
+      },
+      {
+        "id": "l005-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.1987,
+        "seconds": 3.674
+      },
+      {
+        "id": "p001-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.9163,
+        "seconds": 0.545
+      },
+      {
+        "id": "p001-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.014,
+        "seconds": 0.819
+      },
+      {
+        "id": "p002-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.0653,
+        "seconds": 1.121
+      },
+      {
+        "id": "p002-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0565,
+        "seconds": 1.821
+      },
+      {
+        "id": "p003-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.4145,
+        "seconds": 0.541
+      },
+      {
+        "id": "p003-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0102,
+        "seconds": 0.409
+      },
+      {
+        "id": "p005-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.6743,
+        "seconds": 0.646
+      },
+      {
+        "id": "p005-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0122,
+        "seconds": 0.972
+      },
+      {
+        "id": "s001-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9385,
+        "seconds": 2.345
+      },
+      {
+        "id": "s001-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0066,
+        "seconds": 1.019
+      },
+      {
+        "id": "s002-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.7745,
+        "seconds": 1.054
+      },
+      {
+        "id": "s002-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.4825,
+        "seconds": 1.559
+      },
+      {
+        "id": "s003-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.8145,
+        "seconds": 1.493
+      },
+      {
+        "id": "s003-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0862,
+        "seconds": 1.048
+      },
+      {
+        "id": "s004-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9299,
+        "seconds": 1.383
+      },
+      {
+        "id": "s004-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0123,
+        "seconds": 1.184
+      },
+      {
+        "id": "s005-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9542,
+        "seconds": 0.995
+      },
+      {
+        "id": "s005-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0291,
+        "seconds": 1.96
+      },
+      {
+        "id": "s006-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.8661,
+        "seconds": 1.004
+      },
+      {
+        "id": "s006-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0519,
+        "seconds": 2.179
+      },
+      {
+        "id": "m003-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.2396,
+        "seconds": 0.604
+      },
+      {
+        "id": "m003-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.067,
+        "seconds": 0.36
+      },
+      {
+        "id": "r001-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9799,
+        "seconds": 2.061
+      },
+      {
+        "id": "r001-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1517,
+        "seconds": 18.991
+      },
+      {
+        "id": "r002-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9185,
+        "seconds": 1.084
+      },
+      {
+        "id": "r002-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1065,
+        "seconds": 14.911
+      },
+      {
+        "id": "r003-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.976,
+        "seconds": 1.003
+      },
+      {
+        "id": "r003-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0116,
+        "seconds": 16.757
+      },
+      {
+        "id": "r004-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9842,
+        "seconds": 1.606
+      },
+      {
+        "id": "r004-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3071,
+        "seconds": 17.991
+      },
+      {
+        "id": "r005-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9534,
+        "seconds": 16.458
+      },
+      {
+        "id": "r005-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3045,
+        "seconds": 17.639
+      },
+      {
+        "id": "r006-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9518,
+        "seconds": 1.779
+      },
+      {
+        "id": "r006-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.7473,
+        "seconds": 1.273
+      },
+      {
+        "id": "r007-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9798,
+        "seconds": 1.164
+      },
+      {
+        "id": "r007-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0287,
+        "seconds": 18.514
+      },
+      {
+        "id": "r008-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8529,
+        "seconds": 2.634
+      },
+      {
+        "id": "r008-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0759,
+        "seconds": 15.997
+      },
+      {
+        "id": "r009-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.555,
+        "seconds": 1.871
+      },
+      {
+        "id": "r009-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1044,
+        "seconds": 15.685
+      },
+      {
+        "id": "r010-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9591,
+        "seconds": 2.598
+      },
+      {
+        "id": "r010-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.267,
+        "seconds": 17.054
+      },
+      {
+        "id": "r011-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8889,
+        "seconds": 12.641
+      },
+      {
+        "id": "r011-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3558,
+        "seconds": 12.933
+      },
+      {
+        "id": "r012-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9783,
+        "seconds": 1.598
+      },
+      {
+        "id": "r012-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.5459,
+        "seconds": 1.85
+      },
+      {
+        "id": "r013-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.495,
+        "seconds": 1.287
+      },
+      {
+        "id": "r013-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.8552,
+        "seconds": 12.208
+      },
+      {
+        "id": "r014-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9953,
+        "seconds": 1.348
+      },
+      {
+        "id": "r014-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.8935,
+        "seconds": 1.517
+      },
+      {
+        "id": "r015-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.6917,
+        "seconds": 1.615
+      },
+      {
+        "id": "r015-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.5075,
+        "seconds": 1.513
+      },
+      {
+        "id": "r016-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.983,
+        "seconds": 1.547
+      },
+      {
+        "id": "r016-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.2462,
+        "seconds": 10.457
+      },
+      {
+        "id": "r017-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9884,
+        "seconds": 1.503
+      },
+      {
+        "id": "r017-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.4513,
+        "seconds": 16.001
+      },
+      {
+        "id": "r018-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9564,
+        "seconds": 1.075
+      },
+      {
+        "id": "r018-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.2534,
+        "seconds": 15.091
+      },
+      {
+        "id": "r019-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9729,
+        "seconds": 1.158
+      },
+      {
+        "id": "r019-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.2295,
+        "seconds": 16.535
+      },
+      {
+        "id": "r020-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9581,
+        "seconds": 2.16
+      },
+      {
+        "id": "r020-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0438,
+        "seconds": 12.949
+      },
+      {
+        "id": "f001-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8388,
+        "seconds": 1.124
+      },
+      {
+        "id": "f001-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.516,
+        "seconds": 1.075
+      },
+      {
+        "id": "f002-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.4907,
+        "seconds": 11.107
+      },
+      {
+        "id": "f002-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1284,
+        "seconds": 10.641
+      },
+      {
+        "id": "f003-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9383,
+        "seconds": 1.969
+      },
+      {
+        "id": "f003-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0146,
+        "seconds": 10.186
+      }
+    ],
+    "focus_then_full@3000": [
+      {
+        "id": "l001-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.9513,
+        "seconds": 2.062
+      },
+      {
+        "id": "l001-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.1898,
+        "seconds": 1.611
+      },
+      {
+        "id": "l002-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.7545,
+        "seconds": 1.369
+      },
+      {
+        "id": "l002-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.0179,
+        "seconds": 1.489
+      },
+      {
+        "id": "l003-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.8279,
+        "seconds": 0.944
+      },
+      {
+        "id": "l003-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.4973,
+        "seconds": 1.127
+      },
+      {
+        "id": "l004-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.9879,
+        "seconds": 1.174
+      },
+      {
+        "id": "l004-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.3392,
+        "seconds": 1.58
+      },
+      {
+        "id": "l005-faithful",
+        "route": "linkedin",
+        "faithful": true,
+        "context_chars": 1346,
+        "score": 0.3329,
+        "seconds": 3.652
+      },
+      {
+        "id": "l005-unfaithful",
+        "route": "linkedin",
+        "faithful": false,
+        "context_chars": 1346,
+        "score": 0.1987,
+        "seconds": 3.674
+      },
+      {
+        "id": "p001-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.9163,
+        "seconds": 0.545
+      },
+      {
+        "id": "p001-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.014,
+        "seconds": 0.819
+      },
+      {
+        "id": "p002-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.0653,
+        "seconds": 1.121
+      },
+      {
+        "id": "p002-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0565,
+        "seconds": 1.821
+      },
+      {
+        "id": "p003-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.4145,
+        "seconds": 0.541
+      },
+      {
+        "id": "p003-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0102,
+        "seconds": 0.409
+      },
+      {
+        "id": "p005-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.6743,
+        "seconds": 0.646
+      },
+      {
+        "id": "p005-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.0122,
+        "seconds": 0.972
+      },
+      {
+        "id": "s001-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9385,
+        "seconds": 2.345
+      },
+      {
+        "id": "s001-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0066,
+        "seconds": 1.019
+      },
+      {
+        "id": "s002-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.7745,
+        "seconds": 1.054
+      },
+      {
+        "id": "s002-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.4825,
+        "seconds": 1.559
+      },
+      {
+        "id": "s003-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.8145,
+        "seconds": 1.493
+      },
+      {
+        "id": "s003-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0862,
+        "seconds": 1.048
+      },
+      {
+        "id": "s004-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9299,
+        "seconds": 1.383
+      },
+      {
+        "id": "s004-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0123,
+        "seconds": 1.184
+      },
+      {
+        "id": "s005-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.9542,
+        "seconds": 0.995
+      },
+      {
+        "id": "s005-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0291,
+        "seconds": 1.96
+      },
+      {
+        "id": "s006-faithful",
+        "route": "spotify",
+        "faithful": true,
+        "context_chars": 985,
+        "score": 0.8661,
+        "seconds": 1.004
+      },
+      {
+        "id": "s006-unfaithful",
+        "route": "spotify",
+        "faithful": false,
+        "context_chars": 985,
+        "score": 0.0519,
+        "seconds": 2.179
+      },
+      {
+        "id": "m003-faithful",
+        "route": "personal",
+        "faithful": true,
+        "context_chars": 333,
+        "score": 0.2396,
+        "seconds": 0.604
+      },
+      {
+        "id": "m003-unfaithful",
+        "route": "personal",
+        "faithful": false,
+        "context_chars": 333,
+        "score": 0.067,
+        "seconds": 0.36
+      },
+      {
+        "id": "r001-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.985,
+        "seconds": 1.898
+      },
+      {
+        "id": "r001-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1911,
+        "seconds": 18.726
+      },
+      {
+        "id": "r002-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9393,
+        "seconds": 2.498
+      },
+      {
+        "id": "r002-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1772,
+        "seconds": 16.239
+      },
+      {
+        "id": "r003-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.961,
+        "seconds": 1.993
+      },
+      {
+        "id": "r003-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0183,
+        "seconds": 17.91
+      },
+      {
+        "id": "r004-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.977,
+        "seconds": 2.194
+      },
+      {
+        "id": "r004-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3071,
+        "seconds": 18.101
+      },
+      {
+        "id": "r005-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9534,
+        "seconds": 18.249
+      },
+      {
+        "id": "r005-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3045,
+        "seconds": 18.906
+      },
+      {
+        "id": "r006-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9346,
+        "seconds": 2.26
+      },
+      {
+        "id": "r006-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.6532,
+        "seconds": 2.341
+      },
+      {
+        "id": "r007-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9751,
+        "seconds": 1.978
+      },
+      {
+        "id": "r007-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0279,
+        "seconds": 19.451
+      },
+      {
+        "id": "r008-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.6637,
+        "seconds": 3.503
+      },
+      {
+        "id": "r008-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0725,
+        "seconds": 17.7
+      },
+      {
+        "id": "r009-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.6122,
+        "seconds": 3.707
+      },
+      {
+        "id": "r009-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1331,
+        "seconds": 19.737
+      },
+      {
+        "id": "r010-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9635,
+        "seconds": 3.329
+      },
+      {
+        "id": "r010-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.2042,
+        "seconds": 18.212
+      },
+      {
+        "id": "r011-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9828,
+        "seconds": 2.358
+      },
+      {
+        "id": "r011-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.3576,
+        "seconds": 13.616
+      },
+      {
+        "id": "r012-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9642,
+        "seconds": 1.927
+      },
+      {
+        "id": "r012-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.5697,
+        "seconds": 1.887
+      },
+      {
+        "id": "r013-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9561,
+        "seconds": 2.084
+      },
+      {
+        "id": "r013-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.8552,
+        "seconds": 12.221
+      },
+      {
+        "id": "r014-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.996,
+        "seconds": 2.691
+      },
+      {
+        "id": "r014-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.8928,
+        "seconds": 4.345
+      },
+      {
+        "id": "r015-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.7671,
+        "seconds": 3.41
+      },
+      {
+        "id": "r015-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.6339,
+        "seconds": 2.133
+      },
+      {
+        "id": "r016-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9755,
+        "seconds": 2.109
+      },
+      {
+        "id": "r016-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1687,
+        "seconds": 11.594
+      },
+      {
+        "id": "r017-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9869,
+        "seconds": 2.439
+      },
+      {
+        "id": "r017-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.749,
+        "seconds": 2.602
+      },
+      {
+        "id": "r018-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9423,
+        "seconds": 1.753
+      },
+      {
+        "id": "r018-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.4406,
+        "seconds": 2.128
+      },
+      {
+        "id": "r019-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9469,
+        "seconds": 3.574
+      },
+      {
+        "id": "r019-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.248,
+        "seconds": 15.57
+      },
+      {
+        "id": "r020-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9515,
+        "seconds": 2.438
+      },
+      {
+        "id": "r020-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0525,
+        "seconds": 13.415
+      },
+      {
+        "id": "f001-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.8307,
+        "seconds": 2.397
+      },
+      {
+        "id": "f001-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.375,
+        "seconds": 11.684
+      },
+      {
+        "id": "f002-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.5123,
+        "seconds": 2.074
+      },
+      {
+        "id": "f002-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.1284,
+        "seconds": 11.773
+      },
+      {
+        "id": "f003-faithful",
+        "route": "resume",
+        "faithful": true,
+        "context_chars": 7610,
+        "score": 0.9239,
+        "seconds": 3.044
+      },
+      {
+        "id": "f003-unfaithful",
+        "route": "resume",
+        "faithful": false,
+        "context_chars": 7610,
+        "score": 0.0327,
+        "seconds": 11.684
+      }
+    ]
+  }
+}
