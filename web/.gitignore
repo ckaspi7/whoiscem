@@ -47,3 +47,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Output of `npm run design-review`: screenshots and contact sheets, regenerated on demand.
+/design-review/

@@ -1,0 +1,208 @@
+/*
+ * Aurora: liquid glass over a slow, warm mesh. A pale peach, lilac, mint and
+ * rose gradient drifts behind translucent, blurred surfaces with bright
+ * specular edges; the title is Bricolage Grotesque; the accent is a deep rose.
+ *
+ * This is the light half of a pair. Everything structural lives here once, under
+ * `[data-theme^="aurora"]`, and reads its colours from variables: the --glass-*
+ * set below says what a surface is made of, and aurora-night.css supplies a
+ * dark answer for each. Switching between the two therefore changes colour and
+ * nothing else: the boxes, the radii, the blur and the type stay where they are.
+ *
+ * The riskiest theme for readability, so it is built to a rule: the mesh stays
+ * pale enough that dark text clears AA over every colour in it, and each of the
+ * four is declared as a ground stop so the token test checks them. Glass here
+ * is white at 40-80%, which only ever lightens the mesh beneath dark text. The
+ * design-review harness then measures the rendered result against real pixels,
+ * because blur and stacked translucency are exactly what a token test cannot see.
+ *
+ * The mesh is a fixed layer animated with transform alone (cheap for the GPU)
+ * and holds still under prefers-reduced-motion.
+ */
+:root[data-theme="aurora"] {
+  color-scheme: light;
+
+  --color-ink: #f4f1fb;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ece7f8;
+  --color-paper: #241f33;
+  --color-paper-dim: #463f5e;
+  --color-paper-faint: #544d6b;
+  --color-line: #d9d2ee;
+  --color-line-strong: #b8aedc;
+  --color-accent: #b5256b;
+  --color-accent-bright: #9b1d5a;
+  --color-accent-dim: #f3c6dc;
+  --color-on-accent: #fff7fb;
+  --color-ground-1: #ffd9c2;
+  --color-ground-2: #d9ccf7;
+  --color-ground-3: #c9efe0;
+  --color-ground-4: #f9c6d3;
+
+  --pill-bg: linear-gradient(180deg, rgb(255 255 255 / 0.8), rgb(255 255 255 / 0.45));
+  --pill-shadow: inset 0 1px 0 rgb(255 255 255 / 0.95), 0 8px 24px -12px rgb(91 60 160 / 0.35);
+  --bubble-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 6px 18px -10px rgb(91 60 160 / 0.3);
+  --field-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 8px 24px -14px rgb(91 60 160 / 0.35);
+
+  --glass-edge: rgb(255 255 255 / 0.7);
+  --glass-answer: linear-gradient(180deg, rgb(255 255 255 / 0.66), rgb(255 255 255 / 0.4));
+  --glass-highlight: rgb(255 255 255 / 0.9);
+  --glass-shadow: rgb(91 60 160 / 0.4);
+  --glass-bubble-edge: rgb(255 255 255 / 0.75);
+  --glass-bubble: linear-gradient(180deg, rgb(255 255 255 / 0.74), rgb(255 255 255 / 0.42));
+  --glass-field-edge: rgb(255 255 255 / 0.8);
+  --glass-field: rgb(255 255 255 / 0.7);
+  --glass-composer-edge: rgb(255 255 255 / 0.75);
+  --glass-composer: rgb(255 255 255 / 0.5);
+  --focus-ring: rgb(181 37 107 / 0.18);
+  --btn-from: #d63384;
+  --btn-to: #8f1d5a;
+  --btn-glow: rgb(181 37 107 / 0.6);
+}
+
+/* What both halves share: shape and type, then the structure built from the variables above. */
+:root[data-theme^="aurora"] {
+  --ff-display: var(--font-bricolage);
+  --ff-prose: var(--font-geist-sans);
+
+  --radius-field: 1.5rem;
+  --radius-bubble: 1.5rem;
+  --radius-bubble-tail: 0.5rem;
+  --radius-card: 1.5rem;
+}
+
+:root[data-theme^="aurora"] body::before {
+  content: "";
+  position: fixed;
+  inset: -25%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(45% 40% at 18% 22%, var(--color-ground-1) 0%, transparent 70%),
+    radial-gradient(40% 38% at 82% 18%, var(--color-ground-2) 0%, transparent 70%),
+    radial-gradient(45% 42% at 78% 82%, var(--color-ground-3) 0%, transparent 70%),
+    radial-gradient(40% 38% at 14% 86%, var(--color-ground-4) 0%, transparent 70%);
+  animation: aurora-drift 56s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes aurora-drift {
+  from {
+    transform: translate3d(-2%, -1%, 0) rotate(0deg) scale(1.02);
+  }
+  to {
+    transform: translate3d(2%, 2%, 0) rotate(5deg) scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme^="aurora"] body::before {
+    animation: none;
+  }
+}
+
+/* The blur: every surface text or controls sit on. */
+:root[data-theme^="aurora"] :is(.pill, .bubble, .field, .panel, .answer, .composer) {
+  backdrop-filter: blur(16px) saturate(1.6);
+}
+
+:root[data-theme^="aurora"] .masthead-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+@media (min-width: 640px) {
+  :root[data-theme^="aurora"] .masthead-title {
+    font-size: 3rem;
+  }
+}
+
+:root[data-theme^="aurora"] .masthead-sub {
+  font-size: 1rem;
+  font-style: normal;
+  color: var(--color-paper-dim);
+}
+
+/* Answers are glass cards over the mesh, so words never sit on bare gradient. */
+:root[data-theme^="aurora"] .answer {
+  padding: 1.15rem 1.35rem 1rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 1.5rem;
+  background: var(--glass-answer);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 18px 44px -26px var(--glass-shadow);
+}
+
+:root[data-theme^="aurora"] .bubble {
+  border: 1px solid var(--glass-bubble-edge);
+  background: var(--glass-bubble);
+}
+
+:root[data-theme^="aurora"] .field {
+  border-color: var(--glass-field-edge);
+  background: var(--glass-field);
+}
+
+:root[data-theme^="aurora"] .field:focus {
+  box-shadow: var(--field-shadow), 0 0 0 3px var(--focus-ring);
+}
+
+:root[data-theme^="aurora"] .composer {
+  background: var(--glass-composer);
+  border-top-color: var(--glass-composer-edge);
+}
+
+:root[data-theme^="aurora"] .btn-accent {
+  background: linear-gradient(135deg, var(--btn-from), var(--color-accent) 60%, var(--btn-to));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    0 8px 20px -8px var(--btn-glow);
+}
+
+:root[data-theme^="aurora"] .quick-prompts .pill {
+  padding: 0.55rem 1.1rem;
+}
+
+/* Geist has no italic, so an italic here would be a faked slant. */
+:root[data-theme^="aurora"] .thinking p {
+  font-style: normal;
+}
+
+/* The light/dark switch exists only where there is a pair to switch between. */
+:root[data-theme^="aurora"] .masthead-actions {
+  display: flex;
+}
+
+:root[data-theme^="aurora"] .mode-toggle {
+  display: inline-flex;
+  color: var(--color-paper-dim);
+}
+
+:root[data-theme^="aurora"] .mode-toggle:hover {
+  color: var(--color-paper);
+}
+
+:root[data-theme="aurora"] .mode-icon-sun,
+:root[data-theme="aurora-night"] .mode-icon-moon {
+  display: none;
+}
+
+/*
+ * On a phone the switch and "Clear chat" side by side leave the title too little
+ * room: it wraps onto two lines and the tagline onto five. The label gives way
+ * to the icon (it stays in the accessibility tree), so the header keeps the
+ * shape it has everywhere else.
+ */
+@media (max-width: 479px) {
+  :root[data-theme^="aurora"] .clear-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

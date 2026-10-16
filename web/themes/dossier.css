@@ -1,0 +1,267 @@
+/*
+ * Dossier: the one theme that changes structure, not only skin. On a wide
+ * screen the page becomes a profile rail beside the conversation, with the
+ * name, the role and a bento of facts (each one backed by data/resume.md) in
+ * the rail, so the first thing a visitor sees is who this is and the chat sits
+ * beside it. Below 1024px there is no room for a rail and it stays hidden,
+ * leaving a plain warm-paper chat. The skin is warm paper and brick, squarer
+ * than Porcelain, with a serif display face.
+ *
+ * Nothing here chooses a layout in JavaScript: the rail is always in the DOM
+ * and this file only reveals it, so a theme change cannot disagree with the
+ * server render. The rail's gradient is declared as two ground stops so the
+ * contrast test covers text on it.
+ */
+:root[data-theme="dossier"] {
+  color-scheme: light;
+
+  --color-ink: #efe8dc;
+  --color-surface: #f8f3ea;
+  --color-surface-raised: #e7dfd0;
+  --color-paper: #2b2420;
+  --color-paper-dim: #51463d;
+  --color-paper-faint: #62564b;
+  --color-line: #d8cdbb;
+  --color-line-strong: #bfae95;
+  --color-accent: #a8482a;
+  --color-accent-bright: #8c3a20;
+  --color-accent-dim: #ecd2c0;
+  --color-on-accent: #fff8f1;
+  --color-ground-1: #f7f1e6;
+  --color-ground-2: #e6dcc9;
+
+  --ff-display: var(--font-source-serif);
+
+  --radius-field: 0.75rem;
+  --radius-bubble: 0.75rem;
+  --radius-bubble-tail: 0.25rem;
+  --radius-card: 0.75rem;
+  --pill-bg: var(--color-surface);
+  --pill-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7), 0 1px 2px rgb(60 40 20 / 0.1);
+  --bubble-shadow: 0 1px 2px rgb(60 40 20 / 0.1);
+  --field-shadow: inset 0 1px 2px rgb(60 40 20 / 0.06);
+}
+
+:root[data-theme="dossier"] .masthead-title {
+  font-size: 2.1rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+:root[data-theme="dossier"] .answer {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--color-line);
+  border-left: 3px solid var(--color-accent);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+  box-shadow:
+    0 1px 2px rgb(60 40 20 / 0.08),
+    0 12px 28px -22px rgb(60 40 20 / 0.35);
+}
+
+:root[data-theme="dossier"] .composer {
+  background: var(--color-ink);
+  border-top-color: var(--color-line);
+}
+
+/* The empty state's prompts: one ruled list of questions, not three loose pills. */
+:root[data-theme="dossier"] .quick-prompts {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+  box-shadow: 0 1px 2px rgb(60 40 20 / 0.08);
+}
+
+:root[data-theme="dossier"] .quick-prompts .pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border: 0;
+  border-bottom: 1px solid var(--color-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-paper);
+  font-family: var(--ff-prose), ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+  text-align: left;
+}
+
+:root[data-theme="dossier"] .quick-prompts .pill:last-child {
+  border-bottom: 0;
+}
+
+:root[data-theme="dossier"] .quick-prompts .pill::after {
+  content: "\2192" / "";
+  color: var(--color-accent);
+  font-family: var(--ff-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root[data-theme="dossier"] .quick-prompts .pill:hover {
+  background: color-mix(in oklab, var(--color-accent-dim) 55%, var(--color-surface));
+  color: var(--color-accent-bright);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-theme="dossier"] .quick-prompts .pill::after {
+    transition: transform 0.2s ease;
+  }
+
+  :root[data-theme="dossier"] .quick-prompts .pill:hover::after {
+    transform: translateX(3px);
+  }
+}
+
+/* The rail: shown only where there is room for it. */
+@media (min-width: 1024px) {
+  :root[data-theme="dossier"] .app-shell {
+    display: grid;
+    grid-template-columns: 22.5rem minmax(0, 1fr);
+  }
+
+  :root[data-theme="dossier"] .app-chat {
+    min-width: 0;
+  }
+
+  :root[data-theme="dossier"] .profile-rail {
+    position: sticky;
+    top: 0;
+    display: flex;
+    height: 100dvh;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 2.75rem 1.75rem 2rem;
+    overflow-y: auto;
+    border-right: 1px solid var(--color-line);
+    background: linear-gradient(180deg, var(--color-ground-1), var(--color-ground-2));
+  }
+
+  /*
+   * The name and role live in the rail now. The header keeps the one line that
+   * says what the chat is, and "Clear chat".
+   */
+  :root[data-theme="dossier"] .masthead-title,
+  :root[data-theme="dossier"] .masthead-role {
+    display: none;
+  }
+
+  :root[data-theme="dossier"] .masthead {
+    padding-bottom: 0;
+  }
+
+  :root[data-theme="dossier"] .masthead-inner > .masthead-actions {
+    margin-left: auto;
+  }
+}
+
+:root[data-theme="dossier"] .profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+:root[data-theme="dossier"] .profile-monogram {
+  display: grid;
+  width: 4.25rem;
+  height: 4.25rem;
+  margin-bottom: 0.5rem;
+  place-items: center;
+  border-radius: 9999px;
+  background: var(--color-accent);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    0 10px 22px -12px rgb(168 72 42 / 0.6);
+  color: var(--color-on-accent);
+  font-family: var(--ff-display), ui-serif, Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+:root[data-theme="dossier"] .profile-name {
+  margin: 0;
+  color: var(--color-paper);
+  font-family: var(--ff-display), ui-serif, Georgia, serif;
+  font-size: 2.1rem;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+}
+
+:root[data-theme="dossier"] .profile-role {
+  margin: 0;
+  color: var(--color-accent-bright);
+  font-family: var(--ff-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+:root[data-theme="dossier"] .profile-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+:root[data-theme="dossier"] .profile-tile {
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.9rem;
+  background: var(--color-surface);
+  box-shadow: var(--pill-shadow);
+  color: var(--color-paper-dim);
+  font-family: var(--ff-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+/* A bento: the role leads, the others are tinted from the Porcelain palette. */
+:root[data-theme="dossier"] .profile-tile[data-fact="role"] {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, #f0dccd, var(--color-surface) 70%);
+  color: var(--color-paper);
+  font-family: var(--ff-prose), ui-serif, Georgia, serif;
+  font-size: 1rem;
+}
+
+:root[data-theme="dossier"] .profile-tile[data-fact="place"] {
+  background: #dfe8de;
+}
+
+:root[data-theme="dossier"] .profile-tile[data-fact="education"] {
+  grid-column: 1 / -1;
+  background: #dde6ee;
+}
+
+:root[data-theme="dossier"] .profile-tile[data-fact="startup"] {
+  background: #f0dccd;
+}
+
+:root[data-theme="dossier"] .profile-link {
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 0.5rem 0.95rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 9999px;
+  background: var(--color-surface);
+  box-shadow: var(--pill-shadow);
+  color: var(--color-accent-bright);
+  font-family: var(--ff-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+:root[data-theme="dossier"] .profile-link:hover {
+  border-color: var(--color-accent);
+}

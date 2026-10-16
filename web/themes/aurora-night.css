@@ -1,0 +1,56 @@
+/*
+ * Aurora Night: the same lights, after dark. It is the dark half of the pair in
+ * aurora.css and reuses all of its structure (the glass boxes round every answer
+ * and question, the blur, the radii, Bricolage Grotesque for the title), so
+ * moving between the two changes colour and nothing else.
+ *
+ * The four pastel blobs of the day mesh become four glows on an aubergine
+ * ground: terracotta, violet, dusty blue and rose, the warm, lit-from-within
+ * look of Dusk. Each is declared as a ground stop, at the brightest it gets, so
+ * the token test checks light text against the worst place the page can be.
+ *
+ * Glass on a dark theme must stay mostly dark: a surface that lightens too much
+ * costs the light text on it its contrast. So the answer and bubble glass are
+ * deep, 70-80% opaque aubergine with a bright hairline edge and a faint violet
+ * under-glow, and the harness measures the rendered pixels to make sure.
+ */
+:root[data-theme="aurora-night"] {
+  color-scheme: dark;
+
+  --color-ink: #130f19;
+  --color-surface: #1d1626;
+  --color-surface-raised: #2a2036;
+  --color-paper: #f5eef2;
+  --color-paper-dim: #d8cdd9;
+  --color-paper-faint: #c4b7c8;
+  --color-line: #33283f;
+  --color-line-strong: #4f3e5e;
+  --color-accent: #f0558f;
+  --color-accent-bright: #ff9ec2;
+  --color-accent-dim: #4a1f38;
+  --color-on-accent: #200816;
+  --color-ground-1: #5a2e1e;
+  --color-ground-2: #33265e;
+  --color-ground-3: #1c3b4e;
+  --color-ground-4: #521f3d;
+
+  --pill-bg: linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0.05));
+  --pill-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 8px 24px -12px rgb(0 0 0 / 0.7);
+  --bubble-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 6px 18px -10px rgb(0 0 0 / 0.7);
+  --field-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 8px 24px -14px rgb(0 0 0 / 0.8);
+
+  --glass-edge: rgb(255 255 255 / 0.16);
+  --glass-answer: linear-gradient(180deg, rgb(48 36 62 / 0.78), rgb(30 22 40 / 0.68));
+  --glass-highlight: rgb(255 255 255 / 0.18);
+  --glass-shadow: rgb(140 90 246 / 0.38);
+  --glass-bubble-edge: rgb(255 255 255 / 0.18);
+  --glass-bubble: linear-gradient(180deg, rgb(72 52 90 / 0.8), rgb(46 34 62 / 0.72));
+  --glass-field-edge: rgb(255 255 255 / 0.18);
+  --glass-field: rgb(30 22 40 / 0.72);
+  --glass-composer-edge: rgb(255 255 255 / 0.1);
+  --glass-composer: rgb(19 15 25 / 0.62);
+  --focus-ring: rgb(240 85 143 / 0.3);
+  --btn-from: #ff7ab0;
+  --btn-to: #c13a78;
+  --btn-glow: rgb(240 85 143 / 0.55);
+}
