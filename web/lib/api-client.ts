@@ -114,6 +114,7 @@ export async function sendChatMessage(
         route: body.route,
         faithfulnessScore: body.faithfulness_score,
         costUsd: body.cost_usd,
+        degraded: body.degraded === true,
       };
     }
 

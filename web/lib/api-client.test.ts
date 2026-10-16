@@ -88,6 +88,7 @@ describe("sendChatMessage", () => {
       route: "resume",
       faithfulnessScore: 5,
       costUsd: 0.0021,
+      degraded: false,
     });
   });
 
@@ -193,5 +194,41 @@ describe("sendChatMessage", () => {
 
     expect(result.kind).toBe("network-error");
     expect((result as { reason: string }).reason).toBe("unexpected");
+  });
+});
+
+describe("degraded answers", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("carries the backend's degraded flag through", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse(200, {
+        response: "I couldn't reach my knowledge base just now.",
+        route: "resume",
+        faithfulness_score: null,
+        cost_usd: 0.0001,
+        degraded: true,
+      }),
+    );
+
+    const result = await sendChatMessage("What did Cem study?", []);
+
+    expect(result).toMatchObject({ kind: "success", degraded: true });
+  });
+
+  it("treats a backend that predates the flag as not degraded", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse(200, { response: "ok", route: "resume", faithfulness_score: 5, cost_usd: 0.001 }),
+    );
+
+    const result = await sendChatMessage("hello", []);
+
+    expect(result).toMatchObject({ kind: "success", degraded: false });
   });
 });

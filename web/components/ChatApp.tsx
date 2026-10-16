@@ -12,7 +12,7 @@ import { QuickPrompts } from "./QuickPrompts";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 
 export function ChatApp() {
-  const { messages, sendState, freshAssistantId, send, retry, clear, hydrated } = useChat();
+  const { messages, sendState, freshAssistantId, send, retry, retryDegraded, clear, hydrated } = useChat();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const isLoading = sendState.status === "loading";
@@ -35,7 +35,11 @@ export function ChatApp() {
             }`}
           >
             {showEmptyState && <QuickPrompts onPick={send} />}
-            <MessageList messages={messages} latestAssistantId={freshAssistantId} />
+            <MessageList
+              messages={messages}
+              latestAssistantId={freshAssistantId}
+              onRetryDegraded={isLoading ? undefined : retryDegraded}
+            />
             {isLoading && <ThinkingIndicator isFirstMessage={sendState.isFirstMessage} />}
             {sendState.status === "error" && <ErrorPanel error={sendState.error} onRetry={retry} />}
             <div ref={bottomRef} />
