@@ -6,7 +6,7 @@
  *
  * The four pastel blobs of the day mesh become four glows on an aubergine
  * ground: terracotta, violet, dusty blue and rose, the warm, lit-from-within
- * look of Dusk. Each is declared as a ground stop, at the brightest it gets, so
+ * look of lamps in a dark room. Each is declared as a ground stop, at the brightest it gets, so
  * the token test checks light text against the worst place the page can be.
  *
  * Glass on a dark theme must stay mostly dark: a surface that lightens too much

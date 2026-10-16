@@ -8,7 +8,6 @@ import { ChatInput } from "./ChatInput";
 import { ErrorPanel } from "./ErrorPanel";
 import { Masthead } from "./Masthead";
 import { MessageList } from "./MessageList";
-import { ProfileRail } from "./ProfileRail";
 import { QuickPrompts } from "./QuickPrompts";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 
@@ -25,7 +24,6 @@ export function ChatApp() {
 
   return (
     <div className="app-shell">
-      <ProfileRail />
       <div className="app-chat">
         <Masthead onClear={clear} canClear={messages.length > 0 && !isLoading} />
         <main className="flex min-h-0 flex-1 flex-col">
