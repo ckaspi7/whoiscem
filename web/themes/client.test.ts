@@ -94,8 +94,8 @@ describe("chooseTheme", () => {
 
     chooseTheme("aurora-night", "if-present");
     updates[0]();
-    root.dataset.theme = "porcelain";
+    root.dataset.theme = "aurora";
 
-    expect(latestTheme()).toBe("porcelain");
+    expect(latestTheme()).toBe("aurora");
   });
 });

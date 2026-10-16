@@ -4,8 +4,9 @@
  * A theme is a CSS file, themes/<id>.css, that reassigns the colour tokens
  * documented in app/globals.css (and, optionally, the shape and material
  * variables: radii, --pill-bg, --pill-shadow and friends) under
- * `:root[data-theme="<id>"]`. The default theme's tokens live in globals.css
- * itself, because Tailwind generates its utilities from there.
+ * `:root[data-theme="<id>"]`. The baseline tokens every theme overrides live in
+ * globals.css itself, because Tailwind generates its utilities from there; the
+ * baseline is not a theme and cannot be chosen.
  *
  * To add one: add an entry below, create themes/<id>.css, and @import it from
  * globals.css. themes/themes.test.ts then checks that it defines every token,
@@ -27,19 +28,14 @@ interface ThemeEntry {
 }
 
 export const THEMES = [
-  { id: "ember", label: "Ember", scheme: "dark" },
-  { id: "porcelain", label: "Porcelain", scheme: "light" },
-  { id: "dusk", label: "Dusk", scheme: "dark" },
-  { id: "obsidian", label: "Obsidian", scheme: "dark" },
   { id: "aurora", label: "Aurora", scheme: "light", family: "aurora" },
   { id: "aurora-night", label: "Aurora Night", scheme: "dark", family: "aurora" },
-  { id: "dossier", label: "Dossier", scheme: "light" },
 ] as const satisfies readonly ThemeEntry[];
 
 export type ThemeId = (typeof THEMES)[number]["id"];
 
-/** The theme whose tokens live in globals.css: what the server renders and what an unknown id falls back to. */
-export const DEFAULT_THEME: ThemeId = "ember";
+/** What is assumed before the page has chosen one (the server render) and what an unknown id falls back to: the light half. */
+export const DEFAULT_THEME: ThemeId = "aurora";
 
 /** What a visitor who has chosen nothing sees: the half of the pair that matches their system. */
 export const VISITOR_DEFAULTS = { light: "aurora", dark: "aurora-night" } as const satisfies Record<

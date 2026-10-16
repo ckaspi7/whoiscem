@@ -52,7 +52,6 @@ function defaultBlock(): string {
 }
 
 function themeBlock(id: ThemeId): string {
-  if (id === DEFAULT_THEME) return defaultBlock();
   const match = read(`themes/${id}.css`).match(new RegExp(`:root\\[data-theme="${id}"\\]\\s*\\{([^}]*)\\}`));
   if (!match) throw new Error(`themes/${id}.css has no :root[data-theme="${id}"] block`);
   return match[1];
@@ -117,10 +116,16 @@ describe("the registry", () => {
     expect(isThemeId(null)).toBe(false);
   });
 
+  it("does not know the themes that were evaluated and dropped, so nothing can select one", () => {
+    for (const id of ["ember", "porcelain", "dusk", "obsidian", "dossier"]) {
+      expect(isThemeId(id), id).toBe(false);
+    }
+  });
+
   it("pairs a theme with its other half, and only where a family has exactly one of each", () => {
     expect(counterpart("aurora")).toBe("aurora-night");
     expect(counterpart("aurora-night")).toBe("aurora");
-    expect(counterpart("ember")).toBeNull();
+    for (const theme of THEMES) expect(counterpart(theme.id), theme.id).not.toBeNull();
 
     const families = new Map<string, string[]>();
     for (const theme of THEMES as readonly { id: string; scheme: string; family?: string }[]) {
@@ -138,6 +143,16 @@ describe("the registry", () => {
   });
 });
 
+describe("the baseline tokens", () => {
+  // Not a theme and not selectable: what shows only if no theme has been applied.
+  // Still held to the readability gate.
+  const tokens = declarations(defaultBlock());
+
+  it.each(PAIRS)("%s on %s reaches %s:1 (%s)", (foreground, background, minimum) => {
+    expect(contrastRatio(tokens[foreground], tokens[background])).toBeGreaterThanOrEqual(minimum);
+  });
+});
+
 describe.each(THEMES.map((theme) => [theme.id, theme.scheme] as const))("theme %s", (id, scheme) => {
   const tokens = resolved(id);
 
@@ -147,9 +162,7 @@ describe.each(THEMES.map((theme) => [theme.id, theme.scheme] as const))("theme %
   });
 
   it(`declares color-scheme: ${scheme}, matching the registry`, () => {
-    const declared = /color-scheme:\s*(\w+)/.exec(
-      id === DEFAULT_THEME ? read("app/globals.css").match(/:root\s*\{([^}]*)\}/)![1] : themeBlock(id),
-    );
+    const declared = /color-scheme:\s*(\w+)/.exec(themeBlock(id));
     expect(declared?.[1]).toBe(scheme);
   });
 
@@ -199,25 +212,32 @@ describe("themeInitScript", () => {
   it("still does, with storage blocked, rather than falling back to the page's own default", () => {
     expect(run("", null, { storageBlocked: true }).theme).toBe(VISITOR_DEFAULTS.light);
     expect(run("", null, { storageBlocked: true, dark: true }).theme).toBe(VISITOR_DEFAULTS.dark);
-    expect(run("?theme=porcelain", null, { storageBlocked: true }).theme).toBe("porcelain");
+    expect(run("?theme=aurora-night", null, { storageBlocked: true }).theme).toBe("aurora-night");
   });
 
   it("applies and remembers a theme asked for in the URL", () => {
-    expect(run("?theme=porcelain", null)).toEqual({ theme: "porcelain", remembered: "porcelain" });
+    expect(run("?theme=aurora-night", null)).toEqual({ theme: "aurora-night", remembered: "aurora-night" });
   });
 
   it("uses the remembered theme when the URL says nothing, whatever the system prefers", () => {
-    expect(run("", "porcelain").theme).toBe("porcelain");
+    expect(run("", "aurora-night").theme).toBe("aurora-night");
     expect(run("", "aurora", { dark: true }).theme).toBe("aurora");
   });
 
   it("lets the URL override what was remembered", () => {
-    expect(run("?theme=ember", "porcelain").theme).toBe("ember");
+    expect(run("?theme=aurora", "aurora-night").theme).toBe("aurora");
   });
 
   it("ignores a theme it does not know, whether from the URL or storage", () => {
     expect(run("?theme=neon", null).theme).toBe(VISITOR_DEFAULTS.light);
     expect(run("", "neon", { dark: true }).theme).toBe(VISITOR_DEFAULTS.dark);
+  });
+
+  it("ignores a dropped theme, from the URL or from a value stored earlier", () => {
+    for (const dropped of ["ember", "porcelain", "dusk", "obsidian", "dossier"]) {
+      expect(run(`?theme=${dropped}`, null).theme, `?theme=${dropped}`).toBe(VISITOR_DEFAULTS.light);
+      expect(run("", dropped, { dark: true }).theme, `stored ${dropped}`).toBe(VISITOR_DEFAULTS.dark);
+    }
   });
 
   it("falls back to the light half when the browser has no matchMedia", () => {

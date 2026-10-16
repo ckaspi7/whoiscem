@@ -64,13 +64,4 @@ describe("ModeToggle", () => {
 
     expect(window.location.search).toBe("?theme=aurora-night");
   });
-
-  it("does nothing on a theme that has no other half", () => {
-    root.dataset.theme = "porcelain";
-    render(<ModeToggle />);
-    fireEvent.click(screen.getByRole("button", { name: "Dark mode", hidden: true }));
-
-    expect(root.dataset.theme).toBe("porcelain");
-    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
-  });
 });
