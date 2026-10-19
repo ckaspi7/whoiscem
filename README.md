@@ -438,6 +438,22 @@ curl -X POST localhost:8000/chat -H "Content-Type: application/json" \
   -d '{"message": "Where does Cem work?"}'
 ```
 
+### Frontend
+
+`web/` is a standalone Next.js chat UI for `api.py`, separate from the Streamlit
+app. The browser only ever calls the app's own `/api/chat` route, which holds
+the backend URL and API key server-side and forwards the visitor's real IP, so
+the key never reaches a browser and the backend's per-visitor rate limit keeps
+working. Answers render as markdown, a tool failure shows a retry instead of
+passing as a refusal, and the design is a light/dark pair (Aurora and Aurora
+Night) that follows the visitor's system setting, remembers a choice, and
+fades between the halves. Text colours are held to WCAG AA by a test, over
+every stop of the gradient backgrounds as well as the flat ones.
+
+It is built to deploy on Netlify (`netlify.toml`), but nothing is deployed yet.
+See [`web/README.md`](web/README.md) to run it, and `CLAUDE.md` for how it fits
+together.
+
 ---
 
 ## Tech Stack
@@ -492,6 +508,17 @@ Optionally, seed the personal-info database that backs the `personal` route
 ```powershell
 copy data\seed_data.example.json data\seed_data.json   # fill in your data
 python scripts/setup_user_data_db.py
+```
+
+To run the Next.js frontend against the headless API instead of Streamlit
+(needs a current Node.js; it is developed on Node 24):
+
+```powershell
+uvicorn api:app                      # terminal 1: http://127.0.0.1:8000
+cd web
+npm ci
+copy .env.example .env.local         # BACKEND_API_URL=http://127.0.0.1:8000, BACKEND_API_KEY=<the API's API_KEY>
+npm run dev                          # terminal 2: http://localhost:3000
 ```
 
 ### Backend modes
