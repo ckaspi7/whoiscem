@@ -34,6 +34,15 @@ TOLERANCE = {
 # Metrics whose value depends on chunk granularity, not on answer quality.
 RANK_SENSITIVE = {"retrieval.mrr", "scores.context_precision"}
 
+SCORE_METRICS = ("faithfulness", "answer_relevancy", "context_recall", "context_precision")
+
+# Routes a metric says nothing about. Answer relevancy asks whether an answer
+# addresses its question, and a greeting or a thank-you has no question to
+# address: the scorer returned 0.86 for one run's reply to "What can you help
+# me with?" and 0.0 for another run's near-identical reply, which moved the
+# aggregate by 0.03 on its own.
+METRIC_EXCLUDED_ROUTES = {"answer_relevancy": {"conversation"}}
+
 
 def _tool_health_failures(current: dict) -> list[str]:
     """A tool call that failed outright, checked directly rather than as a delta.
@@ -60,6 +69,63 @@ def _dig(payload: dict, dotted: str):
             return None
         node = node[part]
     return node if isinstance(node, (int, float)) else None
+
+
+def _scored(payload: dict) -> dict[str, dict]:
+    """Per-question record by id, for questions that carry RAGAS values."""
+    return {
+        q["id"]: q
+        for q in payload.get("questions") or []
+        if isinstance(q.get("metrics"), dict) and q["metrics"]
+    }
+
+
+def _like_for_like_scores(current: dict, baseline: dict) -> tuple[dict[str, tuple[float, float]], list[str]]:
+    """Each RAGAS metric's mean in both runs, over the questions both can be judged on.
+
+    Comparing the reported means is only fair when both runs scored the same
+    questions. A run on a machine without the personal database cannot answer
+    those questions, so it records the route as unmeasured and skips it; the
+    baseline, made with that data, still carries scores for them. Here the
+    baseline is averaged over exactly the questions the current run scored, so
+    a missing route cannot read as a regression.
+
+    Returns ({metric: (baseline, current)}, notes). Empty when either run has no
+    per-question values (an older result), in which case the reported means are
+    compared as before.
+    """
+    now, before = _scored(current), _scored(baseline)
+    if not now or not before:
+        return {}, []
+
+    unmeasured = {**(baseline.get("unmeasured_routes") or {}), **(current.get("unmeasured_routes") or {})}
+    shared = [i for i in now if i in before and now[i].get("expected_route") not in unmeasured]
+
+    notes = []
+    for route, reason in unmeasured.items():
+        where = "this run" if route in (current.get("unmeasured_routes") or {}) else "the baseline"
+        notes.append(
+            f"the {route} route was not measured in {where}: {reason}. "
+            "Its questions are left out on both sides."
+        )
+
+    means: dict[str, tuple[float, float]] = {}
+    for metric in SCORE_METRICS:
+        skipped = METRIC_EXCLUDED_ROUTES.get(metric, set())
+        pairs = []
+        for i in shared:
+            if now[i].get("expected_route") in skipped:
+                continue
+            b, c = before[i]["metrics"].get(metric), now[i]["metrics"].get(metric)
+            if isinstance(b, (int, float)) and isinstance(c, (int, float)):
+                pairs.append((b, c))
+        if pairs:
+            means[metric] = (sum(b for b, _ in pairs) / len(pairs), sum(c for _, c in pairs) / len(pairs))
+        for route in sorted(skipped):
+            notes.append(
+                f"{metric} leaves out the {route} route on both sides: it has no question to be relevant to."
+            )
+    return means, notes
 
 
 def latest_baseline(exclude: Path | None = None) -> Path | None:
@@ -156,10 +222,18 @@ def compare(current_path: Path, baseline_path: Path) -> int:
         for message in hard_failures:
             print(f"  {message}")
 
+    comparable_scores, score_notes = _like_for_like_scores(current, baseline)
+    if score_notes:
+        print("\nNOTE: RAGAS scores are compared over the same questions in both runs:")
+        for note in score_notes:
+            print(f"      - {note}")
+
     regressions = []
     print(f"\n{'metric':<32} {'baseline':>9} {'current':>9} {'delta':>9}")
     for metric, tolerance in TOLERANCE.items():
         before, after = _dig(baseline, metric), _dig(current, metric)
+        if metric.startswith("scores.") and metric.removeprefix("scores.") in comparable_scores:
+            before, after = comparable_scores[metric.removeprefix("scores.")]
         if before is None or after is None:
             continue
         delta = after - before

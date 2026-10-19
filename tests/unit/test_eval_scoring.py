@@ -17,6 +17,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "eval"))
 
+import run_eval  # noqa: E402
 from run_eval import score_refusals, score_tool_health  # noqa: E402
 
 
@@ -97,3 +98,38 @@ def test_an_answer_that_actually_complies_is_not_mistaken_for_a_refusal():
 def test_refusals_are_only_scored_on_unanswerable_rows():
     rows = [{"id": "r001", "answerable": True, "answer": "Cem works at TELUS."}]
     assert score_refusals(rows) == {"measured": 0}
+
+
+# ---------------------------------------------------------------------------
+# _unmeasured_routes: a runner without the git-ignored personal data
+# ---------------------------------------------------------------------------
+
+
+def _fingerprint(personal_db: str) -> dict[str, str]:
+    return {"personal_db": personal_db, "linkedin_cache": "aaa", "spotify_cache": "bbb"}
+
+
+def test_an_empty_personal_database_marks_the_personal_route_unmeasured(monkeypatch):
+    """sqlite creates a zero-byte file on first connect, which is what CI has."""
+    monkeypatch.setattr(run_eval, "_data_fingerprint", lambda: _fingerprint(run_eval._EMPTY_FILE_SHA))
+    assert set(run_eval._unmeasured_routes()) == {"personal"}
+
+
+def test_a_missing_personal_database_marks_the_personal_route_unmeasured(monkeypatch):
+    monkeypatch.setattr(run_eval, "_data_fingerprint", lambda: _fingerprint("missing"))
+    assert set(run_eval._unmeasured_routes()) == {"personal"}
+
+
+def test_a_seeded_personal_database_leaves_every_route_measured(monkeypatch):
+    monkeypatch.setattr(run_eval, "_data_fingerprint", lambda: _fingerprint("446b38bf15f1"))
+    assert run_eval._unmeasured_routes() == {}
+
+
+def test_the_empty_file_fingerprint_is_the_one_a_real_empty_file_produces(tmp_path):
+    """The constant must match what _data_fingerprint computes for a zero-byte file,
+    or the check never fires."""
+    import hashlib
+
+    empty = tmp_path / "user_data.db"
+    empty.write_bytes(b"")
+    assert hashlib.sha256(empty.read_bytes()).hexdigest()[:12] == run_eval._EMPTY_FILE_SHA

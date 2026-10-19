@@ -198,6 +198,138 @@ def test_a_non_rank_metric_still_gates_normally_when_agent_mode_changes(tmp_path
 
 
 # ---------------------------------------------------------------------------
+# Routes a run cannot measure. The scheduled run happens on a runner with no
+# personal database (it is built from git-ignored seed data), so every personal
+# question there declined and the aggregate scores fell past tolerance, every
+# week, for a reason that says nothing about quality. The run now records the
+# route as unmeasured and the gate compares both sides over the same questions.
+# ---------------------------------------------------------------------------
+
+
+def _metrics(faithfulness: float, relevancy: float, recall: float, precision: float) -> dict:
+    return {
+        "faithfulness": faithfulness,
+        "answer_relevancy": relevancy,
+        "context_recall": recall,
+        "context_precision": precision,
+    }
+
+
+def _aggregated(run: dict) -> dict:
+    """Set `scores` to the mean over the questions that carry values, as run_eval writes it."""
+    scored = [q["metrics"] for q in run["questions"] if q.get("metrics")]
+    names = {name for metrics in scored for name in metrics}
+    run["scores"] = {
+        name: sum(m[name] for m in scored if name in m) / sum(1 for m in scored if name in m)
+        for name in names
+    }
+    return run
+
+
+# Personal questions deliberately score differently from resume ones, so that
+# dropping them from one side only moves the aggregate (as it did in CI).
+FULL_BASE = _aggregated(
+    {
+        "run_at": "2026-09-17T00:00:00Z",
+        "corpus_sha": "cafebabe",
+        "routing": {"accuracy": 0.90},
+        "retrieval": {"recall_at_k": 0.85, "mrr": 0.70},
+        "refusals": {"refusal_rate": 1.0},
+        "questions": [
+            {"id": "r1", "expected_route": "resume", "metrics": _metrics(0.7, 0.8, 0.7, 0.6)},
+            {"id": "r2", "expected_route": "resume", "metrics": _metrics(0.7, 0.8, 0.7, 0.6)},
+            {"id": "p1", "expected_route": "personal", "metrics": _metrics(0.9, 1.0, 0.9, 0.9)},
+            {"id": "p2", "expected_route": "personal", "metrics": _metrics(0.9, 1.0, 0.9, 0.9)},
+        ],
+    }
+)
+
+
+def _run_without_personal_data(resume_relevancy: float = 0.8, personal_scored_zero: bool = False) -> dict:
+    """FULL_BASE as seen from a machine with an empty personal database."""
+    run = json.loads(json.dumps(FULL_BASE))
+    for q in run["questions"]:
+        if q["expected_route"] == "personal":
+            q["metrics"] = _metrics(0.0, 0.0, 0.0, 0.0) if personal_scored_zero else {}
+        else:
+            q["metrics"]["answer_relevancy"] = resume_relevancy
+    if not personal_scored_zero:
+        run["unmeasured_routes"] = {"personal": "the personal database is missing or empty"}
+    return _aggregated(run)
+
+
+def test_a_route_the_run_could_not_measure_does_not_fail_the_gate(tmp_path):
+    current = _run_without_personal_data()
+    assert compare(_write(tmp_path, "c.json", current), _write(tmp_path, "b.json", FULL_BASE)) == 0
+
+
+def test_the_same_route_scored_as_failures_still_fails_the_gate(tmp_path):
+    """Negative control: without the unmeasured marker, a route that really
+    scored zero is a regression. The fix hides what could not be measured, not
+    what was measured badly."""
+    current = _run_without_personal_data(personal_scored_zero=True)
+    assert compare(_write(tmp_path, "c.json", current), _write(tmp_path, "b.json", FULL_BASE)) == 1
+
+
+def test_a_real_regression_on_a_measured_route_still_fails_when_another_is_unmeasured(tmp_path):
+    current = _run_without_personal_data(resume_relevancy=0.2)
+    assert compare(_write(tmp_path, "c.json", current), _write(tmp_path, "b.json", FULL_BASE)) == 1
+
+
+def test_an_unmeasured_route_is_named_in_the_output(tmp_path, capsys):
+    current = _run_without_personal_data()
+    compare(_write(tmp_path, "c.json", current), _write(tmp_path, "b.json", FULL_BASE))
+
+    out = capsys.readouterr().out
+    assert "the personal route was not measured in this run" in out
+    assert "the personal database is missing or empty" in out
+
+
+def test_a_baseline_that_could_not_measure_a_route_is_compared_like_for_like_too(tmp_path):
+    """The marker is read from either side."""
+    baseline = _run_without_personal_data()
+    current = json.loads(json.dumps(FULL_BASE))
+    assert compare(_write(tmp_path, "c.json", current), _write(tmp_path, "b.json", baseline)) == 0
+
+
+def test_chit_chat_is_left_out_of_answer_relevancy(tmp_path):
+    """A greeting has no question to be relevant to, and the scorer swings
+    between 0 and 0.8 on near-identical replies."""
+    base = json.loads(json.dumps(FULL_BASE))
+    base["questions"].append(
+        {"id": "c1", "expected_route": "conversation", "metrics": {"answer_relevancy": 0.86}}
+    )
+    _aggregated(base)
+    current = json.loads(json.dumps(base))
+    current["questions"][-1]["metrics"]["answer_relevancy"] = 0.0
+    _aggregated(current)
+    assert compare(_write(tmp_path, "c.json", current), _write(tmp_path, "b.json", base)) == 0
+
+
+def test_the_conversation_exemption_applies_to_answer_relevancy_only(tmp_path):
+    base = json.loads(json.dumps(FULL_BASE))
+    base["questions"].append(
+        {
+            "id": "c1",
+            "expected_route": "conversation",
+            "metrics": {"faithfulness": 0.9, "answer_relevancy": 0.86},
+        }
+    )
+    _aggregated(base)
+    current = json.loads(json.dumps(base))
+    current["questions"][-1]["metrics"]["faithfulness"] = 0.0
+    _aggregated(current)
+    assert compare(_write(tmp_path, "c.json", current), _write(tmp_path, "b.json", base)) == 1
+
+
+def test_results_without_per_question_scores_are_compared_as_before(tmp_path):
+    """An older result has only aggregates; the gate must still use them."""
+    worse = json.loads(json.dumps(BASE))
+    worse["scores"]["answer_relevancy"] = 0.10
+    assert compare(_write(tmp_path, "c.json", worse), _write(tmp_path, "b.json", BASE)) == 1
+
+
+# ---------------------------------------------------------------------------
 # chat_model changes — a different model, not a different chunk boundary.
 # Reported like agent_mode, but never joins granularity_changed: switching
 # CHAT_MODEL does not touch how the corpus is cut or how many chunks come
