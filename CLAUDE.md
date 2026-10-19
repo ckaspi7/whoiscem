@@ -217,18 +217,7 @@ Deployed Streamlit App" before assuming otherwise.
 All of these are resolved in one place, `config.py` (`load_settings()`), which also
 loads `.env`. Real environment variables always win over `.env`.
 
-Required: `OPENAI_API_KEY`  
-Observability: `PHOENIX_COLLECTOR_ENDPOINT` (unset = local collector on :6006), `PHOENIX_API_KEY`, `PHOENIX_PROJECT_NAME`  
-Vector store: `QDRANT_MODE` = `embedded` (default; on-disk at `QDRANT_PATH`, no server) | `server` (`QDRANT_HOST`/`QDRANT_PORT`) | `cloud` (`QDRANT_URL`/`QDRANT_API_KEY`)  
-Session memory: `REDIS_URL` — unset means an in-process fallback, not a disabled feature  
-Session link signing: `SESSION_SECRET` — unset means a per-process-start secret, so signed links stop verifying after a restart (see LIMITATIONS.md)  
-Resume source: `RESUME_PATH` (defaults to `data/resume.md`)  
-Agent architecture: `AGENT_MODE` = `classifier` (default, measured best) | `tool_calling` (real agent; see README)  
-Chat model: `CHAT_MODEL` = `gpt-4o-mini` (default) | `gpt-6-luna` (measured better under `classifier` mode only, broken under `tool_calling` — see README/LIMITATIONS)  
-Headless API only, read by `api.py`, not by `chatbot.py`/Streamlit: `API_KEY` (unset = no auth, logged loudly; meant to be held only by the frontend's own server-side proxy, never shipped to a browser), `FRONTEND_ORIGIN` (CORS origin, defaults to the Next.js dev server at `http://localhost:3000`), `RATE_LIMIT_PER_MINUTE` (default 20, always per visitor IP — never per API key, since one shared key fronts every visitor), `DAILY_SPEND_CAP_USD` (default 5.00)  
-Spotify cache refresh only: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`
-
-See `.env.example` for the full template. On a host with no `.env` file
+See `.env.example` for the full template and per-variable documentation. On a host with no `.env` file
 (e.g. Streamlit Community Cloud), `_apply_streamlit_secrets()` in `chatbot.py`
 is the only bridge from `st.secrets` into these — `.streamlit/secrets.toml.example`
 lists exactly the subset it copies over (`_SECRET_KEYS`); anything else pasted
