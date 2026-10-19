@@ -189,5 +189,7 @@ data/*unredacted*
 # Embedded Qdrant storage (QDRANT_MODE=embedded)
 .qdrant/
 
-# Claude Code local tool state (e.g. isolated worktrees for parallel agents)
-.claude/
+# Claude Code local tool state (e.g. isolated worktrees for parallel agents).
+# The path-scoped instruction files in .claude/rules/ are shared project docs, so they stay tracked.
+.claude/*
+!.claude/rules/

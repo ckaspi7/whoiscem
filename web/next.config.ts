@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // This repo already has a hand-maintained root-level CLAUDE.md with
-  // project-specific guidance; skip Next's auto-generated, generic
-  // AGENTS.md/CLAUDE.md pair in web/ so it doesn't shadow or duplicate that.
+  // web/CLAUDE.md is hand-written, next to a hand-maintained root CLAUDE.md.
+  // Skip Next's auto-generated, generic AGENTS.md/CLAUDE.md pair so it can
+  // neither overwrite web/CLAUDE.md nor shadow or duplicate the root file.
   agentRules: false,
 
   // Next 16's dev server rejects the HMR websocket from any origin it does not

@@ -451,8 +451,8 @@ fades between the halves. Text colours are held to WCAG AA by a test, over
 every stop of the gradient backgrounds as well as the flat ones.
 
 It is built to deploy on Netlify (`netlify.toml`), but nothing is deployed yet.
-See [`web/README.md`](web/README.md) to run it, and `CLAUDE.md` for how it fits
-together.
+See [`web/README.md`](web/README.md) to run it, and `web/CLAUDE.md` for how it
+fits together.
 
 ---
 
