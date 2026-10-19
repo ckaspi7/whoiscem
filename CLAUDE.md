@@ -37,6 +37,8 @@ python scripts/setup_user_data_db.py
 python scripts/refresh_cache.py
 ```
 
+The frontend in `web/` has its own Node commands; see `web/CLAUDE.md`.
+
 One-time setup after cloning: `git config core.hooksPath .githooks` — enables the
 branch-safety hook below. `pre-commit install` separately enables the existing
 lint/format/PII hooks (`.pre-commit-config.yaml`).
@@ -124,38 +126,9 @@ produced them): a warned or refused answer would visibly replace text the
 visitor had already read mid-stream, which looked like the app was broken
 even though the guardrail was working exactly as designed.
 
-`main()` ends every turn that just ran the graph with `st.rerun()` (so the
-sidebar's cost/latency numbers update this same turn instead of lagging one
-behind), which means anything rendered inside that turn's own `st.chat_message`
-block is superseded almost immediately by the rerun's redraw of chat history —
-a fact confirmed by testing, not assumed: an early version of this fix rendered
-the reveal into that now-discarded block and it never reached a visitor at
-all. The actual reveal happens in the "Display history" loop instead:
-`st.session_state.last_ai_message_index` names the one message (set right
-before that turn's `st.rerun()`) that gets `_fade_in_html`'s CSS-staggered
-per-word fade; every other message, including that same one once a later
-turn moves the index on, renders as plain markdown — otherwise old answers
-would replay their fade-in on every future redraw. The per-word stagger is
-CSS-timed rather than a Python-side reveal loop because Streamlit re-issues
-a placeholder's entire markdown content on every update, which would replay
-every earlier word's animation alongside each new one instead of only the
-newest word fading in.
-
 ### Typed tool results
 
 Every tool (`tools/*.py`) has a `*_result()` function returning `ToolResult` (`tools/result.py`) — `ok=True` with `content`, or `ok=False` with `error`. `ToolResult.as_context()` returns `content` on success and `""` on failure: an error can never masquerade as retrieved evidence to the model or the faithfulness judge. The `@tool`-decorated functions (`get_resume_info`, `get_personal_info`, `get_music_taste`, `get_linkedin_info`) are thin string-interface wrappers over these, kept for the LangChain tool-calling surface; `chatbot.py`'s handlers call the typed functions directly, not `.invoke()`.
-
-### Hybrid RAG pipeline (resume path only)
-
-The `resume` handler calls `tools/resume_tool.py:search_resume()`, which orchestrates three lazy-initialised singletons via `_init_retrieval()`:
-
-- **`QdrantVectorStore`** (`retrieval/vectorstore.py`) — dense cosine search using `text-embedding-3-small`. Collection `resume_chunks` is built from `RESUME_PATH` (default `data/resume.md`) on first query, or whenever `needs_rebuild()` detects the source bytes or `CHUNKER_VERSION` changed. Markdown is chunked structurally on headings (`retrieval/chunking.py`); a PDF falls back to `SemanticChunker`, since extraction strips its headings.
-- **`BM25Index`** (`retrieval/bm25.py`) — sparse keyword search, built from the vector store's own chunks so its returned ids are the store's ids (fusion joins on real identity, not list position).
-- **`CrossEncoderReranker`** (`retrieval/reranker.py`) — `cross-encoder/ms-marco-MiniLM-L-6-v2` (downloads ~90 MB on first run, then cached).
-
-`RETRIEVAL_STRATEGY` selects how these combine: `auto` (default — the whole corpus, reranked, while it fits `CORPUS_FITS_CONTEXT_CHARS`; plain dense search once it doesn't), `dense`, `sparse`, `rrf`, or `rrf_rerank` (RRF fusion of top-`CANDIDATE_POOL` from each, then cross-encoder rerank). See `eval/results/ablation-retrieval.json` and the README's ablation table before assuming hybrid beats dense on a given corpus size — on the current 7 KB resume it does not.
-
-`_init_retrieval()` commits `_store`/`_bm25`/`_reranker` to module globals only after each stage fully succeeds, so a transient failure (a Qdrant container not yet ready) is retried on the next call instead of poisoning the process. `retrieval/cache.py` (`RetrievalCache`) caches query embeddings and full retrieval results, same Redis-or-in-process pattern as session memory (shared connection logic in `redis_backend.py`), scoped by the corpus fingerprint so a rebuilt index can't serve a stale cached answer.
 
 ### Other tools
 
@@ -168,67 +141,12 @@ Per-node latencies are tracked in `GraphState.node_latencies` and shown in the S
 
 Logging (Phase 4.4): `observability.setup_logging()` attaches a structured JSON handler to the root logger — every module's existing `logger = logging.getLogger(__name__)` calls had nowhere useful to go before this, since nothing ever called `logging.basicConfig`. `observability.set_session_id(session_id)` (called once in `chatbot.py:main()` right after the session id resolves) attaches that id to every subsequent log record in the current context as a correlation field, without threading it through every call site. `chatbot.py` logs one structured `"turn completed"` line per turn with `node_latencies`, `route`, and the faithfulness score — the same per-stage timing the sidebar shows interactively, now also in a deployed instance's actual logs.
 
-### Evaluation
-
-`eval/run_eval.py` runs the golden set (`eval/golden_set.json`, generated by `eval/build_golden_set.py` — never hand-edit the JSON) through this real graph and scores routing/tool-selection accuracy, retrieval recall@k/MRR against verbatim golden snippets, refusal rate on unanswerable/adversarial cases, a dedicated tool-error rate, self-correction retries (Phase 3.3, `score_self_correction` — classifier only), trajectory correctness (Phase 3.5, `score_trajectory` — tool_calling only, needs no RAGAS judge calls), and RAGAS (faithfulness/answer_relevancy/context_recall/context_precision, over answerable questions only). `--agent-mode classifier|tool_calling` overrides `AGENT_MODE` for one run, which is how `v8-classifier.json`/`v9-tool-calling.json` were produced side by side, and `--model` does the same for `CHAT_MODEL` (`v10-gpt4o-mini-baseline.json`/`v11-gpt6-luna-comparison.json`). `eval/compare.py` gates a run against the most recent committed result in `eval/results/`; any nonzero tool-error count fails the gate outright, checked directly rather than as a tolerance band, and MRR/context precision are reported but never gated across a chunker or agent_mode change, in either direction — both change what a "chunk" is, not just how good retrieval is (a `chat_model` change is reported the same way but does *not* get this exemption — it doesn't touch chunk granularity, so rank metrics stay gated normally across it). `eval/ablate_retrieval.py` measures the retrieval strategies against each other, routing excluded.
-
-### Headless API (Phase 4.1)
-
-`api.py` — a second, independent surface onto the same graph (`uvicorn
-api:app`), built for headless access (load testing, Phase 3.5's trajectory
-eval) and, since the standalone-frontend work, a real public backend that
-only ever expects to be called through its frontend's own same-origin
-server-side proxy rather than directly by a browser — still not what the
-deployed Streamlit app calls. `lifespan()` builds the graph once at startup
-via `chatbot.create_assistant()`, not per request. A `CORSMiddleware` scoped
-to `FRONTEND_ORIGIN` wraps the whole app, but it is defense-in-depth, not the
-real gate: the intended caller is server-to-server (the proxy), which CORS
-does not govern at all, so this only stops a stray direct browser call.
-`POST /chat` applies, in order: `_require_api_key` (a `Depends`, checked
-against `API_KEY` — unset logs a warning and allows the request through
-rather than failing closed), `RateLimiter.allow()` (`rate_limit.py`,
-in-process sliding window, keyed by the real visitor IP — `X-Forwarded-For`
-first, then the connecting socket — and never by the API key, since this
-deployment has exactly one shared key and keying by it would merge every
-visitor into a single bucket), then `SpendTracker.today_total()` against
-`DAILY_SPEND_CAP_USD` (returns 402 once reached) before invoking the graph at
-all. The graph's raw answer is then scored and tiered via
-`guardrails.faithfulness_check` — reusing `state["faithfulness_score"]` when
-classifier mode's resume-route retry already computed one for this exact
-answer, scoring fresh otherwise — so a `/chat` caller gets the same
-unchanged/warned/refused guarantee a Streamlit visitor already gets, not a
-raw, unguarded answer. Real per-node `token_usage` from the resulting
-state — the same mechanism `chatbot.py`'s sidebar uses — prices the call via
-`cost.estimate_cost` and records it via `SpendTracker.add()`, which is
-Redis-backed like `SessionMemory` (unlike `RateLimiter`, which has no
-Redis-backed mode — see LIMITATIONS.md for why that asymmetry is deliberate).
-`GET /healthz` checks Qdrant reachability and `OPENAI_API_KEY` presence for
-real (not just "the process is up"); Redis is reported but never fails the
-check, matching Redis's optional status everywhere else in this project.
-
-**The deployed Streamlit app does not go through this file.** `chatbot.py`
-still calls `create_assistant()`/`graph.invoke()` directly and has its own,
-separate cost meter — the two do not share a spend cap. See
-LIMITATIONS.md's "The Headless API's Protections Do Not Yet Cover the
-Deployed Streamlit App" before assuming otherwise.
-
 ## Environment variables
 
 All of these are resolved in one place, `config.py` (`load_settings()`), which also
 loads `.env`. Real environment variables always win over `.env`.
 
-Required: `OPENAI_API_KEY`  
-Observability: `PHOENIX_COLLECTOR_ENDPOINT` (unset = local collector on :6006), `PHOENIX_API_KEY`, `PHOENIX_PROJECT_NAME`  
-Vector store: `QDRANT_MODE` = `embedded` (default; on-disk at `QDRANT_PATH`, no server) | `server` (`QDRANT_HOST`/`QDRANT_PORT`) | `cloud` (`QDRANT_URL`/`QDRANT_API_KEY`)  
-Session memory: `REDIS_URL` — unset means an in-process fallback, not a disabled feature  
-Session link signing: `SESSION_SECRET` — unset means a per-process-start secret, so signed links stop verifying after a restart (see LIMITATIONS.md)  
-Resume source: `RESUME_PATH` (defaults to `data/resume.md`)  
-Agent architecture: `AGENT_MODE` = `classifier` (default, measured best) | `tool_calling` (real agent; see README)  
-Chat model: `CHAT_MODEL` = `gpt-4o-mini` (default) | `gpt-6-luna` (measured better under `classifier` mode only, broken under `tool_calling` — see README/LIMITATIONS)  
-Headless API only, read by `api.py`, not by `chatbot.py`/Streamlit: `API_KEY` (unset = no auth, logged loudly; meant to be held only by the frontend's own server-side proxy, never shipped to a browser), `FRONTEND_ORIGIN` (CORS origin, defaults to the Next.js dev server at `http://localhost:3000`), `RATE_LIMIT_PER_MINUTE` (default 20, always per visitor IP — never per API key, since one shared key fronts every visitor), `DAILY_SPEND_CAP_USD` (default 5.00)  
-Spotify cache refresh only: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`
-
-See `.env.example` for the full template. On a host with no `.env` file
+See `.env.example` for the full template and per-variable documentation. On a host with no `.env` file
 (e.g. Streamlit Community Cloud), `_apply_streamlit_secrets()` in `chatbot.py`
 is the only bridge from `st.secrets` into these — `.streamlit/secrets.toml.example`
 lists exactly the subset it copies over (`_SECRET_KEYS`); anything else pasted
@@ -236,19 +154,24 @@ into that UI is silently inert.
 
 ## Key design constraints
 
-- The `_store`, `_bm25`, `_reranker`, and `_cache` singletons in `resume_tool.py` are module-level globals, initialised lazily on first query. Each is committed to its global only after that stage's setup fully succeeds — a transient failure (a Qdrant container not yet ready) must be retried on the next call, not permanently cached as broken. `tests/unit/test_resume_tool.py` guards this against regressing; it is the fix for a real incident where a CI service-container race silently broke retrieval for an entire scheduled run.
-- The Qdrant index rebuilds when `needs_rebuild()` finds the source bytes or `retrieval/vectorstore.py:CHUNKER_VERSION` changed, not merely when the collection is absent. A stale index answers happily from the previous corpus.
-- The Qdrant client is built by `retrieval/backends.py:create_qdrant_client()` from `Settings`, never from hardcoded coordinates. `QdrantVectorStore` takes an injected client and an optional `RetrievalCache`, which is how the integration tests run without a server or a cache.
-- Embedded Qdrant takes an exclusive lock on `QDRANT_PATH`: the app and the test suite cannot share one path at the same time.
 - `chatbot.py` targets Python 3.11 — no f-string expression may contain a backslash (legal only from 3.12). `tests/unit/test_app_boot.py` guards this.
 - A tool's failure must never reach `tool_result`/`context_used` as text (see Typed tool results, above) — `ToolResult.as_context()` is the enforcement point. A handler that bypasses it and interpolates an exception into either field reintroduces the bug the faithfulness judge used to silently score against a stack trace.
 - Redis failure (session memory or the retrieval cache) is non-fatal: both fall back in-process via `redis_backend.connect()`, never raising just because a cache is unavailable.
-- The Streamlit app uses `st.query_params["sid"]` for session identity, making sessions shareable via URL. Phase 4.5: the value is HMAC-signed (`chatbot._sign_session_id`/`_verify_session_id`) — a `sid` that fails verification (fabricated, edited, or signed under a different `SESSION_SECRET`) is never trusted as a previously-issued session; a fresh one is minted instead. This closes fabrication, not leakage of a real signed link — see LIMITATIONS.md for that distinction.
-- Streamlit Cloud secrets override `.env` values — `_apply_streamlit_secrets()` in `chatbot.py` merges them into `os.environ`, called after `set_page_config()` (reading `st.secrets` is itself a Streamlit command and must not be first) and before `setup_tracing()`/`create_assistant()`.
-- The golden set (`eval/golden_set.json`) is generated, not hand-authored — edit `eval/build_golden_set.py` and rerun it. `tests/unit/test_golden_set.py` fails the build if the committed JSON drifts from what the generator produces, or if a `reference_snippet`/`reference_section` no longer appears in the indexed resume.
 - `GraphState.messages` is `Annotated[list[BaseMessage], add_messages]` — real LangChain messages, not dicts. A node that wants to add a message returns `{"messages": [new_message]}` (a single-element list); the reducer appends it. Returning the full accumulated list back (e.g. via `{**state, ...}` without overriding `"messages"`) is harmless — `add_messages` matches by id and replaces in place rather than duplicating — but only a single new message is ever actually being added anywhere in this graph today.
-- OpenAI's Tier 1 caps `gpt-4o-mini` at 10,000 requests/day (a rolling 24-hour window, confirmed from the `x-ratelimit-reset-requests` header — not a fixed midnight reset), shared across local dev, CI, and the deployed app. A full RAGAS eval run costs roughly 2,700 requests, measured, not the ~500-1,000 first estimated — `faithfulness` decomposes each answer into claims and verifies each separately. Use `eval/run_eval.py --no-ragas` (~120 requests) for iteration; save full RAGAS runs for a baseline right before a commit; check `x-ratelimit-remaining-requests` with one minimal request before a run that matters rather than assume the window has reset. See LIMITATIONS.md.
 - `gpt-6-luna` (a `CHAT_MODEL` option) rejects any non-default `temperature` outright (only `1`, the default, is accepted) and only supports tool/function calling at `reasoning_effort="none"`. `create_assistant` handles both — omitting the `temperature` override and setting `reasoning_effort` only for the tool-bound agent — rather than let either surface as a live 400. Neither constraint applies to `gpt-4o-mini`.
-- The cross-encoder adds ~15 s cold-start latency on a fresh container while the model downloads. The faithfulness guardrail's HHEM classifier (ADR-0008) is a second, separate local model with its own cold start — ~10-15 s once its weights are cached, a one-time ~77 s the very first time anything on that container downloads them.
 - `chatbot.MAX_INPUT_CHARS` (1000, Phase 4.3) rejects an oversized chat input before it reaches `st.session_state.messages` or the graph — no API call, and the text never enters conversation history (it would otherwise cost tokens as context on every later turn even though the rejected turn itself made no call). See LIMITATIONS.md for why a heuristic prompt-injection filter was deliberately not added alongside it.
 - Real cost accounting (Phase 4.2) reads each node's own response usage directly (`cost.usage_from_response`, merged via `chatbot._add_usage`) rather than `langchain_community.get_openai_callback()` — confirmed directly that the callback does not propagate through LangGraph's node execution (a real graph turn showed 0 tokens captured that way despite a real model call happening). `create_assistant`'s `_llm` helper also sets `stream_usage=True` unconditionally: `ChatOpenAI(streaming=True)` returns no usage data on `.invoke()` without it (defaults to `False`), which silently zeroed `generate_response`'s own usage until found by actually running it. See LIMITATIONS.md's Cost Accounting section.
+- OpenAI's Tier 1 caps `gpt-4o-mini` at 10,000 requests/day (a rolling 24-hour window, confirmed from the `x-ratelimit-reset-requests` header — not a fixed midnight reset), shared across local dev, CI, and the deployed app. A full RAGAS eval run costs roughly 2,700 requests, measured, not the ~500-1,000 first estimated — `faithfulness` decomposes each answer into claims and verifies each separately. Use `eval/run_eval.py --no-ragas` (~120 requests) for iteration; save full RAGAS runs for a baseline right before a commit; check `x-ratelimit-remaining-requests` with one minimal request before a run that matters rather than assume the window has reset. See LIMITATIONS.md.
+- Embedded Qdrant takes an exclusive lock on `QDRANT_PATH`: the app and the test suite cannot share one path at the same time.
+- The cross-encoder adds ~15 s cold-start latency on a fresh container while the model downloads. The faithfulness guardrail's HHEM classifier (ADR-0008) is a second, separate local model with its own cold start — ~10-15 s once its weights are cached, a one-time ~77 s the very first time anything on that container downloads them.
+
+## More detail, loaded on demand
+
+These files hold detail for one area. Claude Code loads each only once it reads or edits a file that matches.
+Before you change code in one of these areas, read the file named here if it has not loaded yet.
+
+- `web/CLAUDE.md`: the Next.js frontend (proxy, themes, contrast gate, design-review).
+- `.claude/rules/api.md`: the headless API (`api.py`, auth, rate limit, spend cap).
+- `.claude/rules/retrieval.md`: the hybrid RAG pipeline and the vector-store constraints.
+- `.claude/rules/eval.md`: the evaluation harness and the golden set.
+- `.claude/rules/streamlit-ui.md`: the Streamlit app's rerun and reveal behaviour, session ids and secrets.
