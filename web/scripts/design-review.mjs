@@ -13,7 +13,7 @@
  *   npm run build && npx next start -p 3200      # in one terminal
  *   npm run design-review -- --base http://127.0.0.1:3200
  *
- *   --themes ember,porcelain   which themes (default: every theme in the registry)
+ *   --themes aurora,aurora-night   which themes (default: every theme in the registry)
  *   --out design-review        output directory (gitignored)
  *   --compare-to <dir>         pixel-diff the screenshots against an earlier run
  *   --no-audit                 skip the contrast audit
@@ -196,8 +196,8 @@ async function drive(page, state) {
 /**
  * Grow the viewport to the page's full height, then capture from the top. A
  * full-page screenshot is taken at the real viewport size, so anything pinned to
- * it (the composer, a profile rail) would be drawn mid-page; at full height each
- * sits where a visitor at the bottom of the page would see it. A fixed
+ * it (the composer) would be drawn mid-page; at full height it sits where a
+ * visitor at the bottom of the page would see it. A fixed
  * background is likewise drawn where the page happens to be scrolled, so the
  * capture also starts from the top.
  */

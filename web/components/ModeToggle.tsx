@@ -7,9 +7,8 @@ import { counterpart, schemeOf } from "@/themes/registry";
 
 /**
  * The light/dark switch. It is always in the DOM and `hidden` unless a theme
- * reveals it (the Aurora pair does), the same way the profile rail is: nothing
- * about the layout is decided in JavaScript, so it cannot pop in after
- * hydration. Which icon shows is also CSS, from the theme on <html>. Only the
+ * reveals it (the Aurora pair does): nothing about the layout is decided in
+ * JavaScript, so it cannot pop in after hydration. Which icon shows is also CSS, from the theme on <html>. Only the
  * pressed state follows the theme through React; the click asks for the theme
  * at that moment (including one still fading in), so it is right even before a
  * re-render catches up.

@@ -1,14 +1,11 @@
 @import "tailwindcss";
-@import "../themes/porcelain.css";
-@import "../themes/dusk.css";
-@import "../themes/obsidian.css";
 @import "../themes/aurora.css";
 @import "../themes/aurora-night.css";
-@import "../themes/dossier.css";
 
 /*
- * Design tokens. This block is the default theme (ember: a warm dark base with
- * one accent). Other themes reassign the same variables under
+ * Design tokens. This block is the baseline: a warm dark palette with one
+ * accent, which a visitor only sees if a theme has not been applied. Every theme
+ * reassigns the same variables under
  * :root[data-theme="..."] in themes/<name>.css, so a component names a role
  * (text-paper-dim, border-line, bg-accent), never a colour. Every theme must
  * define every token, and themes/themes.test.ts fails the build if any text
@@ -67,7 +64,7 @@
 }
 
 /*
- * Shape and material. Defaults reproduce the ember look (flat, no shadows); a
+ * Shape and material. Baseline defaults (flat, no shadows); a
  * theme restyles these with :root[data-theme="..."], which outranks :root, so
  * it can change how pills, fields and bubbles feel without editing a component.
  */
@@ -128,8 +125,7 @@
 
   /*
    * Structure hooks. The defaults reproduce the single centred column; a theme
-   * restyles them (an answer as a card, the composer as glass) or reveals the
-   * profile pieces that every other theme hides.
+   * restyles them (an answer as a card, the composer as glass).
    */
   .app-shell {
     display: flex;
@@ -164,11 +160,6 @@
     border-top: 1px solid color-mix(in oklab, var(--color-line) 80%, transparent);
     background: color-mix(in oklab, var(--color-ink) 95%, transparent);
     backdrop-filter: blur(8px);
-  }
-
-  .profile-rail,
-  .masthead-facts {
-    display: none;
   }
 }
 

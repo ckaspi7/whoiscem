@@ -2,8 +2,6 @@
 
 import { Trash } from "@phosphor-icons/react";
 
-import { FACTS } from "@/lib/profile";
-
 import { ModeToggle } from "./ModeToggle";
 
 /**
@@ -12,9 +10,6 @@ import { ModeToggle } from "./ModeToggle";
  * gutters inside that, so its content is 42rem (max-w-2xl); this header and the
  * composer keep their gutters outside a box of that width, so all three share
  * the same left and right edges at every viewport.
- *
- * The at-a-glance facts are always in the DOM and hidden by CSS
- * (.masthead-facts); a theme that wants hero chips reveals them.
  */
 export function Masthead({ onClear, canClear }: { onClear: () => void; canClear: boolean }) {
   return (
@@ -25,14 +20,8 @@ export function Masthead({ onClear, canClear }: { onClear: () => void; canClear:
             Cem Kaspi<span className="text-accent">.</span>
           </h1>
           <p className="masthead-sub mt-1.5 max-w-md font-prose text-[15px] italic leading-snug text-paper-faint sm:text-base">
-            <span className="masthead-role">Software engineer. </span>
-            An assistant wired into Cem&rsquo;s real resume and work history, not a canned script.
+            Software engineer. An assistant wired into Cem&rsquo;s real resume and work history, not a canned script.
           </p>
-          <ul className="masthead-facts" aria-label="At a glance">
-            {FACTS.slice(0, 3).map((fact) => (
-              <li key={fact.id}>{fact.label}</li>
-            ))}
-          </ul>
         </div>
         {/* Only a box when it has something to hold: an empty one would still add a gap to the row. A theme with a switch to show reveals it regardless. */}
         <div className={`masthead-actions mt-1 shrink-0 items-center gap-2 ${canClear ? "flex" : "hidden"}`}>
