@@ -409,6 +409,38 @@ immediately before a commit, not for every intermediate check.
 
 ---
 
+## The Scheduled Evaluation Cannot See the Personal Database
+
+The `personal` route answers from a SQLite database built from `data/seed_data.json`,
+which is git-ignored because it is personal information. A CI runner therefore has an
+empty database (the run's `data_sha.personal_db` is the hash of a zero-byte file), every
+personal question there declines, and the weekly full evaluation scored 0 on answers the
+assistant was never given the data to give. Compared against a baseline made with real
+data, that moved answer relevancy by about 0.12 and context precision by about 0.13 and
+failed "Compare against the committed baseline" every Monday from 21 September on.
+Nothing had regressed; the run was blind to one route.
+
+The harness now says so instead of scoring it. When the personal database is missing or
+empty, `eval/run_eval.py` records the route under `unmeasured_routes` and leaves its
+questions out of the RAGAS scores, and `eval/compare.py` averages the baseline over the
+same questions, so a route one side could not measure cannot read as a regression. A route
+that was measured and scored badly still fails the gate; only an unmeasurable one is set
+aside. Routing accuracy, retrieval and refusals are unaffected, because none of them need
+the data.
+
+Two consequences to keep in view. **The personal route is not checked in CI at all**, so
+a regression there is only caught by a full evaluation run on a machine with the seed
+data. That includes any comparison of candidate models: run those locally, never from
+the scheduled job. And `compare.py` now leaves the `conversation` route out of answer
+relevancy on both sides, because a greeting has no question to be relevant to and the
+scorer returned 0.86 for one run's reply to "What can you help me with?" and 0.0 for
+another's near-identical reply.
+
+Supplying the seed data to CI as an encrypted secret would close the first gap, at the
+cost of holding personal details in the repository's secrets. That trade was not taken.
+
+---
+
 ## Self-Correction Retries Only Have One Lever
 
 Phase 3.3's retry (reformulate the resume query, re-search, regenerate on a

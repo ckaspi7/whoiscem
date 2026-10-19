@@ -91,6 +91,28 @@ def _data_fingerprint() -> dict[str, str]:
     }
 
 
+# What sha256 of an empty file starts with: sqlite creates a zero-byte database
+# on first connect, so an unseeded personal database hashes to exactly this.
+_EMPTY_FILE_SHA = hashlib.sha256(b"").hexdigest()[:12]
+
+
+def _unmeasured_routes() -> dict[str, str]:
+    """Routes whose answers come from data this machine does not have.
+
+    The personal database is built from git-ignored seed data (it is personal
+    information), so a CI runner has an empty one: every personal question then
+    declines, and the run scores 0 on questions the assistant was never given
+    the means to answer. That says nothing about quality, and it failed the
+    scheduled gate every week. Such a route is recorded and left out of the
+    RAGAS scores instead; compare.py leaves it out of the baseline as well.
+    """
+    if _data_fingerprint()["personal_db"] in ("missing", _EMPTY_FILE_SHA):
+        return {
+            "personal": "the personal database is missing or empty; it is built from git-ignored seed data"
+        }
+    return {}
+
+
 def _as_message(turn: dict) -> HumanMessage | AIMessage:
     """The golden set's history is plain JSON — {"role": "human"/"ai", ...} —
     since BaseMessage objects cannot live in a JSON file. Convert on the way in."""
@@ -522,8 +544,9 @@ def evaluate(
 
     # RAGAS runs only over questions that have a factual answer. Including
     # refusal cases would score a correct decline against a reference it was
-    # right not to produce.
-    scorable = [r for r in rows if r["answerable"]]
+    # right not to produce. Nor does a route this machine cannot answer from.
+    unmeasured = _unmeasured_routes()
+    scorable = [r for r in rows if r["answerable"] and r["expected_route"] not in unmeasured]
     scores: dict = {}
     per_question: list[dict] = []
     if use_ragas:
@@ -554,6 +577,7 @@ def evaluate(
         "graph_cost": graph_cost,
         "scores": scores,
         "scores_cover": len(scorable),
+        "unmeasured_routes": unmeasured,
         "scores_by_route": by_route,
         "thresholds_met": {k: (scores.get(k) or 0) >= v for k, v in THRESHOLDS.items()} if scores else {},
         "questions": [
@@ -590,6 +614,10 @@ def evaluate(
             f"({tool_health['error_rate']:.1%}): {', '.join(tool_health['failed_ids'])}"
         )
         print("    Every metric below is degraded by this, not by a quality regression.")
+
+    for route, reason in unmeasured.items():
+        print(f"\nNOT MEASURED: the {route} route: {reason}.")
+        print("    Its questions are left out of the RAGAS scores below.")
 
     print("\n=== Routing ===")
     print(f"  accuracy: {routing['accuracy']:.1%} ({routing['correct']}/{routing['total']})")
