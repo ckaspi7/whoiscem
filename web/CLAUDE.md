@@ -39,7 +39,7 @@ separately. `lib/api-client.ts` is the only caller of `/api/chat`.
   rendered pixels. Output goes to the gitignored `web/design-review/`. Run it on
   a production build, not `next dev`: on this machine the dev server's font
   download times out behind the corporate proxy, so it renders fallback fonts.
-- CI (`.github/workflows/ci.yml`) has no job for `web/`: the tests, lint and
+- As of this writing CI (`.github/workflows/ci.yml`) has no job for `web/`; check it before relying on this: the tests, lint and
   build run only when someone runs them, and on Netlify's build once it exists.
 
 ## Commands
@@ -48,5 +48,8 @@ Run from inside `web/`:
 
 ```bash
 npm ci && npm test && npm run lint && npm run build
-npm run design-review -- --base http://127.0.0.1:3200   # needs the built app running and Edge installed
+
+# design-review needs the built app serving first (and Microsoft Edge installed); use two terminals:
+npx next start -p 3200
+npm run design-review -- --base http://127.0.0.1:3200
 ```

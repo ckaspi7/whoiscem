@@ -161,14 +161,17 @@ into that UI is silently inert.
 - `gpt-6-luna` (a `CHAT_MODEL` option) rejects any non-default `temperature` outright (only `1`, the default, is accepted) and only supports tool/function calling at `reasoning_effort="none"`. `create_assistant` handles both — omitting the `temperature` override and setting `reasoning_effort` only for the tool-bound agent — rather than let either surface as a live 400. Neither constraint applies to `gpt-4o-mini`.
 - `chatbot.MAX_INPUT_CHARS` (1000, Phase 4.3) rejects an oversized chat input before it reaches `st.session_state.messages` or the graph — no API call, and the text never enters conversation history (it would otherwise cost tokens as context on every later turn even though the rejected turn itself made no call). See LIMITATIONS.md for why a heuristic prompt-injection filter was deliberately not added alongside it.
 - Real cost accounting (Phase 4.2) reads each node's own response usage directly (`cost.usage_from_response`, merged via `chatbot._add_usage`) rather than `langchain_community.get_openai_callback()` — confirmed directly that the callback does not propagate through LangGraph's node execution (a real graph turn showed 0 tokens captured that way despite a real model call happening). `create_assistant`'s `_llm` helper also sets `stream_usage=True` unconditionally: `ChatOpenAI(streaming=True)` returns no usage data on `.invoke()` without it (defaults to `False`), which silently zeroed `generate_response`'s own usage until found by actually running it. See LIMITATIONS.md's Cost Accounting section.
+- OpenAI's Tier 1 caps `gpt-4o-mini` at 10,000 requests/day (a rolling 24-hour window, confirmed from the `x-ratelimit-reset-requests` header — not a fixed midnight reset), shared across local dev, CI, and the deployed app. A full RAGAS eval run costs roughly 2,700 requests, measured, not the ~500-1,000 first estimated — `faithfulness` decomposes each answer into claims and verifies each separately. Use `eval/run_eval.py --no-ragas` (~120 requests) for iteration; save full RAGAS runs for a baseline right before a commit; check `x-ratelimit-remaining-requests` with one minimal request before a run that matters rather than assume the window has reset. See LIMITATIONS.md.
+- Embedded Qdrant takes an exclusive lock on `QDRANT_PATH`: the app and the test suite cannot share one path at the same time.
+- The cross-encoder adds ~15 s cold-start latency on a fresh container while the model downloads. The faithfulness guardrail's HHEM classifier (ADR-0008) is a second, separate local model with its own cold start — ~10-15 s once its weights are cached, a one-time ~77 s the very first time anything on that container downloads them.
 
 ## More detail, loaded on demand
 
-These files hold detail for one area. Claude Code loads each only once it reads or edits a file that matches,
-so open one of those files first if you are about to work there and its rules matter.
+These files hold detail for one area. Claude Code loads each only once it reads or edits a file that matches.
+Before you change code in one of these areas, read the file named here if it has not loaded yet.
 
 - `web/CLAUDE.md`: the Next.js frontend (proxy, themes, contrast gate, design-review).
 - `.claude/rules/api.md`: the headless API (`api.py`, auth, rate limit, spend cap).
 - `.claude/rules/retrieval.md`: the hybrid RAG pipeline and the vector-store constraints.
-- `.claude/rules/eval.md`: the evaluation harness, golden set and OpenAI rate limits.
+- `.claude/rules/eval.md`: the evaluation harness and the golden set.
 - `.claude/rules/streamlit-ui.md`: the Streamlit app's rerun and reveal behaviour, session ids and secrets.

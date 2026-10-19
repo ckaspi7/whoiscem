@@ -6,6 +6,9 @@ paths:
   - "cost.py"
   - "Dockerfile.api"
   - "cloudbuild.yaml"
+  - "guardrails/**"
+  - ".env.example"
+  - "web/app/api/**"
   - "tests/**/test_api*.py"
   - "tests/**/test_rate_limit*.py"
 ---

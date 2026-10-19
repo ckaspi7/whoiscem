@@ -521,6 +521,10 @@ copy .env.example .env.local         # BACKEND_API_URL=http://127.0.0.1:8000, BA
 npm run dev                          # terminal 2: http://localhost:3000
 ```
 
+Set `API_KEY` (on the API) and `BACKEND_API_KEY` (in `web/.env.local`) to the same real
+secret for anything beyond local use. An unset `API_KEY` does not fail: the API logs a
+warning and accepts every request unauthenticated.
+
 ### Backend modes
 
 The vector store and session memory are selected by configuration, not wired in.

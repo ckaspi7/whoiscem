@@ -193,3 +193,6 @@ data/*unredacted*
 # The path-scoped instruction files in .claude/rules/ are shared project docs, so they stay tracked.
 .claude/*
 !.claude/rules/
+
+# Personal, per-project Claude Code instructions (CLAUDE.local.md at any depth); never commit these to a public repo.
+CLAUDE.local.md
