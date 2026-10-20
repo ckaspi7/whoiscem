@@ -441,6 +441,28 @@ cost of holding personal details in the repository's secrets. That trade was not
 
 ---
 
+## Evaluation Scores Before and After the LangChain Upgrade Are Not Strictly Comparable (ADR-0010)
+
+The stack moved to LangChain 1.x and RAGAS 0.4.3 in one change. Run on the same model,
+corpus and data, the two stacks route, retrieve and refuse identically, and every
+aggregate stays inside the gate's tolerance, but the scorer itself is not the same
+instrument:
+
+- The new RAGAS gave context recall 0 to `a003` and `m002` on every repeat, where 0.2.14
+  gave 1.0. Both are questions ADR-0009 already ruled ill-posed, so this is arguably a
+  more correct reading, but it pulls the resume route's recall from about 0.98 to 0.85,
+  within 0.01 of the 0.07 tolerance.
+- Repeated scoring of identical input moves some questions (`m001`, `m003`, `f001`)
+  between 0, 0.5 and 1. A per-question value is not stable; trust aggregates.
+- `answer_relevancy` now averages fewer sampled questions ("LLM returned 1 generations
+  instead of requested 3").
+
+Compare a new run against `v15-post-upgrade-gpt4o-mini.json` or later, not against
+results from before the upgrade, when the number matters. The judge model itself is still
+`gpt-4o-mini`, which retires on 2027-01-14 and must be replaced in its own change.
+
+---
+
 ## Self-Correction Retries Only Have One Lever
 
 Phase 3.3's retry (reformulate the resume query, re-search, regenerate on a
