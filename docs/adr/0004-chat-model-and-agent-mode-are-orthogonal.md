@@ -1,6 +1,8 @@
 # 0004 — `CHAT_MODEL` and `AGENT_MODE` are independent settings; gpt-6-luna is a recommended override, not a default
 
-**Status:** Accepted
+**Status:** Accepted. The default model it describes was later changed by
+[ADR-0011](0011-claude-haiku-5-5-is-the-default-model-with-luna-as-fallback.md); the
+independence of `CHAT_MODEL` and `AGENT_MODE` still stands.
 
 ## Context
 

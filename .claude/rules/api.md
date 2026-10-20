@@ -43,7 +43,9 @@ state — the same mechanism `chatbot.py`'s sidebar uses — prices the call via
 `cost.estimate_cost` and records it via `SpendTracker.add()`, which is
 Redis-backed like `SessionMemory` (unlike `RateLimiter`, which has no
 Redis-backed mode — see LIMITATIONS.md for why that asymmetry is deliberate).
-`GET /healthz` checks Qdrant reachability and `OPENAI_API_KEY` presence for
+`GET /healthz` checks Qdrant reachability and API-key presence (`OPENAI_API_KEY`,
+plus `ANTHROPIC_API_KEY` whenever the primary or fallback model is a Claude model, which
+the default is) for
 real (not just "the process is up"); Redis is reported but never fails the
 check, matching Redis's optional status everywhere else in this project.
 

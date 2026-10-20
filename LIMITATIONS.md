@@ -489,6 +489,12 @@ all.
 
 ## `CHAT_MODEL=gpt-6-luna` Only Works Correctly Under `AGENT_MODE=classifier`
 
+**Superseded by ADR-0011.** The 40% routing below was measured at Luna's default
+reasoning effort. At `reasoning_effort="none"`, which `models.py` now sets on every Luna
+construction, Luna routes 91.5% under `tool_calling` (`v17-tool-calling-gpt6-luna.json`),
+and the default model is Claude Haiku 5.5 with Luna as its fallback. The rest of this
+section is kept as the record of what was measured then.
+
 Measured, not assumed (`eval/results/v10-gpt4o-mini-baseline.json` /
 `v11-gpt6-luna-comparison.json`): under `classifier` mode, gpt-6-luna matches or beats
 gpt-4o-mini on every gated metric — see the README comparison. Under `tool_calling` mode,
@@ -515,3 +521,35 @@ Two real API constraints, found by running it rather than documented anywhere in
   its routing determinism at temperature=1 is therefore measured over one run, not yet
   confirmed stable across repeats the way gpt-4o-mini's temperature-driven nondeterminism
   was originally caught (93.2%→91.5% between two identical runs).
+
+---
+
+## The Three-Model Comparison Is Single-Run, And Judged By A Model That Retires
+
+ADR-0011 chose Claude Haiku 5.5 over `gpt-4o-mini` and `gpt-6-luna` from one run each
+(Haiku's default-mode answering was repeated twice more and was stable; the others were
+not repeated). A difference under about 0.04 on a RAGAS metric is inside noise this
+project has measured elsewhere, so only the faithfulness ordering is a clear signal.
+
+- **The judge is `gpt-4o-mini`**, which retires on 2027-01-14. Every judged number in
+  `v16-*`, `v18-*` and `v19-*` was scored by it. The migration is to rescore these same
+  saved answers under the old and new judge (`run_eval.py --rescore`) and measure the
+  shift, not to assume it.
+- **RAGAS scores a hedged answer as non-committal (0).** Haiku's Spotify relevancy
+  (0.15) measures the data-age caveat the freshness rule asks for, not a worse answer.
+  Read relevancy with and without the Spotify route.
+- **`tool_calling` is not gated.** CI's eval gate runs the default mode only. The golden
+  set holds 3 multi-intent questions, and the "multi-intent complete" metric
+  mis-scores an answer that reaches the right facts through the LinkedIn tool instead of
+  the résumé tool, so it cannot yet judge a hybrid of the two modes. The scope
+  instruction fixed the "developer mode" prompt in that mode but cost one false refusal
+  and 1.6 to 3.4 points of routing, which may be noise.
+- **The refusal metric is a keyword heuristic.** A new decline phrasing in the system
+  prompt reads as an answer until it is added to `_REFUSAL_MARKERS`.
+- **Neither Luna nor Haiku can be pinned to a temperature**, and Haiku's answers are
+  about twice as long as the others'. If conciseness matters, it is a prompt change to
+  measure, not a model argument.
+- **Two provider keys are now required** on any host that runs the default
+  configuration. A host with only an OpenAI key fails on its first answer; set
+  `CHAT_MODEL` to an OpenAI model and `FALLBACK_CHAT_MODEL` empty to run without
+  Anthropic.
