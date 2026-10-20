@@ -484,6 +484,35 @@ def score_ragas(rows: list[dict]) -> tuple[dict, list[dict]]:
     return aggregates, per_question
 
 
+def rescore(path: str) -> dict:
+    """Score the answers a result file already holds, and write the scores back into it.
+
+    Answering and judging are separate costs: a run answers all 59 questions in a few
+    minutes, but RAGAS 0.4 judges them at only about 30 calls a minute (roughly 25 minutes),
+    so several runs' answers can be scored side by side instead of one after another. It also
+    lets the same answers be scored again under a different judge, which is what moving off
+    gpt-4o-mini needs: the shift between two judges is then measured on identical answers.
+    """
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    unmeasured = data.get("unmeasured_routes") or {}
+    rows = [q for q in data["questions"] if q["answerable"] and q["expected_route"] not in unmeasured]
+    print(f"Scoring {len(rows)} answerable questions from {path} with RAGAS...")
+    scores, per_question = score_ragas(rows)
+    by_id = {p["id"]: p for p in per_question}
+    for question in data["questions"]:
+        question["metrics"] = {k: v for k, v in by_id.get(question["id"], {}).items() if k != "id"}
+    data["scores"] = scores
+    data["scores_cover"] = len(rows)
+    data["scores_by_route"] = breakdown_by_route(rows, per_question)
+    data["thresholds_met"] = {k: (scores.get(k) or 0) >= v for k, v in THRESHOLDS.items()}
+    data["judge"] = {"model": JUDGE_MODEL, "embeddings": JUDGE_EMBEDDING_MODEL}
+    Path(path).write_text(json.dumps(data, indent=2), encoding="utf-8")
+    for metric, score in scores.items():
+        print(f"  {metric}: {'n/a' if score is None else format(score, '.4f')}")
+    print(f"Scores written into {path}")
+    return data
+
+
 def evaluate(
     output_path: str | None = None,
     limit: int | None = None,
@@ -594,6 +623,7 @@ def evaluate(
         "graph_cost": graph_cost,
         "scores": scores,
         "scores_cover": len(scorable),
+        "judge": {"model": JUDGE_MODEL, "embeddings": JUDGE_EMBEDDING_MODEL} if scores else None,
         "unmeasured_routes": unmeasured,
         "scores_by_route": by_route,
         "thresholds_met": {k: (scores.get(k) or 0) >= v for k, v in THRESHOLDS.items()} if scores else {},
@@ -721,11 +751,22 @@ if __name__ == "__main__":
         help="Override CHAT_MODEL for this run, to compare models directly",
     )
     parser.add_argument(
+        "--rescore",
+        metavar="RESULT_JSON",
+        default=None,
+        help="Score the answers already saved in RESULT_JSON with RAGAS and write the scores into it "
+        "(no questions are run)",
+    )
+    parser.add_argument(
         "--fail-under-threshold",
         action="store_true",
         help="Exit non-zero when a RAGAS threshold is missed (for CI gating)",
     )
     args = parser.parse_args()
+
+    if args.rescore:
+        rescore(args.rescore)
+        sys.exit(0)
 
     result = evaluate(
         args.output,
