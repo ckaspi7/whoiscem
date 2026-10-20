@@ -133,3 +133,93 @@ def test_the_empty_file_fingerprint_is_the_one_a_real_empty_file_produces(tmp_pa
     empty = tmp_path / "user_data.db"
     empty.write_bytes(b"")
     assert hashlib.sha256(empty.read_bytes()).hexdigest()[:12] == run_eval._EMPTY_FILE_SHA
+
+
+# ---------------------------------------------------------------------------
+# rescore: score the answers a result file already holds, in place
+# ---------------------------------------------------------------------------
+
+
+def _result_file(tmp_path, unmeasured=None):
+    import json
+
+    questions = [
+        {
+            "id": "r1",
+            "answerable": True,
+            "expected_route": "resume",
+            "actual_route": "resume",
+            "question": "q1",
+            "answer": "a1",
+            "contexts": ["c1"],
+            "ground_truth": "g1",
+            "metrics": {},
+        },
+        {
+            "id": "p1",
+            "answerable": True,
+            "expected_route": "personal",
+            "actual_route": "personal",
+            "question": "q2",
+            "answer": "a2",
+            "contexts": ["c2"],
+            "ground_truth": "g2",
+            "metrics": {},
+        },
+        {
+            "id": "u1",
+            "answerable": False,
+            "expected_route": "conversation",
+            "actual_route": "conversation",
+            "question": "q3",
+            "answer": "I don't have that information.",
+            "contexts": [],
+            "ground_truth": "",
+            "metrics": {},
+        },
+    ]
+    path = tmp_path / "run.json"
+    path.write_text(
+        json.dumps({"questions": questions, "scores": {}, "unmeasured_routes": unmeasured or {}}),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_rescore_scores_only_the_answerable_questions_and_writes_them_back(tmp_path, monkeypatch):
+    import json
+
+    path = _result_file(tmp_path)
+    seen = []
+
+    def fake_score(rows):
+        seen.extend(r["id"] for r in rows)
+        per_question = [{"id": r["id"], "faithfulness": 0.5, "answer_relevancy": 0.9} for r in rows]
+        return {"faithfulness": 0.5, "answer_relevancy": 0.9}, per_question
+
+    monkeypatch.setattr(run_eval, "score_ragas", fake_score)
+
+    run_eval.rescore(str(path))
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert seen == ["r1", "p1"], "the should-decline question is not scored"
+    assert saved["scores"] == {"faithfulness": 0.5, "answer_relevancy": 0.9}
+    assert saved["scores_cover"] == 2
+    assert {q["id"]: q["metrics"] for q in saved["questions"]}["r1"]["faithfulness"] == 0.5
+    assert {q["id"]: q["metrics"] for q in saved["questions"]}["u1"] == {}
+    assert saved["scores_by_route"]["resume"]["faithfulness"] == 0.5
+    assert saved["judge"] == {"model": run_eval.JUDGE_MODEL, "embeddings": run_eval.JUDGE_EMBEDDING_MODEL}
+
+
+def test_rescore_leaves_out_a_route_the_run_could_not_measure(tmp_path, monkeypatch):
+    path = _result_file(tmp_path, unmeasured={"personal": "no database"})
+    seen = []
+    monkeypatch.setattr(
+        run_eval,
+        "score_ragas",
+        lambda rows: (seen.extend(r["id"] for r in rows) or {}, [{"id": r["id"]} for r in rows]),
+    )
+
+    run_eval.rescore(str(path))
+
+    assert seen == ["r1"]

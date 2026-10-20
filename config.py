@@ -62,14 +62,14 @@ AGENT_MODES: tuple[str, ...] = ("classifier", "tool_calling")
 # same discipline as retrieval_strategy: no default changes on faith here.
 DEFAULT_AGENT_MODE = "classifier"
 
-# Which OpenAI chat model powers routing, condensation, and generation in both
-# graphs. RAGAS's own judge is deliberately not parameterised by this — it
+# Which chat model (OpenAI or Claude) powers routing, condensation, generation
+# and the session summary in both graphs. RAGAS's own judge is deliberately not parameterised by this — it
 # stays pinned to gpt-4o-mini so a model swap changes exactly the thing being
 # measured, not the thing measuring it. The faithfulness judge
 # (guardrails/faithfulness_check.py) is unaffected by CHAT_MODEL for a
 # stronger reason now (ADR-0008): it isn't an OpenAI call at all anymore, so
 # there is nothing here for it to be parameterised by.
-CHAT_MODELS: tuple[str, ...] = ("gpt-4o-mini", "gpt-6-luna")
+CHAT_MODELS: tuple[str, ...] = ("gpt-4o-mini", "gpt-6-luna", "claude-haiku-5-5")
 # Defaults to the incumbent until a real before/after says otherwise — same
 # discipline as retrieval_strategy and agent_mode.
 DEFAULT_CHAT_MODEL = "gpt-4o-mini"
@@ -113,6 +113,9 @@ class Settings:
     retrieval_strategy: str = DEFAULT_RETRIEVAL_STRATEGY
     agent_mode: str = DEFAULT_AGENT_MODE
     chat_model: str = DEFAULT_CHAT_MODEL
+    # Answers when chat_model fails (an outage, a rate limit, an exhausted balance).
+    # Empty means none. Evaluation never uses it, so a run measures one model.
+    fallback_chat_model: str = ""
     phoenix_endpoint: str = DEFAULT_PHOENIX_ENDPOINT
     phoenix_api_key: str = ""
     phoenix_project: str = DEFAULT_PHOENIX_PROJECT
@@ -131,6 +134,13 @@ class Settings:
             raise ConfigError(f"AGENT_MODE must be one of {', '.join(AGENT_MODES)} — got {self.agent_mode!r}")
         if self.chat_model not in CHAT_MODELS:
             raise ConfigError(f"CHAT_MODEL must be one of {', '.join(CHAT_MODELS)} — got {self.chat_model!r}")
+        if self.fallback_chat_model and self.fallback_chat_model not in CHAT_MODELS:
+            raise ConfigError(
+                f"FALLBACK_CHAT_MODEL must be one of {', '.join(CHAT_MODELS)} "
+                f"— got {self.fallback_chat_model!r}"
+            )
+        if self.fallback_chat_model and self.fallback_chat_model == self.chat_model:
+            raise ConfigError("FALLBACK_CHAT_MODEL must differ from CHAT_MODEL")
         if self.qdrant_mode == "cloud" and not self.qdrant_url:
             raise ConfigError("QDRANT_MODE=cloud requires QDRANT_URL (and usually QDRANT_API_KEY)")
 
@@ -163,6 +173,7 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         retrieval_strategy=get("RETRIEVAL_STRATEGY", DEFAULT_RETRIEVAL_STRATEGY).lower(),
         agent_mode=get("AGENT_MODE", DEFAULT_AGENT_MODE).lower(),
         chat_model=get("CHAT_MODEL", DEFAULT_CHAT_MODEL).lower(),
+        fallback_chat_model=get("FALLBACK_CHAT_MODEL").lower(),
         phoenix_endpoint=get("PHOENIX_COLLECTOR_ENDPOINT", DEFAULT_PHOENIX_ENDPOINT),
         phoenix_api_key=get("PHOENIX_API_KEY"),
         phoenix_project=get("PHOENIX_PROJECT_NAME", DEFAULT_PHOENIX_PROJECT),

@@ -38,9 +38,10 @@ from pydantic import BaseModel, Field
 
 from chatbot import MAX_INPUT_CHARS
 from config import load_settings
-from cost import estimate_cost
+from cost import graph_cost
 from guardrails.faithfulness_check import apply_faithfulness_tiering, score_faithfulness
 from guardrails.refusal import looks_like_refusal
+from models import provider_of
 from observability import set_session_id, setup_logging, setup_tracing
 from rate_limit import RateLimiter
 from retrieval.backends import create_qdrant_client
@@ -192,6 +193,10 @@ def healthz() -> JSONResponse:
         logger.warning("Health check: Qdrant unreachable: %s", exc)
 
     settings = load_settings()
+    # The OpenAI key is always needed (embeddings); the Anthropic one only when a Claude
+    # model is the primary or the fallback.
+    if any(provider_of(m) == "anthropic" for m in (settings.chat_model, settings.fallback_chat_model) if m):
+        checks["anthropic_api_key"] = bool(os.environ.get("ANTHROPIC_API_KEY"))
     if not settings.redis_url:
         checks["redis"] = "not configured (session memory runs in-process)"
     else:
@@ -205,7 +210,11 @@ def healthz() -> JSONResponse:
 
     # Redis is informational only, same as everywhere else in this project —
     # its absence degrades a feature, it does not make the app unhealthy.
-    healthy = bool(checks["openai_api_key"]) and bool(checks["qdrant"])
+    healthy = (
+        bool(checks["openai_api_key"])
+        and bool(checks["qdrant"])
+        and bool(checks.get("anthropic_api_key", True))
+    )
     return JSONResponse(status_code=200 if healthy else 503, content={"healthy": healthy, "checks": checks})
 
 
@@ -264,14 +273,10 @@ def chat(
     if degraded and looks_like_refusal(raw_answer):
         answer, score = _DEGRADED_RESPONSE, None
 
-    token_usage = result_state.get("token_usage") or {}
-    judge_usage = token_usage.get("check_faithfulness", {"input": 0, "output": 0})
-    graph_input = sum(u["input"] for k, u in token_usage.items() if k != "check_faithfulness")
-    graph_output = sum(u["output"] for k, u in token_usage.items() if k != "check_faithfulness")
-
-    cost_usd = estimate_cost(request.app.state.chat_model, graph_input, graph_output) + estimate_cost(
-        "gpt-4o-mini", judge_usage["input"], judge_usage["output"]
-    )
+    # Each node is priced at the model that answered it, which is the fallback's rate
+    # for any node it stepped in on. The faithfulness judge is a local classifier
+    # (ADR-0008) with zero usage, so it adds nothing.
+    cost_usd, _, _ = graph_cost(result_state.get("token_usage"), request.app.state.chat_model)
     spend_tracker.add(cost_usd)
 
     return ChatResponse(

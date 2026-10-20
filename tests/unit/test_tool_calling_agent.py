@@ -36,7 +36,7 @@ def _mock_llm(*responses: AIMessage) -> MagicMock:
 
 
 def _run_graph(llm: MagicMock, question: str) -> dict:
-    with patch("chatbot.ChatOpenAI", return_value=llm):
+    with patch("models.ChatOpenAI", return_value=llm):
         graph = chatbot.create_assistant(mode="tool_calling")
     return graph.invoke({**INITIAL_STATE, "messages": [HumanMessage(content=question)]})
 
@@ -242,7 +242,7 @@ def test_trajectory_records_a_failed_call_as_not_ok():
 
 
 def test_every_llm_construction_requests_stream_usage_in_classifier_mode():
-    with patch("chatbot.ChatOpenAI") as llm_cls:
+    with patch("models.ChatOpenAI") as llm_cls:
         chatbot.create_assistant(mode="classifier")
 
     assert llm_cls.call_args_list, "expected llm and llm_fast to be constructed"
@@ -250,7 +250,7 @@ def test_every_llm_construction_requests_stream_usage_in_classifier_mode():
 
 
 def test_every_llm_construction_requests_stream_usage_in_tool_calling_mode():
-    with patch("chatbot.ChatOpenAI") as llm_cls:
+    with patch("models.ChatOpenAI") as llm_cls:
         chatbot.create_assistant(mode="tool_calling")
 
     assert all(c.kwargs.get("stream_usage") is True for c in llm_cls.call_args_list)
@@ -261,34 +261,32 @@ def test_every_llm_construction_requests_stream_usage_in_tool_calling_mode():
 # ---------------------------------------------------------------------------
 
 
-def test_gpt_6_luna_sets_reasoning_effort_none_on_the_tool_bound_agent_only():
-    with patch("chatbot.ChatOpenAI") as llm_cls:
+def test_gpt_6_luna_runs_at_reasoning_effort_none_everywhere_in_tool_calling_mode():
+    """Function calling only works at "none", and nothing here benefits from reasoning,
+    so every Luna construction (the agent, llm and llm_fast) is built that way."""
+    with patch("models.ChatOpenAI") as llm_cls:
         chatbot.create_assistant(mode="tool_calling", model="gpt-6-luna")
 
     calls = llm_cls.call_args_list
-    with_reasoning = [c for c in calls if "reasoning_effort" in c.kwargs]
-    assert len(with_reasoning) == 1, "expected exactly one construction (the tool-bound agent) to set it"
-    assert with_reasoning[0].kwargs["reasoning_effort"] == "none"
-    # llm and llm_fast never bind a tool, so the gotcha does not apply to them.
-    other_calls = [c for c in calls if c is not with_reasoning[0]]
-    assert len(other_calls) == 2, "expected llm and llm_fast to also be constructed"
-    assert all("reasoning_effort" not in c.kwargs for c in other_calls)
+    assert len(calls) == 3, "expected llm, llm_fast and the tool-bound agent"
+    assert all(c.kwargs.get("reasoning_effort") == "none" for c in calls)
 
 
 def test_gpt_4o_mini_never_sets_reasoning_effort():
-    with patch("chatbot.ChatOpenAI") as llm_cls:
+    with patch("models.ChatOpenAI") as llm_cls:
         chatbot.create_assistant(mode="tool_calling", model="gpt-4o-mini")
 
     assert all("reasoning_effort" not in c.kwargs for c in llm_cls.call_args_list)
 
 
-def test_classifier_mode_never_sets_reasoning_effort_even_on_luna():
-    """No tool is ever bound to a model in classifier mode, so the gotcha
-    that applies to _build_tool_calling_graph's agent is moot here."""
-    with patch("chatbot.ChatOpenAI") as llm_cls:
+def test_classifier_mode_also_runs_luna_at_reasoning_effort_none():
+    """Routing and condensing are short prompts and answering is grounded in supplied
+    context, so reasoning only costs time and tokens; "none" is also the setting
+    OpenAI's migration guide recommends for work that ran on GPT-4.x."""
+    with patch("models.ChatOpenAI") as llm_cls:
         chatbot.create_assistant(mode="classifier", model="gpt-6-luna")
 
-    assert all("reasoning_effort" not in c.kwargs for c in llm_cls.call_args_list)
+    assert all(c.kwargs.get("reasoning_effort") == "none" for c in llm_cls.call_args_list)
     assert all(c.kwargs.get("model") == "gpt-6-luna" for c in llm_cls.call_args_list)
 
 
@@ -301,7 +299,7 @@ def test_classifier_mode_never_sets_reasoning_effort_even_on_luna():
 
 
 def test_gpt_6_luna_never_sets_a_temperature_override_in_classifier_mode():
-    with patch("chatbot.ChatOpenAI") as llm_cls:
+    with patch("models.ChatOpenAI") as llm_cls:
         chatbot.create_assistant(mode="classifier", model="gpt-6-luna")
 
     assert llm_cls.call_args_list, "expected llm and llm_fast to be constructed"
@@ -309,7 +307,7 @@ def test_gpt_6_luna_never_sets_a_temperature_override_in_classifier_mode():
 
 
 def test_gpt_6_luna_never_sets_a_temperature_override_in_tool_calling_mode():
-    with patch("chatbot.ChatOpenAI") as llm_cls:
+    with patch("models.ChatOpenAI") as llm_cls:
         chatbot.create_assistant(mode="tool_calling", model="gpt-6-luna")
 
     assert all("temperature" not in c.kwargs for c in llm_cls.call_args_list)
@@ -319,7 +317,7 @@ def test_gpt_4o_mini_still_gets_its_usual_temperature_overrides():
     """Regression check: the gpt-6-luna carve-out must not silently drop
     temperature for the model that actually supports and relies on it —
     llm at 0.7 for prose variety, llm_fast at 0 for deterministic routing."""
-    with patch("chatbot.ChatOpenAI") as llm_cls:
+    with patch("models.ChatOpenAI") as llm_cls:
         chatbot.create_assistant(mode="classifier", model="gpt-4o-mini")
 
     temperatures = sorted(c.kwargs.get("temperature") for c in llm_cls.call_args_list)

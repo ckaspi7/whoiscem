@@ -3,6 +3,7 @@ from __future__ import annotations
 from langchain_core.prompts import ChatPromptTemplate
 
 from cost import usage_from_response
+from models import message_text
 
 _VALID_TYPES = frozenset({"resume", "personal", "spotify", "linkedin", "conversation"})
 
@@ -48,6 +49,6 @@ def classify_query(query: str, llm) -> tuple[str, dict[str, int]]:
     not a length estimate.
     """
     response = llm.invoke(_ROUTE_PROMPT.invoke({"query": query}))
-    result = response.content.strip().lower()
+    result = message_text(response).strip().lower()
     category = result if result in _VALID_TYPES else "conversation"
     return category, usage_from_response(response)

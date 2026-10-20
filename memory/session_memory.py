@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import logging
 
+from langchain_core.messages import HumanMessage, SystemMessage
+
 import redis_backend
 from config import load_settings
+from cost import usage_from_response
+from models import message_text
 
 logger = logging.getLogger(__name__)
 
@@ -57,10 +61,12 @@ class SessionMemory:
         except Exception as exc:
             logger.warning("Failed to save session memory: %s", exc)
 
-    def build_summary(self, messages: list, openai_client) -> tuple[str, dict[str, int]]:
+    def build_summary(self, messages: list, llm) -> tuple[str, dict[str, int]]:
         """Summarise the conversation to 3 sentences for future context injection.
 
-        Takes LangChain ``BaseMessage`` objects (``.type`` is ``"human"``/``"ai"``).
+        Takes LangChain ``BaseMessage`` objects (``.type`` is ``"human"``/``"ai"``)
+        and a chat model from ``models.build_runnable``, so the summary is written
+        by whichever model the app is configured to use (and its fallback).
         Returns ``(summary, usage)`` — the real token counts this call cost,
         for honest cost accounting (Phase 4.2) rather than a length estimate.
         """
@@ -71,23 +77,17 @@ class SessionMemory:
             f"{m.type.capitalize()}: {m.content}" for m in messages if isinstance(m.content, str)
         )
         try:
-            response = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
+            response = llm.invoke(
+                [
+                    SystemMessage(
+                        content=(
                             "Summarise this conversation in exactly 3 sentences for future context injection."
-                        ),
-                    },
-                    {"role": "user", "content": transcript},
-                ],
-                temperature=0,
-                max_tokens=150,
+                        )
+                    ),
+                    HumanMessage(content=transcript),
+                ]
             )
-            usage = response.usage
-            tokens = {"input": usage.prompt_tokens, "output": usage.completion_tokens} if usage else no_usage
-            return response.choices[0].message.content.strip(), tokens
+            return message_text(response).strip(), usage_from_response(response)
         except Exception as exc:
             logger.warning("Failed to build conversation summary: %s", exc)
             return "", dict(no_usage)
