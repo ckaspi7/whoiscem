@@ -28,12 +28,14 @@ jobs:
         run: pytest tests/unit/ -v --tb=short
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
       - name: Run integration tests
         # Embedded Qdrant — no service containers needed.
         run: pytest tests/integration/ -v --tb=short
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           QDRANT_MODE: embedded
 
   docker:
@@ -130,17 +132,18 @@ jobs:
         id: key
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          if [ -n "$OPENAI_API_KEY" ]; then
+          if [ -n "$OPENAI_API_KEY" ] && [ -n "$ANTHROPIC_API_KEY" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
             # Loud rather than silent. A gate that quietly stops running is
             # worse than no gate: the build stays green and nothing is checked.
-            echo "::warning title=Evaluation gate did not run::OPENAI_API_KEY is not set on this repository, so routing and retrieval were not evaluated. Add the secret in Settings > Secrets and variables > Actions."
+            echo "::warning title=Evaluation gate did not run::OPENAI_API_KEY or ANTHROPIC_API_KEY is not set on this repository (the default model needs both), so routing and retrieval were not evaluated. Add the secrets in Settings > Secrets and variables > Actions."
             echo "### Evaluation gate skipped" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "\`OPENAI_API_KEY\` is not configured, so no routing or retrieval check ran on this commit." >> "$GITHUB_STEP_SUMMARY"
+            echo "\`OPENAI_API_KEY\` or \`ANTHROPIC_API_KEY\` is not configured, so no routing or retrieval check ran on this commit." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Run routing and retrieval evaluation
@@ -148,6 +151,7 @@ jobs:
         run: python eval/run_eval.py --no-ragas --output eval/results/pr-run.json
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           QDRANT_MODE: embedded
 
       - name: Compare against the committed baseline
@@ -194,12 +198,13 @@ jobs:
         id: key
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          if [ -n "$OPENAI_API_KEY" ]; then
+          if [ -n "$OPENAI_API_KEY" ] && [ -n "$ANTHROPIC_API_KEY" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=Scheduled evaluation did not run::OPENAI_API_KEY is not set on this repository."
+            echo "::warning title=Scheduled evaluation did not run::OPENAI_API_KEY or ANTHROPIC_API_KEY is not set on this repository."
           fi
 
       - name: Wait for Qdrant to be ready
@@ -230,6 +235,7 @@ jobs:
         run: python eval/run_eval.py --output eval/results/scheduled-run.json
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           QDRANT_MODE: server
           QDRANT_HOST: localhost
           QDRANT_PORT: 6333
