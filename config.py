@@ -70,9 +70,13 @@ DEFAULT_AGENT_MODE = "classifier"
 # stronger reason now (ADR-0008): it isn't an OpenAI call at all anymore, so
 # there is nothing here for it to be parameterised by.
 CHAT_MODELS: tuple[str, ...] = ("gpt-4o-mini", "gpt-6-luna", "claude-haiku-5-5")
-# Defaults to the incumbent until a real before/after says otherwise — same
-# discipline as retrieval_strategy and agent_mode.
-DEFAULT_CHAT_MODEL = "gpt-4o-mini"
+# Chosen from a measured three-way comparison against the gpt-4o-mini incumbent (ADR-0011),
+# same discipline as retrieval_strategy and agent_mode. gpt-4o-mini stays a valid choice until
+# OpenAI retires it on 2027-01-14.
+DEFAULT_CHAT_MODEL = "claude-haiku-5-5"
+# Answers when the default model fails. A different provider on purpose: a same-provider
+# fallback does not help when that account is out of credit or down.
+DEFAULT_FALLBACK_CHAT_MODEL = "gpt-6-luna"
 
 # Roughly 3k tokens; comfortably inside the window and cheap enough per turn.
 CORPUS_FITS_CONTEXT_CHARS = 12_000
@@ -114,7 +118,8 @@ class Settings:
     agent_mode: str = DEFAULT_AGENT_MODE
     chat_model: str = DEFAULT_CHAT_MODEL
     # Answers when chat_model fails (an outage, a rate limit, an exhausted balance).
-    # Empty means none. Evaluation never uses it, so a run measures one model.
+    # Empty means none. Evaluation never uses it, so a run measures one model. The
+    # dataclass default is empty; load_settings() supplies the default pairing.
     fallback_chat_model: str = ""
     phoenix_endpoint: str = DEFAULT_PHOENIX_ENDPOINT
     phoenix_api_key: str = ""
@@ -160,6 +165,17 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
 
     port = _int(get("QDRANT_PORT", str(DEFAULT_QDRANT_PORT)), "QDRANT_PORT")
 
+    chat_model = get("CHAT_MODEL", DEFAULT_CHAT_MODEL).lower()
+    # The default fallback is part of the default pairing only: someone who picked another
+    # CHAT_MODEL has not asked for a second provider's key to be needed. Setting
+    # FALLBACK_CHAT_MODEL (even to empty) always wins.
+    if "FALLBACK_CHAT_MODEL" in src:
+        fallback_chat_model = get("FALLBACK_CHAT_MODEL").lower()
+    elif chat_model == DEFAULT_CHAT_MODEL:
+        fallback_chat_model = DEFAULT_FALLBACK_CHAT_MODEL
+    else:
+        fallback_chat_model = ""
+
     return Settings(
         qdrant_mode=get("QDRANT_MODE", DEFAULT_QDRANT_MODE).lower(),  # type: ignore[arg-type]
         qdrant_path=get("QDRANT_PATH", DEFAULT_QDRANT_PATH),
@@ -172,8 +188,8 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         retrieval_top_n=_int(get("RETRIEVAL_TOP_N", str(DEFAULT_RETRIEVAL_TOP_N)), "RETRIEVAL_TOP_N"),
         retrieval_strategy=get("RETRIEVAL_STRATEGY", DEFAULT_RETRIEVAL_STRATEGY).lower(),
         agent_mode=get("AGENT_MODE", DEFAULT_AGENT_MODE).lower(),
-        chat_model=get("CHAT_MODEL", DEFAULT_CHAT_MODEL).lower(),
-        fallback_chat_model=get("FALLBACK_CHAT_MODEL").lower(),
+        chat_model=chat_model,
+        fallback_chat_model=fallback_chat_model,
         phoenix_endpoint=get("PHOENIX_COLLECTOR_ENDPOINT", DEFAULT_PHOENIX_ENDPOINT),
         phoenix_api_key=get("PHOENIX_API_KEY"),
         phoenix_project=get("PHOENIX_PROJECT_NAME", DEFAULT_PHOENIX_PROJECT),

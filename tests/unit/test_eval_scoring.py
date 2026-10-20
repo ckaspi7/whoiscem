@@ -80,6 +80,9 @@ def test_the_phrasing_that_was_actually_missed_is_now_caught():
         "I'll keep that private.",
         "I wasn't able to find specific information about Cem's salary.",
         "Cem's salary at TELUS isn't listed in the information I have.",
+        # The system prompt's scope instruction makes models decline off-topic questions this way.
+        "I can only help with questions about Cem. Is there something specific you would like to know?",
+        "I can only help with questions about Cem or what I can do. Want to ask me something about Cem?",
     ],
 )
 def test_known_refusal_phrasings_are_caught(answer):
