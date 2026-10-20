@@ -424,3 +424,31 @@ def test_add_usage_without_a_model_keeps_the_old_shape():
     assert chatbot._add_usage({}, "route_query", {"input": 5, "output": 1}) == {
         "route_query": {"input": 5, "output": 1}
     }
+
+
+def test_a_response_with_no_model_is_stamped_with_the_name_of_the_model_that_gave_it():
+    """A streamed Claude response reports no model; cost attribution needs one."""
+    unnamed = AIMessage(
+        content="x",
+        usage_metadata={"input_tokens": 4, "output_tokens": 1, "total_tokens": 5},
+        response_metadata={},
+    )
+    runnable = models.with_fallback(
+        _Fake(error=RuntimeError("down")),
+        _Fake(unnamed),
+        primary_name="gpt-6-luna",
+        fallback_name="claude-haiku-5-5",
+    )
+
+    answer = runnable.invoke([HumanMessage(content="hi")])
+
+    assert usage_from_response(answer)["model"] == "claude-haiku-5-5"
+
+
+def test_a_model_the_response_already_names_is_not_overwritten():
+    named = _reply("x", "gpt-6-luna")
+    runnable = models.with_fallback(
+        _Fake(named), _Fake(_reply("y", "claude-haiku-5-5")), primary_name="gpt-4o-mini"
+    )
+
+    assert usage_from_response(runnable.invoke([HumanMessage(content="hi")]))["model"] == "gpt-6-luna"

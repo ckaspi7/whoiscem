@@ -86,6 +86,25 @@ def _build_anthropic(model: str, streaming: bool) -> Any:
     )
 
 
+def _stamped(runnable: Runnable, name: str) -> Runnable:
+    """`runnable`, with `name` recorded on any response that does not say which model made it.
+
+    A streamed Claude response reports no model, and cost attribution needs one: with a
+    fallback in play the default model is not necessarily the one that answered.
+    """
+    if not name:
+        return runnable
+
+    def _call(messages: Any, config: Any = None) -> Any:
+        response = runnable.invoke(messages, config)
+        metadata = getattr(response, "response_metadata", None)
+        if isinstance(metadata, dict) and not (metadata.get("model_name") or metadata.get("model")):
+            metadata["model_name"] = name
+        return response
+
+    return RunnableLambda(_call)
+
+
 def with_fallback(
     primary: Runnable, fallback: Runnable | None, *, primary_name: str = "", fallback_name: str = ""
 ) -> Runnable:
@@ -98,6 +117,9 @@ def with_fallback(
     """
     if fallback is None:
         return primary
+
+    primary = _stamped(primary, primary_name)
+    fallback = _stamped(fallback, fallback_name)
 
     def _call(messages: Any, config: Any = None) -> Any:
         try:
