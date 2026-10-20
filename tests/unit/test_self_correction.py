@@ -211,3 +211,32 @@ def test_no_context_never_triggers_a_retry():
     assert state["retry_count"] == 0
     assert state["faithfulness_score"] is None
     assert state["messages"][-1].content == "Hi there!"
+
+
+def test_the_regenerated_answer_is_not_conditioned_on_the_first_attempt_it_replaces():
+    """On a retry the prompt must end with the visitor's question, not with the answer
+    being replaced: Claude rejects a conversation that ends with an assistant turn, and
+    for any model the flawed first answer should not steer its own correction."""
+    llm = _mock_llm(
+        AIMessage(content="a vague first answer"),
+        AIMessage(content="reformulated query"),
+        AIMessage(content="a well-grounded second answer"),
+    )
+    with (
+        patch("models.ChatOpenAI", return_value=llm),
+        patch("chatbot.classify_query", return_value=("resume", dict(_NO_USAGE))),
+        patch(
+            "chatbot.score_faithfulness_with_usage",
+            side_effect=[(2, dict(_NO_USAGE)), (5, dict(_NO_USAGE))],
+        ),
+        patch("chatbot.search_resume", side_effect=[_CHUNK_1, _CHUNK_2]),
+    ):
+        chatbot.create_assistant(mode="classifier").invoke(
+            {**INITIAL_STATE, "messages": [HumanMessage(content="Where does Cem work?")]}
+        )
+
+    first_prompt, _, regeneration_prompt = (call.args[0] for call in llm.invoke.call_args_list)
+    assert isinstance(regeneration_prompt[-1], HumanMessage)
+    assert all("vague first answer" not in str(message.content) for message in regeneration_prompt)
+    # The first generation was the ordinary case and is untouched: it also ends with the question.
+    assert isinstance(first_prompt[-1], HumanMessage)

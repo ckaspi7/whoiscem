@@ -11,7 +11,7 @@ import uuid
 from typing import Any
 
 from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import StateGraph
 
 import query_rewrite
@@ -385,7 +385,14 @@ def _build_classifier_graph(llm: Any, llm_fast: Any, system_prompt: str) -> Any:
                 lc_messages.append(SystemMessage(content=f"Relevant information:\n{tool_result}"))
             # messages are already real HumanMessage/AIMessage objects — no
             # reconstruction needed, unlike when this read dicts.
-            lc_messages.extend(messages)
+            #
+            # On a self-correction retry the last message is the first attempt, kept
+            # in state only so the regeneration can replace it by id (below). It is
+            # left out of the prompt: the flawed answer should not steer its own
+            # correction, and a conversation ending with an assistant turn is rejected
+            # outright by Claude ("assistant prefill"), which OpenAI quietly tolerated.
+            is_retry = state.get("retry_count", 0) > 0 and isinstance(messages[-1], AIMessage)
+            lc_messages.extend(messages[:-1] if is_retry else messages)
 
             # A blocking call, not .stream(): the node's own return value must
             # be a plain, serializable message. Neither caller (chatbot.py's
