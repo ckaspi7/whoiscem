@@ -28,8 +28,8 @@ from langchain_core.messages import AIMessage, HumanMessage
 # Ensure project root is on sys.path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import load_settings  # noqa: E402  (after sys.path setup)
-from cost import estimate_cost  # noqa: E402
+from config import CHAT_MODELS, load_settings  # noqa: E402  (after sys.path setup)
+from cost import graph_cost as price_graph_usage  # noqa: E402
 from observability import setup_logging, setup_tracing  # noqa: E402
 from retrieval.vectorstore import CHUNKER_VERSION  # noqa: E402
 
@@ -504,7 +504,8 @@ def evaluate(
     settings = load_settings()
     agent_mode = agent_mode or settings.agent_mode
     chat_model = chat_model or settings.chat_model
-    graph = create_assistant(mode=agent_mode, model=chat_model)
+    # No fallback: a run that quietly switched models mid-way would measure the wrong one.
+    graph = create_assistant(mode=agent_mode, model=chat_model, use_fallback=False)
 
     print(
         f"Running {len(golden)} questions through the graph "
@@ -513,6 +514,7 @@ def evaluate(
     rows = []
     graph_input, graph_output = 0, 0
     judge_input, judge_output = 0, 0
+    graph_usd = 0.0
     for i, item in enumerate(golden, start=1):
         row = run_question(graph, item)
         flag = "ok " if row["route_correct"] else "MIS"
@@ -527,6 +529,7 @@ def evaluate(
         # captured that way despite a real model call happening). Summed here
         # per node, with check_faithfulness split out since it is always
         # gpt-4o-mini regardless of chat_model.
+        graph_usd += price_graph_usage(row.get("token_usage"), chat_model)[0]
         for node, usage in (row.get("token_usage") or {}).items():
             if node == "check_faithfulness":
                 judge_input += usage["input"]
@@ -545,11 +548,7 @@ def evaluate(
         "requests_measured": len(golden),
         "input_tokens": graph_input + judge_input,
         "output_tokens": graph_output + judge_output,
-        "estimated_usd": round(
-            estimate_cost(chat_model, graph_input, graph_output)
-            + estimate_cost("gpt-4o-mini", judge_input, judge_output),
-            4,
-        ),
+        "estimated_usd": round(graph_usd, 4),
         "excludes": "RAGAS's own judge calls, and embedding calls",
     }
 
@@ -691,7 +690,7 @@ def evaluate(
                 if value is not None:
                     print(f"    {route:<14} {value:.4f}")
 
-    print(f"\n=== Graph cost (real usage, {chat_model} + gpt-4o-mini judge) ===")
+    print(f"\n=== Graph cost (real usage, {chat_model}) ===")
     print(f"  ${graph_cost['estimated_usd']:.4f} over {graph_cost['requests_measured']} questions")
     print(f"  excludes: {graph_cost['excludes']}")
 
@@ -717,7 +716,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--model",
-        choices=["gpt-4o-mini", "gpt-6-luna"],
+        choices=list(CHAT_MODELS),
         default=None,
         help="Override CHAT_MODEL for this run, to compare models directly",
     )

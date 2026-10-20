@@ -12,9 +12,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph
-from openai import OpenAI
 
 import query_rewrite
 from config import load_settings
@@ -22,6 +20,7 @@ from cost import estimate_cost, usage_from_response
 from graph_state import GraphState
 from guardrails.faithfulness_check import apply_faithfulness_tiering, score_faithfulness_with_usage
 from memory.session_memory import SessionMemory
+from models import as_plain_message, build_runnable
 from observability import set_session_id, setup_logging, setup_tracing, tracing_status
 from router import classify_query
 from tools.linkedin_tool import get_linkedin_info, get_linkedin_info_result
@@ -39,6 +38,7 @@ load_dotenv()
 
 _SECRET_KEYS = (
     "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
     "PHOENIX_API_KEY",
     "PHOENIX_COLLECTOR_ENDPOINT",
     "PHOENIX_PROJECT_NAME",
@@ -52,6 +52,7 @@ _SECRET_KEYS = (
     "RESUME_PATH",
     "AGENT_MODE",
     "CHAT_MODEL",
+    "FALLBACK_CHAT_MODEL",
     "SESSION_SECRET",
 )
 
@@ -165,10 +166,17 @@ def _add_usage(token_usage: dict[str, dict[str, int]] | None, node: str, usage: 
     """
     merged = dict(token_usage or {})
     existing = merged.get(node, {"input": 0, "output": 0})
-    merged[node] = {
+    entry = {
         "input": existing["input"] + usage["input"],
         "output": existing["output"] + usage["output"],
     }
+    # Which model answered, when the response said (see cost.usage_from_response), so a
+    # fallback's tokens are priced at its own rate. The latest call wins for a node that
+    # ran twice, which only the self-correction retry does, on the same model.
+    model = usage.get("model") or existing.get("model")
+    if model:
+        entry["model"] = model
+    merged[node] = entry
     return merged
 
 
@@ -198,9 +206,23 @@ Key facts about Cem:
 {prior_block}"""
 
 
-def create_assistant(prior_context: str = "", mode: str | None = None, model: str | None = None) -> Any:
+# The tools the agent can call. Bound to each model by models.build_runnable, before any
+# fallback wrapper is added: the wrapper has no bind_tools of its own.
+_AGENT_TOOLS = [get_resume_info, get_personal_info, get_music_taste, get_linkedin_info]
+
+
+def create_assistant(
+    prior_context: str = "",
+    mode: str | None = None,
+    model: str | None = None,
+    fallback_model: str | None = None,
+    use_fallback: bool = True,
+) -> Any:
     """Build the compiled graph. ``mode`` defaults to ``settings.agent_mode``,
-    ``model`` to ``settings.chat_model``.
+    ``model`` to ``settings.chat_model``. When ``use_fallback`` is true, a second model
+    (``fallback_model``, else ``settings.fallback_chat_model``) answers whenever the
+    primary raises; the evaluation harness passes ``use_fallback=False`` so a run
+    measures exactly one model.
 
     Two independent graph shapes, chosen by configuration rather than one
     replacing the other on faith: "classifier" is the original design (an LLM
@@ -213,58 +235,28 @@ def create_assistant(prior_context: str = "", mode: str | None = None, model: st
     """
     settings = load_settings()
     chat_model = model or settings.chat_model
+    fallback = None
+    if use_fallback:
+        fallback = (fallback_model if fallback_model is not None else settings.fallback_chat_model) or None
+        if fallback == chat_model:
+            fallback = None
 
-    # gpt-6-luna is a reasoning model: it rejects any non-default temperature
-    # outright — a live call returns 400 "Unsupported value: 'temperature'
-    # does not support 0.0 with this model. Only the default (1) value is
-    # supported," not just for 0. gpt-4o-mini has no such restriction, so the
-    # override is only skipped for the model that cannot accept it.
-    fixed_temperature = chat_model == "gpt-6-luna"
-
-    def _llm(temperature: float, streaming: bool, **extra: Any) -> ChatOpenAI:
-        # stream_usage defaults to False on ChatOpenAI — a streaming call
-        # without it returns no usage_metadata at all (confirmed directly: a
-        # real generate_response call produced a real answer but usage_from_
-        # response read 0/0). Harmless to set unconditionally: it only affects
-        # the streaming code path, and llm_fast (streaming=False) ignores it.
-        kwargs: dict[str, Any] = {
-            "model": chat_model,
-            "streaming": streaming,
-            "stream_usage": True,
-            **extra,
-        }
-        if not fixed_temperature:
-            kwargs["temperature"] = temperature
-        return ChatOpenAI(**kwargs)
-
-    llm = _llm(0.7, streaming=True)
-    llm_fast = _llm(0, streaming=False)
+    # models.build_runnable applies each model's required settings (gpt-6-luna and Claude
+    # Haiku 5.5 accept no temperature; luna runs at reasoning_effort "none", Claude with
+    # thinking off) and wraps the primary with the fallback when there is one.
+    llm = build_runnable(chat_model, fallback, temperature=0.7, streaming=True)
+    llm_fast = build_runnable(chat_model, fallback, temperature=0, streaming=False)
     system_prompt = _system_prompt(prior_context)
     mode = mode or settings.agent_mode
 
     if mode == "tool_calling":
-        # Not llm: that call decides *and* eventually writes the final answer
-        # in the same loop, and llm's temperature=0.7 was chosen for prose
-        # variety, not for tool-selection — measured directly, it made which
-        # tool got called nondeterministic (routing moved 93.2% -> 91.5%
-        # between two identical runs). The classifier avoids this by using a
-        # separate temp=0 model for its own decision point; this does the
-        # same, while keeping streaming=True — stream_usage (see _llm above)
-        # only captures real token usage when it's set, independent of
-        # whether the UI ever displays anything live (it no longer does; see
-        # _fade_in_html). gpt-6-luna cannot be pinned to temp=0 at all (see
-        # fixed_temperature above) — whatever determinism its tool selection
-        # has comes from the model itself, not from this project's usual fix,
-        # and is measured rather than assumed in the README comparison.
-        extra = {"reasoning_effort": "none"} if chat_model == "gpt-6-luna" else {}
-        # gpt-6-luna only supports function/tool calling via Chat Completions
-        # at reasoning_effort="none" — tool selection breaks silently
-        # otherwise. Irrelevant to llm/llm_fast above: neither ever has a tool
-        # bound to it (routing and condensation are plain prompt completions,
-        # not function calls). A top-level kwarg, not model_kwargs:
-        # langchain_openai warns that reasoning_effort has its own
-        # constructor parameter and should not be nested.
-        llm_agent = _llm(0, streaming=True, **extra)
+        # Not llm: that call decides *and* eventually writes the final answer in the same
+        # loop, and llm's temperature of 0.7 was chosen for prose variety, not for tool
+        # selection; measured directly, it made which tool got called nondeterministic
+        # (routing moved 93.2% to 91.5% between two identical runs). The classifier avoids
+        # this by routing with a separate temperature-0 model, and this does the same.
+        # Models that cannot be pinned to temperature 0 get whatever determinism they have.
+        llm_agent = build_runnable(chat_model, fallback, temperature=0, streaming=True, tools=_AGENT_TOOLS)
         return _build_tool_calling_graph(llm_agent, system_prompt)
     return _build_classifier_graph(llm, llm_fast, system_prompt)
 
@@ -283,7 +275,7 @@ _RETRIABLE_ROUTE = "resume"
 _MAX_FAITHFULNESS_RETRIES = 1
 
 
-def _build_classifier_graph(llm: ChatOpenAI, llm_fast: ChatOpenAI, system_prompt: str) -> Any:
+def _build_classifier_graph(llm: Any, llm_fast: Any, system_prompt: str) -> Any:
     """The original design: classify, then a hardcoded switch calls one tool."""
 
     def condense_query(state: GraphState) -> GraphState:
@@ -402,7 +394,8 @@ def _build_classifier_graph(llm: ChatOpenAI, llm_fast: ChatOpenAI, system_prompt
             # faithfulness check before displaying anything, then reveals it
             # with a CSS-timed fade rather than a live per-token feed (see
             # _fade_in_html in chatbot.py for why).
-            response = llm.invoke(lc_messages)
+            # Plain text out: Claude can return a list of content blocks.
+            response = as_plain_message(llm.invoke(lc_messages))
             if state.get("retry_count", 0) > 0:
                 # This call is regenerating the same turn's answer after a
                 # self-correction retry — it must replace the first attempt,
@@ -568,7 +561,7 @@ don't have something after checking, and never guess or invent a detail no
 tool returned."""
 
 
-def _build_tool_calling_graph(llm: ChatOpenAI, system_prompt: str) -> Any:
+def _build_tool_calling_graph(llm: Any, system_prompt: str) -> Any:
     """Bind the tools to the LLM and let it choose — a real agent, not a switch.
 
     No condense_query node: unlike the classifier, which only ever sees one
@@ -584,14 +577,14 @@ def _build_tool_calling_graph(llm: ChatOpenAI, system_prompt: str) -> Any:
     that, which is most of Phase 3.2's multi-intent case arriving as a side
     effect of building this properly rather than needing separate work.
     """
-    tools = [get_resume_info, get_personal_info, get_music_taste, get_linkedin_info]
-    llm_with_tools = llm.bind_tools(tools)
+    # The tools are already bound (models.build_runnable, called from create_assistant).
+    llm_with_tools = llm
     system_prompt = system_prompt + _TOOL_CALLING_ADDENDUM
 
     def agent(state: GraphState) -> GraphState:
         def _run(state):
             lc_messages = [SystemMessage(content=system_prompt), *state["messages"]]
-            response = llm_with_tools.invoke(lc_messages)
+            response = as_plain_message(llm_with_tools.invoke(lc_messages))
             token_usage = _add_usage(state.get("token_usage"), "agent", usage_from_response(response))
             updates = {**state, "messages": [response], "token_usage": token_usage}
             # Only when nothing has called a tool yet this turn: a later round
@@ -680,10 +673,10 @@ def _accumulate_real_cost(*priced_usages: tuple[str, dict[str, int]]) -> None:
     output rate — which counted only the final answer's characters, missing
     every other call a turn makes (router, judge, summariser) and mispricing
     the one call it did count. `priced_usages` is (model, usage) pairs, not a
-    single model: the summariser stays pinned to gpt-4o-mini regardless of
-    CHAT_MODEL, the graph's own calls use whichever model is actually
-    configured, and the judge (ADR-0008) now runs a local classifier with
-    zero usage — each needs its own rate (or none), not one applied to all.
+    single model: each node's calls are priced at the model that answered them
+    (the primary, or the fallback when it stepped in), and the judge (ADR-0008)
+    runs a local classifier with zero usage — each needs its own rate (or none),
+    not one applied to all.
     """
     import streamlit as st
 
@@ -979,10 +972,12 @@ def main() -> None:
             st.session_state.last_ai_message_index = len(st.session_state.messages) - 1
 
             # Update session memory summary in background
-            openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
+            summariser = build_runnable(
+                chat_model, load_settings().fallback_chat_model or None, temperature=0, streaming=False
+            )
             summary, summary_usage = memory.build_summary(
                 [m for m in st.session_state.messages if isinstance(m.content, str)],
-                openai_client,
+                summariser,
             )
             if summary:
                 memory.save_summary(session_id, summary)
@@ -990,22 +985,20 @@ def main() -> None:
             # Real usage from every call this turn: every graph node captures
             # its own response's usage_metadata directly (see _add_usage and
             # cost.usage_from_response) rather than a callback, priced at
-            # whichever CHAT_MODEL is actually configured — except the
-            # summariser, which stays pinned to gpt-4o-mini regardless of it,
-            # and check_faithfulness, which runs a local classifier (ADR-0008)
-            # with no API cost at all (see cost.py and
-            # guardrails/faithfulness_check.py for why).
+            # whichever model actually answered that node (CHAT_MODEL, or the
+            # fallback when it stepped in) — and check_faithfulness, which
+            # runs a local classifier (ADR-0008) with no API cost at all (see
+            # cost.py and guardrails/faithfulness_check.py for why). The
+            # summariser is the same model layer, so it is priced the same way.
             graph_usage = {
                 node: usage
                 for node, usage in (result_state.get("token_usage") or {}).items()
                 if node != "check_faithfulness"
             }
-            graph_input = sum(u["input"] for u in graph_usage.values())
-            graph_output = sum(u["output"] for u in graph_usage.values())
             _accumulate_real_cost(
-                (chat_model, {"input": graph_input, "output": graph_output}),
-                ("gpt-4o-mini", judge_usage),
-                ("gpt-4o-mini", summary_usage),
+                *[(usage.get("model") or chat_model, usage) for usage in graph_usage.values()],
+                (chat_model, judge_usage),
+                (summary_usage.get("model") or chat_model, summary_usage),
             )
 
             # Structured, correlated by session_id (see observability.py):

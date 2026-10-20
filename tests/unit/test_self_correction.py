@@ -49,7 +49,7 @@ def _run_graph(question: str, route: str, scores: list, llm_responses: list[AIMe
     """Run the classifier graph for one turn with the LLM, router, faithfulness
     score, and resume search all under direct control."""
     with (
-        patch("chatbot.ChatOpenAI", return_value=_mock_llm(*llm_responses)),
+        patch("models.ChatOpenAI", return_value=_mock_llm(*llm_responses)),
         patch("chatbot.classify_query", return_value=(route, dict(_NO_USAGE))),
         patch(
             "chatbot.score_faithfulness_with_usage",
@@ -119,7 +119,7 @@ def test_token_usage_from_the_judge_accumulates_across_a_retry():
     classifier with no API usage at all) — so it has to be threaded through
     state explicitly either way. This test only asserts the threading."""
     with (
-        patch("chatbot.ChatOpenAI") as llm_cls,
+        patch("models.ChatOpenAI") as llm_cls,
         patch("chatbot.classify_query", return_value=("resume", dict(_NO_USAGE))),
         patch(
             "chatbot.score_faithfulness_with_usage",
@@ -141,7 +141,7 @@ def test_token_usage_from_the_judge_accumulates_across_a_retry():
 
 def test_reformulated_query_drives_the_retry_search():
     with (
-        patch("chatbot.ChatOpenAI") as llm_cls,
+        patch("models.ChatOpenAI") as llm_cls,
         patch("chatbot.classify_query", return_value=("resume", dict(_NO_USAGE))),
         patch(
             "chatbot.score_faithfulness_with_usage",

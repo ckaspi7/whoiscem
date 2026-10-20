@@ -2,6 +2,10 @@ streamlit==1.64.0
 openai==1.109.1
 langchain==1.4.6
 langchain-openai==1.1.9
+# Claude (CHAT_MODEL / FALLBACK_CHAT_MODEL, models.py). anthropic is pinned to the
+# release the connector was verified with.
+langchain-anthropic==1.7.6
+anthropic==1.15.0
 # langchain-community is held at 0.4.1, not the newest: 0.4.2 removed
 # chat_models.vertexai, which ragas (through its latest, 0.4.3) imports when it
 # loads, so eval/run_eval.py cannot even import ragas against it. 0.4.1 is the newest that works,

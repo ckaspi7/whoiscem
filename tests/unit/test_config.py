@@ -304,3 +304,31 @@ def test_a_remote_collector_is_not_probed():
         observability.setup_tracing(cfg)
     probe.assert_not_called()
     observability._configured = False
+
+
+# ---------------------------------------------------------------------------
+# FALLBACK_CHAT_MODEL — the model that answers when CHAT_MODEL fails
+# ---------------------------------------------------------------------------
+
+
+def test_claude_haiku_is_an_accepted_chat_model():
+    assert load_settings(env={"CHAT_MODEL": "claude-haiku-5-5"}).chat_model == "claude-haiku-5-5"
+
+
+def test_there_is_no_fallback_by_default():
+    assert load_settings(env={}).fallback_chat_model == ""
+
+
+def test_a_fallback_model_is_read_trimmed_and_lowercased():
+    env = {"CHAT_MODEL": "gpt-6-luna", "FALLBACK_CHAT_MODEL": " Claude-Haiku-5-5 "}
+    assert load_settings(env=env).fallback_chat_model == "claude-haiku-5-5"
+
+
+def test_an_unknown_fallback_model_is_rejected():
+    with pytest.raises(ConfigError, match="FALLBACK_CHAT_MODEL"):
+        load_settings(env={"FALLBACK_CHAT_MODEL": "gpt-9000"})
+
+
+def test_a_fallback_identical_to_the_primary_is_rejected():
+    with pytest.raises(ConfigError, match="must differ"):
+        load_settings(env={"CHAT_MODEL": "gpt-6-luna", "FALLBACK_CHAT_MODEL": "gpt-6-luna"})

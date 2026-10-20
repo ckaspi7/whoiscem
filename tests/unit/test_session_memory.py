@@ -63,26 +63,45 @@ def test_missing_redis_save_does_not_raise(memory_no_redis):
     memory_no_redis.save_summary("any-id", "some summary")  # should not raise
 
 
-def test_build_summary_calls_gpt4o_mini():
+def test_build_summary_asks_the_model_layer_and_reports_real_usage_and_model():
     mem = SessionMemory.__new__(SessionMemory)
     mem._redis = None
 
-    openai_client = MagicMock()
-    openai_client.chat.completions.create.return_value = MagicMock(
-        choices=[MagicMock(message=MagicMock(content="3-sentence summary."))],
-        usage=MagicMock(prompt_tokens=80, completion_tokens=25),
+    llm = MagicMock()
+    llm.invoke.return_value = AIMessage(
+        content="3-sentence summary.",
+        usage_metadata={"input_tokens": 80, "output_tokens": 25, "total_tokens": 105},
+        response_metadata={"model_name": "gpt-6-luna"},
     )
 
     messages = [
         HumanMessage(content="Hi"),
         AIMessage(content="Hello!"),
     ]
-    result, usage = mem.build_summary(messages, openai_client)
+    result, usage = mem.build_summary(messages, llm)
 
     assert result == "3-sentence summary."
-    assert usage == {"input": 80, "output": 25}
-    call_kwargs = openai_client.chat.completions.create.call_args.kwargs
-    assert call_kwargs["model"] == "gpt-4o-mini"
+    assert usage == {"input": 80, "output": 25, "model": "gpt-6-luna"}
+    sent = llm.invoke.call_args.args[0]
+    assert "exactly 3 sentences" in sent[0].content
+    assert "Human: Hi" in sent[1].content and "Ai: Hello!" in sent[1].content
+
+
+def test_build_summary_reads_text_out_of_a_block_list_response():
+    """Claude can answer with a list of content blocks; the summary must be its text."""
+    mem = SessionMemory.__new__(SessionMemory)
+    mem._redis = None
+    llm = MagicMock()
+    llm.invoke.return_value = AIMessage(
+        content=[
+            {"type": "thinking", "thinking": "", "signature": "x"},
+            {"type": "text", "text": " Summary. "},
+        ]
+    )
+
+    result, _ = mem.build_summary([HumanMessage(content="Hi")], llm)
+
+    assert result == "Summary."
 
 
 def test_build_summary_empty_messages():
@@ -96,10 +115,10 @@ def test_build_summary_empty_messages():
 def test_build_summary_failure_reports_zero_usage():
     mem = SessionMemory.__new__(SessionMemory)
     mem._redis = None
-    openai_client = MagicMock()
-    openai_client.chat.completions.create.side_effect = RuntimeError("boom")
+    llm = MagicMock()
+    llm.invoke.side_effect = RuntimeError("boom")
 
-    result, usage = mem.build_summary([HumanMessage(content="Hi")], openai_client)
+    result, usage = mem.build_summary([HumanMessage(content="Hi")], llm)
 
     assert result == ""
     assert usage == {"input": 0, "output": 0}

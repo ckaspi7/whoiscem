@@ -16,6 +16,7 @@ import logging
 from langchain_core.prompts import ChatPromptTemplate
 
 from cost import usage_from_response
+from models import message_text
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ def reformulate_for_retry(query: str, llm) -> tuple[str, dict[str, int]]:
     """
     try:
         response = llm.invoke(_REFORMULATE_PROMPT.invoke({"query": query}))
-        rewritten = (response.content or "").strip().strip('"')
+        rewritten = message_text(response).strip().strip('"')
         usage = usage_from_response(response)
     except Exception as exc:
         logger.warning("Query reformulation failed, using the original: %s", exc)
@@ -114,7 +115,7 @@ def condense_query(query: str, history: list, llm) -> tuple[str, dict[str, int]]
 
     try:
         response = llm.invoke(_CONDENSE_PROMPT.invoke({"history": formatted, "query": query}))
-        rewritten = (response.content or "").strip().strip('"')
+        rewritten = message_text(response).strip().strip('"')
         usage = usage_from_response(response)
     except Exception as exc:
         logger.warning("Query condensation failed, using the original: %s", exc)
