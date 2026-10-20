@@ -43,6 +43,14 @@ THRESHOLDS = {
 
 GOLDEN_SET_PATH = Path(__file__).parent / "golden_set.json"
 
+# The RAGAS judge and the embeddings its answer_relevancy metric uses. RAGAS 0.2
+# picked these itself (gpt-4o-mini and text-embedding-ada-002); naming them keeps
+# every committed score comparable and makes the judge a visible, changeable
+# setting instead of a library default. gpt-4o-mini retires on 2027-01-14, so this
+# is the line that moves when the judge does, together with a re-baseline.
+JUDGE_MODEL = "gpt-4o-mini"
+JUDGE_EMBEDDING_MODEL = "text-embedding-ada-002"
+
 
 def _git_sha() -> str:
     try:
@@ -427,8 +435,12 @@ def score_ragas(rows: list[dict]) -> tuple[dict, list[dict]]:
     EvaluationResult rather than a dict. Per-question values come from
     to_pandas(), so a regression is debuggable instead of being one moved float.
     """
+    from langchain_openai import OpenAIEmbeddings
+    from openai import OpenAI
     from ragas import EvaluationDataset, SingleTurnSample
     from ragas import evaluate as ragas_evaluate
+    from ragas.embeddings import LangchainEmbeddingsWrapper
+    from ragas.llms import llm_factory
     from ragas.metrics import answer_relevancy, context_precision, context_recall, faithfulness
 
     samples = [
@@ -443,6 +455,12 @@ def score_ragas(rows: list[dict]) -> tuple[dict, list[dict]]:
     result = ragas_evaluate(
         EvaluationDataset(samples=samples),
         metrics=[faithfulness, answer_relevancy, context_recall, context_precision],
+        # The judge is built the way ragas 0.4 builds its own default (the OpenAI SDK
+        # directly). Wrapping a LangChain ChatOpenAI instead goes through a deprecated
+        # shim that timed out on the resume route's long contexts. answer_relevancy
+        # still needs a LangChain-style embeddings object (embed_query), hence the wrapper.
+        llm=llm_factory(JUDGE_MODEL, client=OpenAI()),
+        embeddings=LangchainEmbeddingsWrapper(OpenAIEmbeddings(model=JUDGE_EMBEDDING_MODEL)),
     )
 
     frame = result.to_pandas()
