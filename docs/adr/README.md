@@ -20,3 +20,4 @@ behind each one and [README.md](../../README.md) for the full narrative.
 | [0008](0008-local-classifier-replaces-llm-judge-for-faithfulness.md) | A local classifier (HHEM) replaces the LLM judge for the faithfulness guardrail |
 | [0009](0009-faithfulness-judge-reads-a-focused-window-first.md) | The faithfulness judge can read a focused window of context first, trading a little detection for speed (available, not the default) |
 | [0010](0010-upgrade-the-langchain-stack-and-move-ragas-with-it.md) | The LangChain stack is upgraded to 1.x ahead of the 0.3 end of maintenance, and RAGAS moves with it because it cannot be held back |
+| [0011](0011-claude-haiku-5-5-is-the-default-model-with-luna-as-fallback.md) | Claude Haiku 5.5 becomes the default model, with gpt-6-luna on the other provider as the automatic fallback |

@@ -57,7 +57,7 @@ def _run_graph(question: str, route: str, scores: list, llm_responses: list[AIMe
         ),
         patch("chatbot.search_resume", side_effect=search_results or [_CHUNK_1]),
     ):
-        graph = chatbot.create_assistant(mode="classifier")
+        graph = chatbot.create_assistant(mode="classifier", model="gpt-4o-mini", use_fallback=False)
         return graph.invoke({**INITIAL_STATE, "messages": [HumanMessage(content=question)]})
 
 
@@ -132,7 +132,7 @@ def test_token_usage_from_the_judge_accumulates_across_a_retry():
             AIMessage(content="reformulated query"),
             AIMessage(content="a well-grounded second answer"),
         ]
-        state = chatbot.create_assistant(mode="classifier").invoke(
+        state = chatbot.create_assistant(mode="classifier", model="gpt-4o-mini", use_fallback=False).invoke(
             {**INITIAL_STATE, "messages": [HumanMessage(content="Where does Cem work?")]}
         )
 
@@ -154,7 +154,7 @@ def test_reformulated_query_drives_the_retry_search():
             AIMessage(content="a broader resume search query"),
             AIMessage(content="a well-grounded second answer"),
         ]
-        chatbot.create_assistant(mode="classifier").invoke(
+        chatbot.create_assistant(mode="classifier", model="gpt-4o-mini", use_fallback=False).invoke(
             {**INITIAL_STATE, "messages": [HumanMessage(content="Where does Cem work?")]}
         )
 
@@ -231,7 +231,7 @@ def test_the_regenerated_answer_is_not_conditioned_on_the_first_attempt_it_repla
         ),
         patch("chatbot.search_resume", side_effect=[_CHUNK_1, _CHUNK_2]),
     ):
-        chatbot.create_assistant(mode="classifier").invoke(
+        chatbot.create_assistant(mode="classifier", model="gpt-4o-mini", use_fallback=False).invoke(
             {**INITIAL_STATE, "messages": [HumanMessage(content="Where does Cem work?")]}
         )
 

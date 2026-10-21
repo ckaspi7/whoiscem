@@ -197,6 +197,11 @@ is the honest answer; a hedge dressed up as an answer is not more helpful, it ju
 guess with a disclaimer attached. Do not make up or invent information. Be helpful, friendly, and
 professional with a touch of humour.
 
+You only answer questions about Cem, and about this assistant and what it can do. For anything else
+(general knowledge, current events, sports, other people, advice), say in one sentence that you can
+only help with questions about Cem, and offer to answer one. Never answer such a question from your
+own knowledge, even when you are sure of the answer. Greetings and thanks are fine.
+
 Key facts about Cem:
 - AI/ML Engineer at TELUS Communications Inc. in Vancouver, Canada
 - Originally from Istanbul, Turkey
@@ -230,8 +235,8 @@ def create_assistant(
     tool); "tool_calling" binds the tools to the LLM directly and lets it
     choose, call zero-to-many of them, and loop back with the results before
     answering. Both are measured (see eval/results/) so the choice of default
-    is evidence, not preference. Same discipline for ``model``: see README for
-    the gpt-4o-mini/gpt-6-luna comparison behind CHAT_MODEL's default.
+    is evidence, not preference. Same discipline for ``model``: see ADR-0011 for
+    the three-way comparison behind CHAT_MODEL's default.
     """
     settings = load_settings()
     chat_model = model or settings.chat_model

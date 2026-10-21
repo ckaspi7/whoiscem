@@ -70,6 +70,7 @@ def client():
 
 def test_healthz_reports_healthy_when_qdrant_and_the_api_key_are_present(client, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     with patch("api.create_qdrant_client") as qdrant_cls:
         qdrant_cls.return_value.get_collections.return_value = None
         response = client.get("/healthz")
@@ -105,6 +106,7 @@ def test_healthz_reports_redis_as_informational_not_a_health_failure(client, mon
     """Redis absence degrades a feature elsewhere in this project; it must
     not make /healthz report unhealthy."""
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     monkeypatch.delenv("REDIS_URL", raising=False)
     with patch("api.create_qdrant_client") as qdrant_cls:
         qdrant_cls.return_value.get_collections.return_value = None

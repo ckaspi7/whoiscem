@@ -75,8 +75,8 @@ def test_reads_process_environment_by_default(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_chat_model_defaults_to_gpt_4o_mini():
-    assert load_settings(env={}).chat_model == "gpt-4o-mini"
+def test_chat_model_defaults_to_claude_haiku():
+    assert load_settings(env={}).chat_model == "claude-haiku-5-5"
 
 
 def test_chat_model_reads_gpt_6_luna_from_the_environment():
@@ -315,8 +315,17 @@ def test_claude_haiku_is_an_accepted_chat_model():
     assert load_settings(env={"CHAT_MODEL": "claude-haiku-5-5"}).chat_model == "claude-haiku-5-5"
 
 
-def test_there_is_no_fallback_by_default():
-    assert load_settings(env={}).fallback_chat_model == ""
+def test_the_default_model_falls_back_to_luna_on_the_other_provider():
+    assert load_settings(env={}).fallback_chat_model == "gpt-6-luna"
+
+
+def test_a_model_chosen_explicitly_gets_no_fallback_it_did_not_ask_for():
+    # A fallback is another provider's key that has to exist: only the default pairing implies it.
+    assert load_settings(env={"CHAT_MODEL": "gpt-4o-mini"}).fallback_chat_model == ""
+
+
+def test_an_explicitly_empty_fallback_turns_the_default_fallback_off():
+    assert load_settings(env={"FALLBACK_CHAT_MODEL": ""}).fallback_chat_model == ""
 
 
 def test_a_fallback_model_is_read_trimmed_and_lowercased():

@@ -295,7 +295,37 @@ judge calls to evaluate):
   this run called a tool beyond what routing accuracy already flags as a
   mistake.
 
+### Three models, measured: Claude Haiku 5.5 becomes the default
+
+OpenAI retires `gpt-4o-mini` on 2027-01-14, so the default had to move. Same golden
+set, same graph, same corpus, and the same fixed judge (`gpt-4o-mini` under RAGAS 0.4.3)
+for every row, so a difference is the answering model's. Default (`classifier`) mode:
+
+| | gpt-4o-mini | gpt-6-luna | claude-haiku-5-5 |
+|---|---|---|---|
+| Routing | 98.3% | **100%** | 98.3% |
+| Correct refusals | **100%** | 90% | **100%** |
+| Faithfulness | 0.723 | 0.726 | **0.799** |
+| Answer relevancy | 0.896 | **0.904** | 0.768 (0.862 without Spotify) |
+| Model cost, 59 questions | $0.0180 | **$0.0135** | $0.0224 |
+
+**Claude Haiku 5.5 is the default, with `gpt-6-luna` as the automatic fallback** on the
+other provider, so an outage or an empty balance at one does not take the assistant
+down. Haiku has the best faithfulness, perfect refusals and the best `tool_calling`
+routing; its relevancy gap is mostly RAGAS scoring the freshness caveat the project asks
+for ("this Spotify export is 18 months old") as non-committal. Luna answered a World Cup
+question from its own knowledge in every run, which the new scope instruction in the
+system prompt fixes for all three models. Single runs, a judge that itself retires in
+January, and Haiku's answers being about twice as long are the caveats; the full
+numbers, `tool_calling` results and what this does not establish are in
+[ADR-0011](docs/adr/0011-claude-haiku-5-5-is-the-default-model-with-luna-as-fallback.md).
+
 ### Cheaper and slightly better, measured: gpt-6-luna as a classifier-mode override
+
+*This section records the earlier two-model comparison. Its conclusion that the default
+stays `gpt-4o-mini`, and that Luna is broken under `tool_calling`, was superseded by
+ADR-0011: Luna works under `tool_calling` at `reasoning_effort="none"`, which
+`models.py` now sets on every Luna call.*
 
 `CHAT_MODEL` swaps the model behind routing, condensation, and generation in
 both graphs, independent of `AGENT_MODE`. `gpt-4o-mini` is the default; same
@@ -460,7 +490,7 @@ fits together.
 
 | Layer | Technology |
 |---|---|
-| LLM | GPT-4o-mini (default) or gpt-6-luna, via `CHAT_MODEL` |
+| LLM | Claude Haiku 5.5 (default), with gpt-6-luna as fallback; gpt-4o-mini until it retires; via `CHAT_MODEL` |
 | Agent framework | LangGraph — classifier or tool-calling agent, via `AGENT_MODE` |
 | Vector store | Qdrant — embedded, self-hosted or cloud, selected by config |
 | Dense retrieval | OpenAI text-embedding-3-small |
@@ -489,7 +519,7 @@ py -3.11 -m venv .venv
 .venv\Scripts\Activate.ps1          # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
-copy .env.example .env              # fill in OPENAI_API_KEY
+copy .env.example .env              # fill in OPENAI_API_KEY and ANTHROPIC_API_KEY
 streamlit run chatbot.py            # http://localhost:8501
 ```
 

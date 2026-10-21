@@ -37,7 +37,7 @@ def _mock_llm(*responses: AIMessage) -> MagicMock:
 
 def _run_graph(llm: MagicMock, question: str) -> dict:
     with patch("models.ChatOpenAI", return_value=llm):
-        graph = chatbot.create_assistant(mode="tool_calling")
+        graph = chatbot.create_assistant(mode="tool_calling", model="gpt-4o-mini", use_fallback=False)
     return graph.invoke({**INITIAL_STATE, "messages": [HumanMessage(content=question)]})
 
 
@@ -243,7 +243,7 @@ def test_trajectory_records_a_failed_call_as_not_ok():
 
 def test_every_llm_construction_requests_stream_usage_in_classifier_mode():
     with patch("models.ChatOpenAI") as llm_cls:
-        chatbot.create_assistant(mode="classifier")
+        chatbot.create_assistant(mode="classifier", model="gpt-4o-mini", use_fallback=False)
 
     assert llm_cls.call_args_list, "expected llm and llm_fast to be constructed"
     assert all(c.kwargs.get("stream_usage") is True for c in llm_cls.call_args_list)
@@ -251,7 +251,7 @@ def test_every_llm_construction_requests_stream_usage_in_classifier_mode():
 
 def test_every_llm_construction_requests_stream_usage_in_tool_calling_mode():
     with patch("models.ChatOpenAI") as llm_cls:
-        chatbot.create_assistant(mode="tool_calling")
+        chatbot.create_assistant(mode="tool_calling", model="gpt-4o-mini", use_fallback=False)
 
     assert all(c.kwargs.get("stream_usage") is True for c in llm_cls.call_args_list)
 
@@ -274,7 +274,7 @@ def test_gpt_6_luna_runs_at_reasoning_effort_none_everywhere_in_tool_calling_mod
 
 def test_gpt_4o_mini_never_sets_reasoning_effort():
     with patch("models.ChatOpenAI") as llm_cls:
-        chatbot.create_assistant(mode="tool_calling", model="gpt-4o-mini")
+        chatbot.create_assistant(mode="tool_calling", model="gpt-4o-mini", use_fallback=False)
 
     assert all("reasoning_effort" not in c.kwargs for c in llm_cls.call_args_list)
 
@@ -318,7 +318,7 @@ def test_gpt_4o_mini_still_gets_its_usual_temperature_overrides():
     temperature for the model that actually supports and relies on it —
     llm at 0.7 for prose variety, llm_fast at 0 for deterministic routing."""
     with patch("models.ChatOpenAI") as llm_cls:
-        chatbot.create_assistant(mode="classifier", model="gpt-4o-mini")
+        chatbot.create_assistant(mode="classifier", model="gpt-4o-mini", use_fallback=False)
 
     temperatures = sorted(c.kwargs.get("temperature") for c in llm_cls.call_args_list)
     assert temperatures == [0, 0.7]

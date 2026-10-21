@@ -295,6 +295,7 @@ def test_without_a_fallback_the_primary_failure_surfaces():
 
 
 def test_the_evaluation_path_never_gets_a_fallback_even_when_one_is_configured(monkeypatch):
+    monkeypatch.setenv("CHAT_MODEL", "gpt-6-luna")
     monkeypatch.setenv("FALLBACK_CHAT_MODEL", "claude-haiku-5-5")
     primary = _Fake(error=RuntimeError("quota"))
     fallback = _Fake(_reply("from fallback", "claude-haiku-5-5"))
@@ -313,6 +314,7 @@ def test_the_evaluation_path_never_gets_a_fallback_even_when_one_is_configured(m
 
 
 def test_the_configured_fallback_is_used_when_none_is_passed(monkeypatch):
+    monkeypatch.setenv("CHAT_MODEL", "gpt-6-luna")
     monkeypatch.setenv("FALLBACK_CHAT_MODEL", "claude-haiku-5-5")
     primary = _Fake(error=RuntimeError("quota"))
     fallback = _Fake(_reply("from fallback", "claude-haiku-5-5"))

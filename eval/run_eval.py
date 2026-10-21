@@ -299,6 +299,10 @@ _REFUSAL_MARKERS = (
     "is not listed",
     "aren't listed",
     "are not listed",
+    # The scope instruction in the system prompt makes models decline an off-topic question
+    # this way, with no "don't have" or "can't" in it.
+    "only help with questions about",
+    "only answer questions about",
 )
 
 
