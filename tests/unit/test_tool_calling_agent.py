@@ -37,7 +37,7 @@ def _mock_llm(*responses: AIMessage) -> MagicMock:
 
 def _run_graph(llm: MagicMock, question: str) -> dict:
     with patch("models.ChatOpenAI", return_value=llm):
-        graph = chatbot.create_assistant(mode="tool_calling")
+        graph = chatbot.create_assistant(mode="tool_calling", model="gpt-4o-mini", use_fallback=False)
     return graph.invoke({**INITIAL_STATE, "messages": [HumanMessage(content=question)]})
 
 
@@ -243,7 +243,7 @@ def test_trajectory_records_a_failed_call_as_not_ok():
 
 def test_every_llm_construction_requests_stream_usage_in_classifier_mode():
     with patch("models.ChatOpenAI") as llm_cls:
-        chatbot.create_assistant(mode="classifier")
+        chatbot.create_assistant(mode="classifier", model="gpt-4o-mini", use_fallback=False)
 
     assert llm_cls.call_args_list, "expected llm and llm_fast to be constructed"
     assert all(c.kwargs.get("stream_usage") is True for c in llm_cls.call_args_list)
@@ -251,7 +251,7 @@ def test_every_llm_construction_requests_stream_usage_in_classifier_mode():
 
 def test_every_llm_construction_requests_stream_usage_in_tool_calling_mode():
     with patch("models.ChatOpenAI") as llm_cls:
-        chatbot.create_assistant(mode="tool_calling")
+        chatbot.create_assistant(mode="tool_calling", model="gpt-4o-mini", use_fallback=False)
 
     assert all(c.kwargs.get("stream_usage") is True for c in llm_cls.call_args_list)
 
